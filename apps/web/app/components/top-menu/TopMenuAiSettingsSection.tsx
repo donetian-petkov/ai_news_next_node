@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
 import {
@@ -25,11 +25,7 @@ export function TopMenuAiSettingsSection() {
 
   const providerModels = aiSettings.availableModels[aiSettings.aiProvider];
   const [providerKeyDraft, setProviderKeyDraft] = useState('');
-  const [keywordsDraft, setKeywordsDraft] = useState(aiSettings.keywords.join(', '));
-
-  useEffect(() => {
-    setKeywordsDraft(aiSettings.keywords.join(', '));
-  }, [aiSettings.keywords]);
+  const [keywordsDraft, setKeywordsDraft] = useState('');
 
   const addKeywords = () => {
     const additions = String(keywordsDraft || '')

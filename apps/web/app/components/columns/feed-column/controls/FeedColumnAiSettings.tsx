@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Box, Button, Chip, FormControl, MenuItem, Select, Stack, TextField } from '@mui/material';
 import type { BudgetMode } from '../../../../store/types';
 import { useFeedColumnsContext } from '../../context/useFeedColumnsContext';
@@ -11,11 +11,7 @@ export function FeedColumnAiSettings() {
   const { view, handlers } = useFeedColumnsContext();
   const { aiAvailable, connected, compactBtnSx, compactFormSx, labels, keywords } = view;
   const { onToggleFeedSummary, onToggleFeedResearch, onSetFeedBudget, onSetKeywords } = handlers;
-  const [keywordsDraft, setKeywordsDraft] = useState(keywords.join(', '));
-
-  useEffect(() => {
-    setKeywordsDraft(keywords.join(', '));
-  }, [keywords]);
+  const [keywordsDraft, setKeywordsDraft] = useState('');
 
   const addKeywords = () => {
     const additions = String(keywordsDraft || '')
