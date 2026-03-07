@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Box, Button, Divider, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -14,6 +15,8 @@ import { TopMenuControlsPanel } from './TopMenuControlsPanel';
 import { FILTERED_FEED_URL } from '../../store/constants';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
+type MobileAnchorTarget = 'search' | 'add' | 'controls';
+
 export function TopMenuMobileDrawer() {
   const {
     isMobile,
@@ -21,6 +24,7 @@ export function TopMenuMobileDrawer() {
     searchLabel,
     addStreamLabel,
     controlsLabel,
+    controls,
     allColumnLabel,
     hideAllResearchLabel,
     hideAllSummariesLabel,
@@ -37,6 +41,26 @@ export function TopMenuMobileDrawer() {
     mobileDrawer
   } = useTopMenuContext();
   const { open, onClose } = mobileDrawer;
+  const [pendingAnchor, setPendingAnchor] = useState<MobileAnchorTarget | null>(null);
+  const drawerBodyRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open || !pendingAnchor) return;
+    const targetVisible =
+      pendingAnchor === 'search'
+        ? searchVisible
+        : pendingAnchor === 'add'
+          ? addStreamVisible
+          : !controls.model.collapsed;
+    if (!targetVisible) return;
+
+    const timer = window.setTimeout(() => {
+      const target = drawerBodyRef.current?.querySelector(`[data-mobile-anchor="${pendingAnchor}"]`) as HTMLElement | null;
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPendingAnchor(null);
+    }, 40);
+    return () => window.clearTimeout(timer);
+  }, [addStreamVisible, controls.model.collapsed, open, pendingAnchor, searchVisible]);
 
   if (!isMobile) return null;
 
@@ -49,18 +73,39 @@ export function TopMenuMobileDrawer() {
         </IconButton>
       </Box>
       <Divider className="mobileDrawerDivider" />
-      <Box className="mobileDrawerBody">
+      <Box className="mobileDrawerBody" ref={drawerBodyRef}>
         <Stack className="mobileDrawerVibeRow" direction="row" spacing={1} alignItems="center">
           <QuickVibeSelect fullWidth />
         </Stack>
         <Stack spacing={1}>
-          <Button variant="outlined" onClick={onToggleSearch} startIcon={<SearchIcon fontSize="small" />}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (!searchVisible) setPendingAnchor('search');
+              onToggleSearch();
+            }}
+            startIcon={<SearchIcon fontSize="small" />}
+          >
             {searchLabel}
           </Button>
-          <Button variant="outlined" onClick={onToggleAddStream} startIcon={<AddIcon fontSize="small" />}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (!addStreamVisible) setPendingAnchor('add');
+              onToggleAddStream();
+            }}
+            startIcon={<AddIcon fontSize="small" />}
+          >
             {addStreamLabel}
           </Button>
-          <Button variant="outlined" onClick={onToggleControls} startIcon={<TuneIcon fontSize="small" />}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (controls.model.collapsed) setPendingAnchor('controls');
+              onToggleControls();
+            }}
+            startIcon={<TuneIcon fontSize="small" />}
+          >
             {controlsLabel}
           </Button>
           <Button variant="outlined" onClick={onToggleAllColumnControls}>
@@ -126,9 +171,19 @@ export function TopMenuMobileDrawer() {
             })}
           </Stack>
         </Box>
-        {searchVisible ? <SearchSection /> : null}
-        {addStreamVisible ? <AddStreamSection /> : null}
-        <TopMenuControlsPanel />
+        {searchVisible ? (
+          <Box data-mobile-anchor="search">
+            <SearchSection />
+          </Box>
+        ) : null}
+        {addStreamVisible ? (
+          <Box data-mobile-anchor="add">
+            <AddStreamSection />
+          </Box>
+        ) : null}
+        <Box data-mobile-anchor="controls">
+          <TopMenuControlsPanel />
+        </Box>
       </Box>
     </Drawer>
   );
