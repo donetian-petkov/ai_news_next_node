@@ -103,6 +103,7 @@ export function useTopMenuController() {
     cycleVibe,
     applyAllBudget,
     changeAiProvider,
+    setProviderApiKey,
     requestNotificationPermission,
     resetAllNewest,
     deleteOldAllColumns
@@ -154,6 +155,7 @@ export function useTopMenuController() {
     triggerSoundCue,
     requestNotificationPermission,
     changeAiProvider,
+    setProviderApiKey,
     applyAllBudget,
     cycleTheme,
     resetAllNewest,

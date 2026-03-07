@@ -1,6 +1,7 @@
 'use client';
 
-import { Alert } from '@mui/material';
+import { useState } from 'react';
+import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
 import {
   buildAiModelOptions,
@@ -23,6 +24,7 @@ export function TopMenuAiSettingsSection() {
   } = useTopMenuContext();
 
   const providerModels = aiSettings.availableModels[aiSettings.aiProvider];
+  const [providerKeyDraft, setProviderKeyDraft] = useState('');
 
   return (
     <details className="controlSection" open>
@@ -35,6 +37,36 @@ export function TopMenuAiSettingsSection() {
           onChange={actions.onChangeAiProvider}
           options={buildAiProviderOptions(labels)}
         />
+
+        <Box sx={{ width: '100%', border: '1px solid var(--ctl-border)', borderRadius: 2, p: 1 }}>
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.8 }}>
+            {labels.providerKeyTitle || 'Provider API key'}
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <TextField
+              size="small"
+              fullWidth
+              type="password"
+              label={labels.providerKeyLabel || 'API key'}
+              placeholder={labels.providerKeyPlaceholder || 'Paste key for selected provider'}
+              value={providerKeyDraft}
+              onChange={e => setProviderKeyDraft(e.target.value)}
+            />
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => {
+                const next = String(providerKeyDraft || '').trim();
+                if (!next) return;
+                actions.onSetProviderApiKey(aiSettings.aiProvider, next);
+                setProviderKeyDraft('');
+              }}
+              disabled={!String(providerKeyDraft || '').trim()}
+            >
+              {labels.providerKeySave || 'Save key'}
+            </Button>
+          </Stack>
+        </Box>
 
         <TopMenuSelectField
           id="summaryLang"

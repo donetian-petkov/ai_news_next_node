@@ -11,6 +11,7 @@ type Args = {
   triggerSoundCue: (kind: 'toggle' | 'success' | 'error') => void;
   requestNotificationPermission: (enabled: boolean) => Promise<void>;
   changeAiProvider: (provider: 'openai' | 'claude' | 'openrouter') => void;
+  setProviderApiKey: (provider: 'openai' | 'claude' | 'openrouter', apiKey: string) => void;
   applyAllBudget: (budget: 'low' | 'standard' | 'high') => void;
   cycleTheme: () => void;
   resetAllNewest: () => void;
@@ -24,6 +25,7 @@ export function useTopMenuControlPanelHandlers({
   triggerSoundCue,
   requestNotificationPermission,
   changeAiProvider,
+  setProviderApiKey,
   applyAllBudget,
   cycleTheme,
   resetAllNewest,
@@ -46,6 +48,7 @@ export function useTopMenuControlPanelHandlers({
     },
     onNotifyModeChange: (notifyMode: RootState['ui']['notifyMode']) => dispatch(setNotifySettings({ notifyMode })),
     onChangeAiProvider: changeAiProvider,
+    onSetProviderApiKey: setProviderApiKey,
     onSummaryLangChange: (lang: RootState['ui']['summaryLang']) => {
       const ok = sendWsMessage({ type: 'set_summary_lang', lang });
       if (ok) dispatch(setAiSettings({ summaryLang: lang }));
@@ -84,5 +87,5 @@ export function useTopMenuControlPanelHandlers({
       dispatch(setAppearanceSettings({ soundEnabled: next }));
       if (next) triggerSoundCue('success');
     }
-  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, onOpenHelp, requestNotificationPermission, resetAllNewest, triggerSoundCue, ui.performanceMode, ui.soundEnabled]);
+  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.performanceMode, ui.soundEnabled]);
 }

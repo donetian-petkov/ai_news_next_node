@@ -77,6 +77,7 @@ export function useTopMenuActions({
   const {
     applyAllBudget,
     changeAiProvider,
+    setProviderApiKey,
     requestNotificationPermission
   } = useTopMenuAiActions({
     dispatch,
@@ -102,6 +103,7 @@ export function useTopMenuActions({
     cycleVibe,
     applyAllBudget,
     changeAiProvider,
+    setProviderApiKey,
     requestNotificationPermission,
     resetAllNewest,
     deleteOldAllColumns
