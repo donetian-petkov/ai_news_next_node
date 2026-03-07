@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
 import {
@@ -25,6 +25,19 @@ export function TopMenuAiSettingsSection() {
 
   const providerModels = aiSettings.availableModels[aiSettings.aiProvider];
   const [providerKeyDraft, setProviderKeyDraft] = useState('');
+  const [keywordsDraft, setKeywordsDraft] = useState(aiSettings.keywords.join(', '));
+
+  useEffect(() => {
+    setKeywordsDraft(aiSettings.keywords.join(', '));
+  }, [aiSettings.keywords]);
+
+  const applyKeywords = () => {
+    const next = String(keywordsDraft || '')
+      .split(/[,\n]+/g)
+      .map(v => v.trim())
+      .filter(Boolean);
+    actions.onSetKeywords(next);
+  };
 
   return (
     <details className="controlSection" open>
@@ -64,6 +77,29 @@ export function TopMenuAiSettingsSection() {
               disabled={!String(providerKeyDraft || '').trim()}
             >
               {labels.providerKeySave || 'Save key'}
+            </Button>
+          </Stack>
+        </Box>
+
+        <Box sx={{ width: '100%', border: '1px solid var(--ctl-border)', borderRadius: 2, p: 1 }}>
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.8 }}>
+            {labels.matchKeywordsLabel || 'Filtered match keywords'}
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <TextField
+              size="small"
+              fullWidth
+              label={labels.matchKeywordsInputLabel || 'Keywords'}
+              placeholder={labels.matchKeywordsPlaceholder || 'keyword1, keyword2, keyword3'}
+              value={keywordsDraft}
+              onChange={e => setKeywordsDraft(e.target.value)}
+            />
+            <Button
+              size="small"
+              variant="contained"
+              onClick={applyKeywords}
+            >
+              {labels.matchKeywordsApply || 'Apply'}
             </Button>
           </Stack>
         </Box>

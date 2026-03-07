@@ -210,6 +210,7 @@ export function useTopMenuController() {
       aiAvailable: ui.aiAvailable,
       performanceMode: ui.performanceMode,
       aiProvider: ui.aiProvider,
+      keywords: ui.keywords,
       summaryLang: ui.summaryLang,
       researchLang: ui.researchLang,
       summaryModel: ui.summaryModel,
@@ -236,7 +237,7 @@ export function useTopMenuController() {
       language: ui.language,
       colorMode: ui.colorMode
     }
-  }), [deleteAgeAll, ui.aiAvailable, ui.aiEnabled, ui.aiProvider, ui.allBudget, ui.askModel, ui.availableModels, ui.buttonMode, ui.colorMode, ui.controlsCollapsed, ui.dateFormat, ui.effectIntensity, ui.font, ui.fontSize, ui.language, ui.menuHintMode, ui.moodFilter, ui.notifyEnabled, ui.notifyMode, ui.performanceMode, ui.researchLang, ui.researchModel, ui.scheme, ui.soundEnabled, ui.soundTheme, ui.summaryLang, ui.summaryModel, ui.timezone, ui.typeFilter, ui.vibe]);
+  }), [deleteAgeAll, ui.aiAvailable, ui.aiEnabled, ui.aiProvider, ui.allBudget, ui.askModel, ui.availableModels, ui.buttonMode, ui.colorMode, ui.controlsCollapsed, ui.dateFormat, ui.effectIntensity, ui.font, ui.fontSize, ui.keywords, ui.language, ui.menuHintMode, ui.moodFilter, ui.notifyEnabled, ui.notifyMode, ui.performanceMode, ui.researchLang, ui.researchModel, ui.scheme, ui.soundEnabled, ui.soundTheme, ui.summaryLang, ui.summaryModel, ui.timezone, ui.typeFilter, ui.vibe]);
 
   const { contextValue } = useTopMenuViewModel({
     labels,

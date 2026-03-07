@@ -21,6 +21,7 @@ type Args = {
     hideAllSummaries: boolean;
     aiEnabled: boolean;
     aiAvailable: boolean;
+    keywords: string[];
   };
   labels: Record<string, string>;
   connected: boolean;
@@ -51,6 +52,7 @@ type Args = {
   setFeedInterval: FeedColumnHandlers['onSetFeedInterval'];
   setFeedSortMode: FeedColumnHandlers['onSetFeedSortMode'];
   setFeedFilterPreset: FeedColumnHandlers['onSetFeedFilterPreset'];
+  setKeywords: FeedColumnHandlers['onSetKeywords'];
   removeOldInFeed: FeedColumnHandlers['onRemoveOldInFeed'];
   copyLink: FeedColumnHandlers['onCopyLink'];
   shareNews: FeedColumnHandlers['onShareNews'];
@@ -93,6 +95,7 @@ export function useColumnsPresentation({
   setFeedInterval,
   setFeedSortMode,
   setFeedFilterPreset,
+  setKeywords,
   removeOldInFeed,
   copyLink,
   shareNews,
@@ -135,6 +138,7 @@ export function useColumnsPresentation({
     setFeedInterval,
     setFeedSortMode,
     setFeedFilterPreset,
+    setKeywords,
     removeOldInFeed,
     copyLink,
     shareNews,

@@ -20,6 +20,7 @@ type Args = {
   setFeedInterval: FeedColumnHandlers['onSetFeedInterval'];
   setFeedSortMode: FeedColumnHandlers['onSetFeedSortMode'];
   setFeedFilterPreset: FeedColumnHandlers['onSetFeedFilterPreset'];
+  setKeywords: FeedColumnHandlers['onSetKeywords'];
   removeOldInFeed: FeedColumnHandlers['onRemoveOldInFeed'];
   copyLink: FeedColumnHandlers['onCopyLink'];
   shareNews: FeedColumnHandlers['onShareNews'];
@@ -44,6 +45,7 @@ export function useFeedColumnHandlers({
   setFeedInterval,
   setFeedSortMode,
   setFeedFilterPreset,
+  setKeywords,
   removeOldInFeed,
   copyLink,
   shareNews,
@@ -66,6 +68,7 @@ export function useFeedColumnHandlers({
     onSetFeedInterval: setFeedInterval,
     onSetFeedSortMode: setFeedSortMode,
     onSetFeedFilterPreset: setFeedFilterPreset,
+    onSetKeywords: setKeywords,
     onToggleAdvancedControls: (feedUrl: string) => setAdvancedControlsByUrl(prev => ({ ...prev, [feedUrl]: !prev[feedUrl] })),
     onSetDeleteAge: (feedUrl, age) => dispatch(setFeedDeleteAge({ feedUrl, age })),
     onRemoveOldInFeed: removeOldInFeed,
@@ -81,5 +84,5 @@ export function useFeedColumnHandlers({
     onToggleAsk: (id, feedUrl) => dispatch(toggleAskOpen({ id, feedUrl })),
     onSetAskDraft: (id, feedUrl, draft) => dispatch(setAskDraft({ id, feedUrl, draft })),
     onAskSubmit: requestAsk
-  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, removeFeed, removeOldInFeed, requestAsk, requestResearch, requestSummary, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setVisibleByFeed, shareNews, toggleFeedResearch, toggleFeedSummary]);
+  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, removeFeed, removeOldInFeed, requestAsk, requestResearch, requestSummary, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, toggleFeedResearch, toggleFeedSummary]);
 }

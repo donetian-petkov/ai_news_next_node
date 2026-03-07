@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { sendWsMessage } from '../../store/wsClient';
-import { setAiSettings, setAppearanceSettings, setLanguage, setMoodFilter, setNotifySettings, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
+import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 
 type Args = {
@@ -49,6 +49,15 @@ export function useTopMenuControlPanelHandlers({
     onNotifyModeChange: (notifyMode: RootState['ui']['notifyMode']) => dispatch(setNotifySettings({ notifyMode })),
     onChangeAiProvider: changeAiProvider,
     onSetProviderApiKey: setProviderApiKey,
+    onSetKeywords: (keywords: string[]) => {
+      const cleaned = Array.isArray(keywords)
+        ? keywords
+          .map(v => String(v || '').trim())
+          .filter(Boolean)
+        : [];
+      const ok = sendWsMessage({ type: 'set_keywords', keywords: cleaned });
+      if (ok) dispatch(setKeywords(cleaned));
+    },
     onSummaryLangChange: (lang: RootState['ui']['summaryLang']) => {
       const ok = sendWsMessage({ type: 'set_summary_lang', lang });
       if (ok) dispatch(setAiSettings({ summaryLang: lang }));

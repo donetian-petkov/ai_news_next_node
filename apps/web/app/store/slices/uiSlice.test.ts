@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import uiReducer, { setSearchQuery, setTopUiState, triggerHideAllResearch, setAppearanceSettings, setNotifySettings, setAiSettings, setMoodFilter, setTypeFilter, hydrateUiSettings, enqueueToast, dismissToast } from './uiSlice';
+import uiReducer, { setSearchQuery, setTopUiState, triggerHideAllResearch, setAppearanceSettings, setNotifySettings, setAiSettings, setKeywords, setMoodFilter, setTypeFilter, hydrateUiSettings, enqueueToast, dismissToast } from './uiSlice';
 import { NewsMoodFilterValue, NewsTypeFilterValue } from '../types';
 
 describe('uiSlice', () => {
@@ -25,6 +25,7 @@ describe('uiSlice', () => {
       aiAvailable: false,
       aiEnabled: false,
       aiProvider: 'openai',
+      keywords: [],
       moodFilter: NewsMoodFilterValue.All,
       typeFilter: NewsTypeFilterValue.All,
       summaryLang: 'bilingual',
@@ -193,6 +194,8 @@ describe('uiSlice', () => {
 
     state = uiReducer(state, setAppearanceSettings({ performanceMode: true }));
     expect(state.performanceMode).toBe(true);
+    state = uiReducer(state, setKeywords(['  war  ', 'energy', 'WAR']));
+    expect(state.keywords).toEqual(['war', 'energy']);
     state = uiReducer(state, setMoodFilter(NewsMoodFilterValue.Sadness));
     state = uiReducer(state, setTypeFilter(NewsTypeFilterValue.Politics));
     expect(state.moodFilter).toBe(NewsMoodFilterValue.All);

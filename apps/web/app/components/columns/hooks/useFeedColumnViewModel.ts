@@ -19,6 +19,7 @@ type Args = {
     hideAllSummaries: boolean;
     aiEnabled: boolean;
     aiAvailable: boolean;
+    keywords: string[];
   };
   labels: Record<string, string>;
   connected: boolean;
@@ -109,6 +110,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     hideAllSummaries: ui.hideAllSummaries,
     aiEnabled: ui.aiEnabled,
     aiAvailable: ui.aiAvailable,
+    keywords: ui.keywords,
     buttonMode: ui.buttonMode,
     fontScale,
     connected,
@@ -118,7 +120,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     labels,
     cardLabels,
     vibeIcons
-  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.typeFilter, vibeIcons]);
+  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.keywords, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.typeFilter, vibeIcons]);
 
   return viewModel;
 }

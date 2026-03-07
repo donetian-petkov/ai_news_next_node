@@ -65,6 +65,21 @@ function dedupeNonEmptyStrings(values: unknown): string[] {
   return out;
 }
 
+function dedupeKeywords(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const value = typeof raw === 'string' ? raw.trim() : '';
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
 type UiState = {
   language: 'en' | 'bg';
   colorMode: 'system' | 'dark' | 'light';
@@ -85,6 +100,7 @@ type UiState = {
   aiAvailable: boolean;
   aiEnabled: boolean;
   aiProvider: AiProvider;
+  keywords: string[];
   moodFilter: MoodFilter;
   typeFilter: TypeFilter;
   summaryLang: 'bilingual' | 'bg' | 'en';
@@ -129,6 +145,7 @@ const initialState: UiState = {
   aiAvailable: false,
   aiEnabled: false,
   aiProvider: 'openai',
+  keywords: [],
   moodFilter: NewsMoodFilterValue.All,
   typeFilter: NewsTypeFilterValue.All,
   summaryLang: 'bilingual',
@@ -241,6 +258,9 @@ const uiSlice = createSlice({
         };
       }
       if (next.allBudget === 'mixed' || next.allBudget === 'low' || next.allBudget === 'standard' || next.allBudget === 'high') state.allBudget = next.allBudget;
+    },
+    setKeywords(state, action: PayloadAction<string[]>) {
+      state.keywords = dedupeKeywords(action.payload);
     },
     setMoodFilter(state, action: PayloadAction<UiState['moodFilter']>) {
       if (state.performanceMode) {
@@ -396,6 +416,7 @@ export const {
   setHelpOpen,
   setNotifySettings,
   setAiSettings,
+  setKeywords,
   setMoodFilter,
   setTypeFilter,
   setAppearanceSettings,

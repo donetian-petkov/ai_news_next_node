@@ -25,6 +25,13 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('set_summary_lang'), lang: summaryLangSchema }),
   z.object({ type: z.literal('set_research_lang'), lang: researchLangSchema }),
+  z.object({
+    type: z.literal('set_keywords'),
+    keywords: z.union([
+      z.string(),
+      z.array(z.string())
+    ])
+  }),
   z.object({ type: z.literal('add_feed'), url: z.string(), label: z.string().optional(), kind: feedKindSchema.optional(), intervalSec: z.number().optional() }),
   z.object({ type: z.literal('remove_feed'), feedUrl: z.string() }),
   z.object({ type: z.literal('set_feed_summary'), feedUrl: z.string(), enabled: z.boolean() }),

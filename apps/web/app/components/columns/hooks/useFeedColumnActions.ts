@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import type { AppDispatch } from '../../../store/store';
 import { removeFeedLocally, setFeedBudgetSetting, setFeedColumnSettings, setFeedIntervalSetting, setFeedResearchSetting, setFeedSummarySetting } from '../../../store/slices/feedsSlice';
 import { removeOldItemsInFeed } from '../../../store/slices/newsSlice';
+import { setKeywords as setUiKeywords } from '../../../store/slices/uiSlice';
 import { sendWsMessage } from '../../../store/wsClient';
 import type { BudgetMode, FeedInfo, SortMode } from '../../../store/types';
 import { cutoffFromAge, presetToFeedFilters } from '../reactColumns.utils';
@@ -80,6 +81,17 @@ export function useFeedColumnActions({
     setFeedFilters(feed, presetToFeedFilters(preset));
   }, [setFeedFilters]);
 
+  const setKeywords = useCallback((keywords: string[]) => {
+    if (!connected) return;
+    const cleaned = Array.isArray(keywords)
+      ? keywords
+        .map(v => String(v || '').trim())
+        .filter(Boolean)
+      : [];
+    const ok = sendWsMessage({ type: 'set_keywords', keywords: cleaned });
+    if (ok) dispatch(setUiKeywords(cleaned));
+  }, [connected, dispatch]);
+
   const removeOldInFeed = useCallback((feed: FeedInfo) => {
     const age = deleteAgeByUrl[feed.url] || 'week';
     dispatch(removeOldItemsInFeed({
@@ -96,7 +108,7 @@ export function useFeedColumnActions({
     setFeedInterval,
     setFeedSortMode,
     setFeedFilterPreset,
+    setKeywords,
     removeOldInFeed
   };
 }
-

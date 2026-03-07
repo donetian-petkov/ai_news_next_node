@@ -28,7 +28,7 @@ import { setStatus } from './slices/connectionSlice';
 import { setFeeds } from './slices/feedsSlice';
 import { receiveAskReply, setHiddenIds, upsertNewsBatch } from './slices/newsSlice';
 import { setUsage } from './slices/aiUsageSlice';
-import { enqueueToast, setAiSettings } from './slices/uiSlice';
+import { enqueueToast, setAiSettings, setKeywords } from './slices/uiSlice';
 
 let ws: WebSocket | null = null;
 let wsUrlCurrent = '';
@@ -75,6 +75,22 @@ function parseModelList(raw: unknown): string[] {
     if (!model || seen.has(model)) continue;
     seen.add(model);
     out.push(model);
+  }
+  return out;
+}
+
+function parseKeywordList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!isString(item)) continue;
+    const value = item.trim();
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
   }
   return out;
 }
@@ -300,7 +316,9 @@ export function startWsConnection(dispatch: AppDispatch, explicitUrl: string) {
     if (msg.type === WsMessageType.Config) {
       const parsedFeeds = parseFeedInfos(msg.feeds, msg.feedSettings);
       const parsedModels = parseAvailableModels(msg.availableModels);
+      const parsedKeywords = parseKeywordList(msg.keywords);
       dispatch(setFeeds(parsedFeeds));
+      dispatch(setKeywords(parsedKeywords));
       dispatch(setAiSettings({
         aiAvailable: !!msg.aiAvailable,
         aiEnabled: !!msg.aiEnabled,

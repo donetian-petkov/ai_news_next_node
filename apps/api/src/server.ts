@@ -266,18 +266,48 @@ const defaultFeeds: FeedInfo[] = [
   { url: 'https://www.svobodnaevropa.bg/api/epiqq', label: 'SvobodnaEvropa', kind: 'rss', intervalSec: 180 }
 ];
 
+function normalizeKeywordList(input: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of input) {
+    const value = String(raw || '').trim();
+    if (!value) continue;
+    const key = normalizeText(value);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
+function parseKeywordsCsv(raw: string): string[] {
+  return normalizeKeywordList(
+    String(raw || '')
+      .split(/[,\n]+/g)
+      .map(s => s.trim())
+      .filter(Boolean)
+  );
+}
+
+function parseKeywordsPayload(payload: unknown): string[] {
+  if (typeof payload === 'string') {
+    return parseKeywordsCsv(payload);
+  }
+  if (Array.isArray(payload)) {
+    return normalizeKeywordList(payload.map(v => (typeof v === 'string' ? v : '')));
+  }
+  return [];
+}
+
 function parseKeywords(): string[] {
   const fromArg = process.argv.find(a => a.startsWith('--keywords='));
   const raw =
     (fromArg ? fromArg.slice('--keywords='.length) : '') ||
     process.env.KEYWORDS ||
     '';
-  return raw
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
+  return parseKeywordsCsv(raw);
 }
-const keywords = parseKeywords();
+let keywords = parseKeywords();
 
 // ---- AI configuration (.env) ----
 const aiProviderParsed = aiProviderSchema.safeParse(process.env.AI_PROVIDER || 'openai');
@@ -580,6 +610,7 @@ const APP_STATE_ROW_ID = 1;
 
 type PersistedState = {
   version: number;
+  keywords?: string[];
   feeds: FeedInfo[];
   feedSettings: Record<string, FeedSettings>;
   hiddenIds: string[];
@@ -635,6 +666,7 @@ function saveStateNow() {
   ensureDataDir();
   const st: PersistedState = {
     version: 1,
+    keywords,
     feeds: feedsList,
     feedSettings: feedSettingsObj(),
     hiddenIds: Array.from(hiddenIds),
@@ -862,6 +894,42 @@ async function hybridMatch(
 
   if (hit) return { isMatch: true, score: Math.max(1, semScore), vec };
   return { isMatch: semMatch, score: semScore, vec };
+}
+
+async function refreshMatchStateForRecent() {
+  filteredDedupeWindow = [];
+  const sorted = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
+  for (const it of sorted) {
+    let isMatch = false;
+    let matchScore = 0;
+    let titleVec: number[] | null = null;
+
+    try {
+      const m = await hybridMatch(it.title);
+      isMatch = m.isMatch;
+      matchScore = m.score;
+      titleVec = m.vec;
+    } catch {
+      const hit = substringHit(it.title);
+      isMatch = hit;
+      matchScore = hit ? 1 : 0;
+      titleVec = null;
+    }
+
+    let filteredOk = isMatch;
+    if (filteredOk && aiEnabled && FILTERED_AI_DEDUPE && titleVec) {
+      if (isFilteredDuplicate(titleVec)) filteredOk = false;
+      else addToFilteredDedupe(titleVec);
+    }
+
+    it.isMatch = isMatch;
+    it.matchScore = matchScore;
+    it.filteredOk = filteredOk;
+  }
+
+  for (const it of sorted) {
+    broadcastNewsUpdate(it);
+  }
 }
 
 function isDuplicate(vec: number[] | null): boolean {
@@ -1962,6 +2030,10 @@ function startScheduler() {
 function applyLoadedState(st: PersistedState | null) {
   if (!st || st.version !== 1) return;
 
+  if (Array.isArray(st.keywords)) {
+    keywords = normalizeKeywordList(st.keywords);
+  }
+
   if (Array.isArray(st.feeds) && st.feeds.length) {
     feedsList = st.feeds;
   }
@@ -2230,6 +2302,20 @@ wss.on('connection', (ws: WebSocket) => {
         broadcastConfig();
         markDirty();
       }
+      return;
+    }
+
+    if (msg.type === 'set_keywords') {
+      keywords = parseKeywordsPayload(msg.keywords);
+
+      titleVecCache.clear();
+      filteredDedupeWindow = [];
+      keywordVecs = [];
+
+      await initKeywordEmbeddings();
+      await refreshMatchStateForRecent();
+      broadcastConfig();
+      markDirty();
       return;
     }
 

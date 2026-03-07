@@ -96,6 +96,7 @@ describe('wsClient', () => {
 
     sock.emitMessage({
       type: 'config',
+      keywords: ['war', 'energy'],
       aiAvailable: true,
       aiEnabled: true,
       aiProvider: 'claude',
@@ -165,6 +166,7 @@ describe('wsClient', () => {
     ]);
 
     expect(actions.find(a => a.type === 'news/setHiddenIds')?.payload).toEqual(['hid-1']);
+    expect(actions.find(a => a.type === 'ui/setKeywords')?.payload).toEqual(['war', 'energy']);
     expect(actions.find(a => a.type === 'ui/setAiSettings')?.payload).toMatchObject({
       aiAvailable: true,
       aiEnabled: true,

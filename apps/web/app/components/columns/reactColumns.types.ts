@@ -96,6 +96,7 @@ export type FeedColumnViewModel = {
   hideAllSummaries: boolean;
   aiEnabled: boolean;
   aiAvailable: boolean;
+  keywords: string[];
   buttonMode: 'icons' | 'text';
   fontScale: number;
   connected: boolean;
@@ -137,6 +138,7 @@ export type FeedColumnHandlers = {
   onSetFeedInterval: (feed: FeedInfo, intervalSec: number) => void;
   onSetFeedSortMode: (feed: FeedInfo, sortMode: SortMode) => void;
   onSetFeedFilterPreset: (feed: FeedInfo, preset: FeedFilterPreset) => void;
+  onSetKeywords: (keywords: string[]) => void;
   onToggleAdvancedControls: (feedUrl: string) => void;
   onSetDeleteAge: (feedUrl: string, age: 'yesterday' | 'week' | 'month' | 'year') => void;
   onRemoveOldInFeed: (feed: FeedInfo) => void;

@@ -420,6 +420,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     setFeedInterval,
     setFeedSortMode,
     setFeedFilterPreset,
+    setKeywords,
     removeOldInFeed
   } = useFeedColumnActions({
     dispatch,
@@ -443,7 +444,8 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       hideAllResearch: ui.hideAllResearch,
       hideAllSummaries: ui.hideAllSummaries,
       aiEnabled: ui.aiEnabled,
-      aiAvailable: ui.aiAvailable
+      aiAvailable: ui.aiAvailable,
+      keywords: ui.keywords
     },
     labels,
     connected,
@@ -474,6 +476,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     setFeedInterval,
     setFeedSortMode,
     setFeedFilterPreset,
+    setKeywords,
     removeOldInFeed,
     copyLink,
     shareNews,
