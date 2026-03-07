@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
+    "test": "vitest run src/server.integration.test.ts",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "mkdir -p prisma && touch prisma/dev.db && DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma migrate deploy"
@@ -25,6 +26,7 @@
     "@types/ws": "^8.18.1",
     "prisma": "^6.4.1",
     "tsx": "^4.19.1",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^4.0.18"
   }
 }

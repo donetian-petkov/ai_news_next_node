@@ -10,3 +10,5 @@ apps/api/prisma/dev.db-journal
 .DS_Store
 apps/api/src/.data
 apps/api/dist/.data
+apps/web/playwright-report
+apps/web/test-results
