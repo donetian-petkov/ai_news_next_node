@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
 import {
   buildAiModelOptions,
@@ -31,12 +31,27 @@ export function TopMenuAiSettingsSection() {
     setKeywordsDraft(aiSettings.keywords.join(', '));
   }, [aiSettings.keywords]);
 
-  const applyKeywords = () => {
-    const next = String(keywordsDraft || '')
+  const addKeywords = () => {
+    const additions = String(keywordsDraft || '')
       .split(/[,\n]+/g)
       .map(v => v.trim())
       .filter(Boolean);
+    if (!additions.length) return;
+    const seen = new Set(aiSettings.keywords.map(v => v.toLocaleLowerCase()));
+    const next = [...aiSettings.keywords];
+    additions.forEach(v => {
+      const key = v.toLocaleLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      next.push(v);
+    });
     actions.onSetKeywords(next);
+    setKeywordsDraft('');
+  };
+
+  const removeKeyword = (keyword: string) => {
+    const target = keyword.toLocaleLowerCase();
+    actions.onSetKeywords(aiSettings.keywords.filter(v => v.toLocaleLowerCase() !== target));
   };
 
   return (
@@ -97,11 +112,24 @@ export function TopMenuAiSettingsSection() {
             <Button
               size="small"
               variant="contained"
-              onClick={applyKeywords}
+              onClick={addKeywords}
+              disabled={!String(keywordsDraft || '').trim()}
             >
-              {labels.matchKeywordsApply || 'Apply'}
+              {labels.matchKeywordsApply || 'Add'}
             </Button>
           </Stack>
+          {aiSettings.keywords.length ? (
+            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              {aiSettings.keywords.map(keyword => (
+                <Chip
+                  key={keyword.toLocaleLowerCase()}
+                  size="small"
+                  label={keyword}
+                  onDelete={() => removeKeyword(keyword)}
+                />
+              ))}
+            </Stack>
+          ) : null}
         </Box>
 
         <TopMenuSelectField

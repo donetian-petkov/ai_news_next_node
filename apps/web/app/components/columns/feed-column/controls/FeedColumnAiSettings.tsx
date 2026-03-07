@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, FormControl, MenuItem, Select, Stack, TextField } from '@mui/material';
+import { Alert, Box, Button, Chip, FormControl, MenuItem, Select, Stack, TextField } from '@mui/material';
 import type { BudgetMode } from '../../../../store/types';
 import { useFeedColumnsContext } from '../../context/useFeedColumnsContext';
 import { useFeedColumnContext } from '../context/useFeedColumnContext';
@@ -17,12 +17,27 @@ export function FeedColumnAiSettings() {
     setKeywordsDraft(keywords.join(', '));
   }, [keywords]);
 
-  const applyKeywords = () => {
-    const next = String(keywordsDraft || '')
+  const addKeywords = () => {
+    const additions = String(keywordsDraft || '')
       .split(/[,\n]+/g)
       .map(v => v.trim())
       .filter(Boolean);
+    if (!additions.length) return;
+    const seen = new Set(keywords.map(v => v.toLocaleLowerCase()));
+    const next = [...keywords];
+    additions.forEach(v => {
+      const key = v.toLocaleLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      next.push(v);
+    });
     onSetKeywords(next);
+    setKeywordsDraft('');
+  };
+
+  const removeKeyword = (keyword: string) => {
+    const target = keyword.toLocaleLowerCase();
+    onSetKeywords(keywords.filter(v => v.toLocaleLowerCase() !== target));
   };
 
   if (!aiAvailable) {
@@ -80,13 +95,26 @@ export function FeedColumnAiSettings() {
             <Button
               size="small"
               variant="contained"
-              onClick={applyKeywords}
-              disabled={!connected}
+              onClick={addKeywords}
+              disabled={!connected || !String(keywordsDraft || '').trim()}
               sx={compactBtnSx}
             >
-              {labels.matchKeywordsApply || 'Apply'}
+              {labels.matchKeywordsApply || 'Add'}
             </Button>
           </Stack>
+          {keywords.length ? (
+            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              {keywords.map(keyword => (
+                <Chip
+                  key={keyword.toLocaleLowerCase()}
+                  size="small"
+                  label={keyword}
+                  onDelete={() => removeKeyword(keyword)}
+                  disabled={!connected}
+                />
+              ))}
+            </Stack>
+          ) : null}
         </Box>
       ) : null}
     </>
