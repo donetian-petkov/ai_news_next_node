@@ -1475,7 +1475,7 @@ function broadcastNewsUpdate(it: NewsInternal) {
     matchScore: it.matchScore,
     filteredOk: it.filteredOk,
     summary: it.summary,
-    summaryPending: hasSummaryJobQueuedOrRunning(it.id),
+    summaryPending: hasSummaryJobQueuedOrRunning(it.id, it.feedUrl),
     research: it.research,
     mood: it.mood,
     newsType: it.newsType
@@ -1523,14 +1523,27 @@ function shouldHaveSummary(it: NewsInternal): boolean {
 
 // ---------------- AI JOB QUEUE (non-blocking) ----------------
 type AiJobKind = 'summary' | 'research' | 'mood' | 'news_type';
-type AiJob = { kind: AiJobKind; id: string; feedUrl: string; manual?: boolean };
+type AiJobInput = { kind: AiJobKind; id: string; feedUrl: string; manual?: boolean };
+type AiJob = AiJobInput & { enqueuedAtMs: number };
+type DeadLetterAiJob = {
+  kind: AiJobKind;
+  id: string;
+  feedUrl: string;
+  manual?: boolean;
+  enqueuedAtMs: number;
+  droppedAtMs: number;
+  reason: string;
+};
 
 const aiQueue: AiJob[] = [];
 const aiInFlight = new Set<string>();
+const aiDeadLetters: DeadLetterAiJob[] = [];
 const lastAiJobErrorAtMs = new Map<string, number>();
 
 const AI_MAX_CONCURRENCY = Math.max(1, parseInt(process.env.AI_MAX_CONCURRENCY || '1', 10));
 const AI_QUEUE_MAX = Math.max(200, parseInt(process.env.AI_QUEUE_MAX || '600', 10));
+const AI_JOB_TTL_MS = Math.max(15_000, Number.parseInt(process.env.AI_JOB_TTL_MS ?? '180_000', 10) || 180_000);
+const AI_DEAD_LETTER_MAX = Math.max(50, Number.parseInt(process.env.AI_DEAD_LETTER_MAX ?? '400', 10) || 400);
 const AI_SUMMARY_TIMEOUT_MS = Math.max(4_000, Number.parseInt(process.env.AI_SUMMARY_TIMEOUT_MS ?? '22_000', 10) || 22_000);
 const AI_RESEARCH_TIMEOUT_MS = Math.max(8_000, Number.parseInt(process.env.AI_RESEARCH_TIMEOUT_MS ?? '45_000', 10) || 45_000);
 const AI_RESEARCH_TIMEOUT_MANUAL_MS = Math.max(
@@ -1541,13 +1554,56 @@ const AI_CLASSIFY_TIMEOUT_MS = Math.max(6_000, Number.parseInt(process.env.AI_CL
 const AI_ERROR_TOAST_COOLDOWN_MS = Math.max(5_000, Number.parseInt(process.env.AI_ERROR_TOAST_COOLDOWN_MS ?? '20_000', 10) || 20_000);
 
 function jobKey(j: AiJob) {
-  return `${j.kind}:${j.id}`;
+  return `${j.kind}:${j.feedUrl || ''}::${j.id}`;
 }
 
-function hasSummaryJobQueuedOrRunning(id: string): boolean {
-  const k = `summary:${id}`;
+function hasSummaryJobQueuedOrRunning(id: string, feedUrl: string): boolean {
+  const k = `summary:${feedUrl || ''}::${id}`;
   if (aiInFlight.has(k)) return true;
-  return aiQueue.some(job => job.kind === 'summary' && job.id === id);
+  return aiQueue.some(job => job.kind === 'summary' && job.id === id && job.feedUrl === feedUrl);
+}
+
+function isJobExpired(job: AiJob, nowMs = Date.now()): boolean {
+  return nowMs - job.enqueuedAtMs > AI_JOB_TTL_MS;
+}
+
+function pushDeadLetter(job: AiJob, reason: string) {
+  aiDeadLetters.push({
+    kind: job.kind,
+    id: job.id,
+    feedUrl: job.feedUrl,
+    manual: job.manual,
+    enqueuedAtMs: job.enqueuedAtMs,
+    droppedAtMs: Date.now(),
+    reason
+  });
+  if (aiDeadLetters.length > AI_DEAD_LETTER_MAX) {
+    aiDeadLetters.splice(0, aiDeadLetters.length - AI_DEAD_LETTER_MAX);
+  }
+}
+
+function resolveJobItem(job: AiJob): NewsInternal | undefined {
+  return recent.find(x => x.id === job.id && x.feedUrl === job.feedUrl)
+    || recent.find(x => x.id === job.id);
+}
+
+function dropJob(job: AiJob, reason: string) {
+  pushDeadLetter(job, reason);
+  const it = resolveJobItem(job);
+  if (it) {
+    broadcastNewsUpdate(it);
+  }
+}
+
+function purgeExpiredQueuedJobs() {
+  if (!aiQueue.length) return;
+  const nowMs = Date.now();
+  for (let i = aiQueue.length - 1; i >= 0; i -= 1) {
+    const job = aiQueue[i];
+    if (!isJobExpired(job, nowMs)) continue;
+    aiQueue.splice(i, 1);
+    dropJob(job, 'ttl_expired_queue');
+  }
 }
 
 function jobPriority(j: AiJob): number {
@@ -1558,23 +1614,31 @@ function jobPriority(j: AiJob): number {
 }
 
 function dequeueNextJob(): AiJob | undefined {
-  if (!aiQueue.length) return undefined;
-  let bestIndex = 0;
-  let bestPriority = jobPriority(aiQueue[0]);
-  for (let i = 1; i < aiQueue.length; i += 1) {
-    const priority = jobPriority(aiQueue[i]);
-    if (priority < bestPriority) {
-      bestPriority = priority;
-      bestIndex = i;
-      if (bestPriority === 0) break;
+  while (aiQueue.length) {
+    let bestIndex = 0;
+    let bestPriority = jobPriority(aiQueue[0]);
+    for (let i = 1; i < aiQueue.length; i += 1) {
+      const priority = jobPriority(aiQueue[i]);
+      if (priority < bestPriority) {
+        bestPriority = priority;
+        bestIndex = i;
+        if (bestPriority === 0) break;
+      }
     }
+    const next = aiQueue.splice(bestIndex, 1)[0];
+    if (!next) return undefined;
+    if (isJobExpired(next)) {
+      dropJob(next, 'ttl_expired_dequeue');
+      continue;
+    }
+    return next;
   }
-  return aiQueue.splice(bestIndex, 1)[0];
+  return undefined;
 }
 
 function broadcastAiJobError(job: AiJob, item: NewsInternal | undefined, error: unknown) {
   const message = (error as Error)?.message || String(error || 'unknown error');
-  const dedupeKey = `${job.kind}:${job.id}:${message}`;
+  const dedupeKey = `${job.kind}:${job.feedUrl}:${job.id}:${message}`;
   const now = Date.now();
   const last = lastAiJobErrorAtMs.get(dedupeKey) || 0;
   if (now - last < AI_ERROR_TOAST_COOLDOWN_MS) return;
@@ -1595,20 +1659,21 @@ function isTimeoutError(error: unknown): boolean {
   return message.toLowerCase().includes('timeout');
 }
 
-function enqueueJob(job: AiJob) {
+function enqueueJob(job: AiJobInput) {
   if (!aiEnabled || !aiAvailable) return;
-  const k = jobKey(job);
+  const nextJob: AiJob = { ...job, enqueuedAtMs: Date.now() };
+  const k = jobKey(nextJob);
   if (aiInFlight.has(k)) return;
   if (aiQueue.some(x => jobKey(x) === k)) return;
 
   if (aiQueue.length >= AI_QUEUE_MAX) {
     // drop oldest non-manual first
     const idx = aiQueue.findIndex(x => !x.manual);
-    if (idx >= 0) aiQueue.splice(idx, 1);
-    else aiQueue.shift();
+    const dropped = idx >= 0 ? aiQueue.splice(idx, 1)[0] : aiQueue.shift();
+    if (dropped) dropJob(dropped, 'queue_overflow');
   }
 
-  aiQueue.push(job);
+  aiQueue.push(nextJob);
 }
 
 async function runOneJob(job: AiJob) {
@@ -1617,7 +1682,12 @@ async function runOneJob(job: AiJob) {
   let itemForError: NewsInternal | undefined;
 
   try {
-    const it = recent.find(x => x.id === job.id);
+    if (isJobExpired(job)) {
+      dropJob(job, 'ttl_expired_before_run');
+      return;
+    }
+
+    const it = resolveJobItem(job);
     if (!it) return;
     itemForError = it;
     if (hiddenIds.has(it.id)) return;
@@ -1753,6 +1823,7 @@ async function runOneJob(job: AiJob) {
 
 async function tickAiQueue() {
   if (!aiEnabled || !aiAvailable) return;
+  purgeExpiredQueuedJobs();
   if (!aiQueue.length) return;
 
   while (aiInFlight.size < AI_MAX_CONCURRENCY && aiQueue.length) {
@@ -2385,9 +2456,9 @@ wss.on('connection', (ws: WebSocket) => {
           if (done >= MAX) break;
           if (!eligibleForFeed(it, feedUrl)) continue;
           if (it.summary && it.summary.trim()) continue;
-          const before = hasSummaryJobQueuedOrRunning(it.id);
+          const before = hasSummaryJobQueuedOrRunning(it.id, it.feedUrl);
           enqueueJob({ kind: 'summary', id: it.id, feedUrl: it.feedUrl });
-          const after = hasSummaryJobQueuedOrRunning(it.id);
+          const after = hasSummaryJobQueuedOrRunning(it.id, it.feedUrl);
           if (!before && after) done++;
           broadcastNewsUpdate(it);
         }

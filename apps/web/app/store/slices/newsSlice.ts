@@ -36,6 +36,20 @@ const initialState: NewsState = {
   pinnedNewsById: {}
 };
 
+function pendingKey(id: string, feedUrl: string): string {
+  return `${feedUrl}::${id}`;
+}
+
+function clearPendingKeysForNewsId(state: NewsState, id: string) {
+  const suffix = `::${id}`;
+  Object.keys(state.summaryPendingById).forEach(key => {
+    if (key === id || key.endsWith(suffix)) delete state.summaryPendingById[key];
+  });
+  Object.keys(state.researchPendingById).forEach(key => {
+    if (key === id || key.endsWith(suffix)) delete state.researchPendingById[key];
+  });
+}
+
 function applyNewsBatch(state: NewsState, items: NewsItem[]) {
   if (!Array.isArray(items) || !items.length) return;
 
@@ -57,14 +71,18 @@ function applyNewsBatch(state: NewsState, items: NewsItem[]) {
     else list.push(item);
     touchedFeeds.add(item.feedUrl);
 
+    const key = pendingKey(item.id, item.feedUrl);
     if (item.summary && item.summary.trim()) {
+      delete state.summaryPendingById[key];
       delete state.summaryPendingById[item.id];
     } else if (item.summaryPending === true) {
-      state.summaryPendingById[item.id] = true;
+      state.summaryPendingById[key] = true;
     } else if (item.summaryPending === false) {
+      delete state.summaryPendingById[key];
       delete state.summaryPendingById[item.id];
     }
     if (item.research && item.research.trim()) {
+      delete state.researchPendingById[key];
       delete state.researchPendingById[item.id];
     }
   });
@@ -147,8 +165,7 @@ const newsSlice = createSlice({
       Object.keys(state.itemsByFeed).forEach(feedUrl => {
         state.itemsByFeed[feedUrl] = (state.itemsByFeed[feedUrl] || []).filter(it => it.id !== id);
       });
-      delete state.summaryPendingById[id];
-      delete state.researchPendingById[id];
+      clearPendingKeysForNewsId(state, id);
       delete state.pinnedNewsById[id];
     },
     removeOldItemsInFeed(state, action: PayloadAction<{ feedUrl: string; cutoffMs: number }>) {

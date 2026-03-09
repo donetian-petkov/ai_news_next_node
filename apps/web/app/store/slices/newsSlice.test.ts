@@ -38,16 +38,16 @@ describe('newsSlice', () => {
   it('hideItemLocally removes news from all feeds and clears pending flags', () => {
     let state = newsReducer(undefined, upsertNewsItem(makeItem('id-1', 'feed-a', 1000)));
     state = newsReducer(state, upsertNewsItem(makeItem('id-1', 'feed-b', 1000)));
-    state = newsReducer(state, setSummaryPending('id-1'));
-    state = newsReducer(state, setResearchPending('id-1'));
+    state = newsReducer(state, setSummaryPending('feed-a::id-1'));
+    state = newsReducer(state, setResearchPending('feed-a::id-1'));
 
     state = newsReducer(state, hideItemLocally('id-1'));
 
     expect(state.hiddenIds).toContain('id-1');
     expect(state.itemsByFeed['feed-a']).toEqual([]);
     expect(state.itemsByFeed['feed-b']).toEqual([]);
-    expect(state.summaryPendingById['id-1']).toBeUndefined();
-    expect(state.researchPendingById['id-1']).toBeUndefined();
+    expect(state.summaryPendingById['feed-a::id-1']).toBeUndefined();
+    expect(state.researchPendingById['feed-a::id-1']).toBeUndefined();
   });
 
   it('removeOldItemsInFeed filters below cutoff and keeps non-finite dates', () => {

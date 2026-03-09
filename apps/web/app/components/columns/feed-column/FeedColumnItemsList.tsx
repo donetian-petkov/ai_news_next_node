@@ -11,6 +11,10 @@ import { COLUMN_COLOR_TOKENS, COLUMN_LAYOUT_TOKENS } from '../designTokens';
 import type { NewsCardHandlers, NewsCardStateModel, NewsCardViewModel } from '../news-card/newsCard.types';
 import { askKey, bodyKey, cssEscape, getDefaultAskState, type PendingScrollTarget } from './feedColumnItems.utils';
 
+function pendingKey(feedUrl: string, id: string): string {
+  return `${feedUrl}::${id}`;
+}
+
 export function FeedColumnItemsList() {
   const { feed, items, itemsVisible, shownItems, isMatchColumn, accent, soft } = useFeedColumnContext();
   const { view, state, handlers } = useFeedColumnsContext();
@@ -137,6 +141,7 @@ export function FeedColumnItemsList() {
         </Alert>
       ) : shownItems.map(it => {
         const askState: FeedAskState = askByItem[askKey(it)] || getDefaultAskState();
+        const pendingLookupKey = pendingKey(it.feedUrl, it.id);
         const summaryKey = bodyKey(it, 'summary');
         const researchKey = bodyKey(it, 'research');
         const summaryResearchHidden = hideAllResearch || bodyModes[researchKey] === 'hidden';
@@ -159,11 +164,11 @@ export function FeedColumnItemsList() {
           item: it,
           isDuplicateMatch: !!duplicateMatchById[it.id],
           askState,
-          summaryPending: !!summaryPendingById[it.id],
-          researchPending: !!researchPendingById[it.id],
+          summaryPending: !!summaryPendingById[pendingLookupKey],
+          researchPending: !!researchPendingById[pendingLookupKey],
           isPinnedNews: !!pinnedNewsById[it.id],
           showAutoSummarizing: false,
-          showAutoResearching: aiAvailable && feed.researchEnabled && aiEnabled && !it.research && !researchPendingById[it.id] && !hideAllResearch,
+          showAutoResearching: aiAvailable && feed.researchEnabled && aiEnabled && !it.research && !researchPendingById[pendingLookupKey] && !hideAllResearch,
           summaryMode,
           summaryLong,
           summaryText,

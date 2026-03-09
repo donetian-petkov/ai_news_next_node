@@ -33,6 +33,10 @@ function askKey(it: NewsItem): string {
   return `${it.feedUrl}::${it.id}`;
 }
 
+function pendingKey(it: NewsItem): string {
+  return `${it.feedUrl}::${it.id}`;
+}
+
 export function useNewsItemActions({
   dispatch,
   connected,
@@ -67,15 +71,16 @@ export function useNewsItemActions({
 
   const requestSummary = useCallback((it: NewsItem) => {
     if (!connected) return;
-    dispatch(setSummaryPending(it.id));
+    const key = pendingKey(it);
+    dispatch(setSummaryPending(key));
     dispatch(clearSummaryForItem({ id: it.id, feedUrl: it.feedUrl }));
 
-    if (summaryTimeoutsRef.current[it.id]) {
-      window.clearTimeout(summaryTimeoutsRef.current[it.id]);
+    if (summaryTimeoutsRef.current[key]) {
+      window.clearTimeout(summaryTimeoutsRef.current[key]);
     }
-    summaryTimeoutsRef.current[it.id] = window.setTimeout(() => {
-      dispatch(clearSummaryPending(it.id));
-      delete summaryTimeoutsRef.current[it.id];
+    summaryTimeoutsRef.current[key] = window.setTimeout(() => {
+      dispatch(clearSummaryPending(key));
+      delete summaryTimeoutsRef.current[key];
     }, COLUMN_LAYOUT_TOKENS.summaryPendingTimeoutMs);
 
     const ok = sendWsMessage({
@@ -83,20 +88,21 @@ export function useNewsItemActions({
       id: it.id,
       feedUrl: it.feedUrl
     });
-    if (!ok) dispatch(clearSummaryPending(it.id));
+    if (!ok) dispatch(clearSummaryPending(key));
   }, [connected, dispatch]);
 
   const requestResearch = useCallback((it: NewsItem) => {
     if (!connected) return;
-    dispatch(setResearchPending(it.id));
+    const key = pendingKey(it);
+    dispatch(setResearchPending(key));
     dispatch(clearResearchForItem({ id: it.id, feedUrl: it.feedUrl }));
 
-    if (researchTimeoutsRef.current[it.id]) {
-      window.clearTimeout(researchTimeoutsRef.current[it.id]);
+    if (researchTimeoutsRef.current[key]) {
+      window.clearTimeout(researchTimeoutsRef.current[key]);
     }
-    researchTimeoutsRef.current[it.id] = window.setTimeout(() => {
-      dispatch(clearResearchPending(it.id));
-      delete researchTimeoutsRef.current[it.id];
+    researchTimeoutsRef.current[key] = window.setTimeout(() => {
+      dispatch(clearResearchPending(key));
+      delete researchTimeoutsRef.current[key];
     }, COLUMN_LAYOUT_TOKENS.researchPendingTimeoutMs);
 
     const ok = sendWsMessage({
@@ -104,7 +110,7 @@ export function useNewsItemActions({
       id: it.id,
       feedUrl: it.feedUrl
     });
-    if (!ok) dispatch(clearResearchPending(it.id));
+    if (!ok) dispatch(clearResearchPending(key));
   }, [connected, dispatch]);
 
   const hideItem = useCallback((it: NewsItem) => {

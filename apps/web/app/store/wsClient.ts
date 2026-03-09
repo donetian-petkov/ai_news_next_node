@@ -35,9 +35,15 @@ let wsUrlCurrent = '';
 let hiddenIds = new Set<string>();
 let pendingNews: NewsItem[] = [];
 let pendingNewsTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
+let shouldReconnect = false;
 
 const NEWS_FLUSH_INTERVAL_MS = 45;
 const NEWS_FLUSH_MAX_BATCH = 80;
+const WS_RECONNECT_BASE_DELAY_MS = 500;
+const WS_RECONNECT_MAX_DELAY_MS = 10_000;
+const WS_RECONNECT_JITTER_MS = 350;
 
 type FeedSettingsWire = {
   summaryEnabled?: unknown;
@@ -274,9 +280,34 @@ function resetPendingNews() {
   }
 }
 
-export function startWsConnection(dispatch: AppDispatch, explicitUrl: string) {
+function clearReconnectTimer() {
+  if (!reconnectTimer) return;
+  clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+}
+
+function nextReconnectDelayMs() {
+  const exponential = Math.min(
+    WS_RECONNECT_MAX_DELAY_MS,
+    WS_RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempt)
+  );
+  const jitter = Math.floor(Math.random() * WS_RECONNECT_JITTER_MS);
+  reconnectAttempt = Math.min(reconnectAttempt + 1, 8);
+  return exponential + jitter;
+}
+
+function scheduleReconnect(dispatch: AppDispatch) {
+  if (!shouldReconnect || reconnectTimer || !wsUrlCurrent) return;
+  const delayMs = nextReconnectDelayMs();
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (!shouldReconnect || !wsUrlCurrent) return;
+    openWsConnection(dispatch, wsUrlCurrent, true);
+  }, delayMs);
+}
+
+function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: boolean) {
   resetPendingNews();
-  const nextUrl = resolveWsUrl(explicitUrl);
   if (ws && wsUrlCurrent === nextUrl && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
@@ -285,25 +316,37 @@ export function startWsConnection(dispatch: AppDispatch, explicitUrl: string) {
     try { ws.close(); } catch {}
   }
 
+  if (!isReconnect) {
+    reconnectAttempt = 0;
+  }
   wsUrlCurrent = nextUrl;
-  ws = new WebSocket(nextUrl);
+  const socket = new WebSocket(nextUrl);
+  ws = socket;
   dispatch(setStatus('connecting'));
 
-  ws.onopen = () => {
+  socket.onopen = () => {
+    if (ws !== socket) return;
+    clearReconnectTimer();
+    reconnectAttempt = 0;
     dispatch(setStatus('connected'));
   };
 
-  ws.onclose = () => {
+  socket.onclose = () => {
+    if (ws !== socket) return;
+    ws = null;
     resetPendingNews();
     dispatch(setStatus('disconnected'));
+    scheduleReconnect(dispatch);
   };
 
-  ws.onerror = () => {
+  socket.onerror = () => {
+    if (ws !== socket) return;
     resetPendingNews();
     dispatch(setStatus('error'));
+    scheduleReconnect(dispatch);
   };
 
-  ws.onmessage = (event: MessageEvent<string>) => {
+  socket.onmessage = (event: MessageEvent<string>) => {
     let raw: unknown;
     try {
       raw = JSON.parse(String(event.data || ''));
@@ -426,12 +469,26 @@ export function startWsConnection(dispatch: AppDispatch, explicitUrl: string) {
   };
 }
 
+export function startWsConnection(dispatch: AppDispatch, explicitUrl: string) {
+  shouldReconnect = true;
+  clearReconnectTimer();
+  const nextUrl = resolveWsUrl(explicitUrl);
+  openWsConnection(dispatch, nextUrl, false);
+}
+
 export function stopWsConnection() {
+  shouldReconnect = false;
+  reconnectAttempt = 0;
+  clearReconnectTimer();
   resetPendingNews();
-  if (!ws) return;
-  try { ws.close(); } catch {}
+  if (!ws) {
+    wsUrlCurrent = '';
+    return;
+  }
+  const socket = ws;
   ws = null;
   wsUrlCurrent = '';
+  try { socket.close(); } catch {}
 }
 
 export function sendWsMessage(payload: unknown): boolean {

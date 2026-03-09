@@ -255,21 +255,23 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const summariesLoadCandidates = useMemo(() => {
     if (!ui.aiEnabled || !ui.aiAvailable) {
       return {
-        pendingIds: [] as string[],
-        itemMetaById: new Map<string, { title: string; feedUrl: string }>(),
+        pendingKeys: [] as string[],
+        itemMetaByKey: new Map<string, { title: string; feedUrl: string }>(),
         feedLabelByUrl: new Map<string, string>()
       };
     }
 
     const feedLabelByUrl = new Map(renderedFeeds.map(feed => [feed.url, feed.label]));
-    const itemMetaById = new Map<string, { title: string; feedUrl: string }>();
+    const itemMetaByKey = new Map<string, { title: string; feedUrl: string }>();
     const pendingSet = new Set(Object.keys(summaryPendingById));
 
     Object.entries(itemsByFeed).forEach(([feedUrl, feedItems]) => {
       if (!Array.isArray(feedItems)) return;
       feedItems.forEach(item => {
-        if (!item?.id || itemMetaById.has(item.id)) return;
-        itemMetaById.set(item.id, {
+        if (!item?.id || !item.feedUrl) return;
+        const key = `${item.feedUrl}::${item.id}`;
+        if (itemMetaByKey.has(key)) return;
+        itemMetaByKey.set(key, {
           title: String(item.title || '').trim(),
           feedUrl: String(item.feedUrl || feedUrl)
         });
@@ -277,8 +279,8 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     });
 
     return {
-      pendingIds: Array.from(pendingSet),
-      itemMetaById,
+      pendingKeys: Array.from(pendingSet),
+      itemMetaByKey,
       feedLabelByUrl
     };
   }, [itemsByFeed, renderedFeeds, summaryPendingById, ui.aiAvailable, ui.aiEnabled]);
@@ -287,11 +289,11 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     const now = Date.now();
     const prev = summaryActiveSinceRef.current;
     const next: Record<string, number> = {};
-    summariesLoadCandidates.pendingIds.forEach(id => {
-      next[id] = prev[id] || now;
+    summariesLoadCandidates.pendingKeys.forEach(key => {
+      next[key] = prev[key] || now;
     });
     summaryActiveSinceRef.current = next;
-  }, [summariesLoadCandidates.pendingIds]);
+  }, [summariesLoadCandidates.pendingKeys]);
 
   const summariesLoading = useMemo(() => {
     if (!ui.aiEnabled || !ui.aiAvailable) {
@@ -301,11 +303,16 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     const now = Date.now();
     const items: string[] = [];
     let stalledCount = 0;
-    summariesLoadCandidates.pendingIds.forEach(id => {
-      const meta = summariesLoadCandidates.itemMetaById.get(id);
-      const feedLabel = meta ? (summariesLoadCandidates.feedLabelByUrl.get(meta.feedUrl) || meta.feedUrl) : 'unknown';
-      const title = meta?.title || id;
-      const sinceMs = summaryActiveSinceRef.current[id] || now;
+    summariesLoadCandidates.pendingKeys.forEach(key => {
+      const meta = summariesLoadCandidates.itemMetaByKey.get(key);
+      const parsedFeedUrl = key.includes('::') ? key.slice(0, key.lastIndexOf('::')) : '';
+      const parsedId = key.includes('::') ? key.slice(key.lastIndexOf('::') + 2) : key;
+      const effectiveFeedUrl = meta?.feedUrl || parsedFeedUrl;
+      const feedLabel = effectiveFeedUrl
+        ? (summariesLoadCandidates.feedLabelByUrl.get(effectiveFeedUrl) || effectiveFeedUrl)
+        : 'unknown';
+      const title = meta?.title || parsedId;
+      const sinceMs = summaryActiveSinceRef.current[key] || now;
       const ageMs = Math.max(0, now - sinceMs);
       const stalled = ageMs >= SUMMARY_STALL_THRESHOLD_MS;
       if (stalled) stalledCount += 1;
@@ -313,7 +320,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     });
 
     return {
-      count: summariesLoadCandidates.pendingIds.length,
+      count: summariesLoadCandidates.pendingKeys.length,
       stalledCount,
       items
     };
