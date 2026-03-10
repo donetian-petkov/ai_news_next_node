@@ -33,8 +33,8 @@ function normalizeSourceLabel(raw: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   if (!value) return '';
-  if (!/[A-Za-z0-9А-Яа-яЁёЍѝ]/.test(value)) return '';
-  if (!/[\p{L}\p{N}]{2,}/u.test(value)) return '';
+  const alphaNumCount = (value.match(/[A-Za-z0-9А-Яа-яЁёЍѝ]/g) || []).length;
+  if (alphaNumCount < 2) return '';
   if (/^(unknown|source|rss|feed)$/i.test(value)) return '';
   return value.slice(0, 96);
 }
