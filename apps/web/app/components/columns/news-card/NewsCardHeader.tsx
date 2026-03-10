@@ -28,11 +28,22 @@ function detectTitleLanguage(raw: string): 'bg' | 'en' | 'unknown' {
   return 'unknown';
 }
 
+function normalizeSourceLabel(raw: string): string {
+  const value = String(raw || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!value) return '';
+  if (!/[A-Za-z0-9А-Яа-яЁёЍѝ]/.test(value)) return '';
+  if (/^(unknown|source|rss|feed)$/i.test(value)) return '';
+  return value.slice(0, 96);
+}
+
 function hostLabelFromUrl(raw: string): string {
   const value = String(raw || '').trim();
   if (!value) return '';
   try {
-    return new URL(value).hostname.replace(/^www\./i, '').trim();
+    const host = new URL(value).hostname.replace(/^www\./i, '').trim();
+    return normalizeSourceLabel(host);
   } catch {
     return '';
   }
@@ -59,7 +70,7 @@ export function NewsCardHeader() {
   const titleBg = String(item.titleBg || '').trim();
   const titleEn = String(item.titleEn || '').trim();
   const sourceLabel = useMemo(() => {
-    const source = String(item.source || '').trim();
+    const source = normalizeSourceLabel(item.source || '');
     if (source) return source;
     const byLink = hostLabelFromUrl(item.link);
     if (byLink) return byLink;
