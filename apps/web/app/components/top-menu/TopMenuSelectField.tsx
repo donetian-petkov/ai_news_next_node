@@ -12,6 +12,8 @@ type Props<T extends string> = {
   value: T;
   options: Option<T>[];
   disabled?: boolean;
+  layout?: 'inline' | 'stacked';
+  wrapperClassName?: string;
   onChange: (next: T) => void;
 };
 
@@ -22,10 +24,15 @@ export function TopMenuSelectField<T extends string>({
   value,
   options,
   disabled,
+  layout = 'inline',
+  wrapperClassName,
   onChange
 }: Props<T>) {
+  const cls = ['checkbox', layout === 'stacked' ? 'checkboxStacked' : '', wrapperClassName || '']
+    .filter(Boolean)
+    .join(' ');
   return (
-    <label className="checkbox" title={title}>
+    <label className={cls} title={title}>
       <span id={`${id}Prefix`}>{label}</span>
       <select
         id={id}

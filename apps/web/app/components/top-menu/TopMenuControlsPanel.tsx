@@ -21,9 +21,15 @@ export function TopMenuControlsPanel() {
       </div>
 
       <div className="controlsGrid">
-        <TopMenuNotificationsSection />
-        <TopMenuAiSettingsSection />
-        <TopMenuAppearanceSection />
+        <div className="controlsCell controlsCellNotifications">
+          <TopMenuNotificationsSection />
+        </div>
+        <div className="controlsCell controlsCellAi">
+          <TopMenuAiSettingsSection />
+        </div>
+        <div className="controlsCell controlsCellAppearance">
+          <TopMenuAppearanceSection />
+        </div>
       </div>
     </div>
   );

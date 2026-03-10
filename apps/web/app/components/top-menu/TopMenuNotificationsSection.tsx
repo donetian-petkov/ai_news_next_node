@@ -12,9 +12,9 @@ export function TopMenuNotificationsSection() {
   } = useTopMenuContext();
 
   return (
-    <details className="controlSection" open>
+    <details className="controlSection controlSectionNotifications" open>
       <summary id="notificationsSummary">{labels.notificationsSummary}</summary>
-      <div className="controlGroup">
+      <div className="controlGroup controlGroupNotifications">
         <label className="checkbox">
           <input
             id="notifyEnabled"

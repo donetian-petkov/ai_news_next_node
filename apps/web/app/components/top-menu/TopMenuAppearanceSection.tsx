@@ -27,9 +27,9 @@ export function TopMenuAppearanceSection() {
   } = useTopMenuContext();
 
   return (
-    <details className="controlSection" open>
+    <details className="controlSection controlSectionAppearance" open>
       <summary id="appearanceSummary">{labels.appearanceSummary}</summary>
-      <div className="controlGroup" id="appearanceGroup">
+      <div className="controlGroup controlGroupAppearance" id="appearanceGroup">
         <TopMenuSelectField
           id="fontSelect"
           title="Change UI font"
@@ -37,6 +37,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.font}
           onChange={next => actions.onSetAppearance({ font: next })}
           options={buildFontOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -46,6 +48,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.fontSize}
           onChange={next => actions.onSetAppearance({ fontSize: next })}
           options={buildFontSizeOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -55,6 +59,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.scheme}
           onChange={next => actions.onSetAppearance({ scheme: next })}
           options={buildSchemeOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -64,6 +70,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.buttonMode}
           onChange={next => actions.onSetAppearance({ buttonMode: next })}
           options={buildButtonModeOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -73,6 +81,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.timezone}
           onChange={next => actions.onSetAppearance({ timezone: next })}
           options={buildTimezoneOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -82,6 +92,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.dateFormat}
           onChange={next => actions.onSetAppearance({ dateFormat: next })}
           options={buildDateFormatOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -91,6 +103,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.menuHintMode}
           onChange={next => actions.onSetAppearance({ menuHintMode: next })}
           options={buildMenuHintOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -101,6 +115,8 @@ export function TopMenuAppearanceSection() {
           disabled={appearance.performanceMode}
           onChange={next => actions.onSetAppearance({ effectIntensity: next })}
           options={buildEffectIntensityOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -111,9 +127,11 @@ export function TopMenuAppearanceSection() {
           disabled={appearance.performanceMode}
           onChange={next => actions.onSetAppearance({ soundTheme: next })}
           options={buildSoundThemeOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
-        <button className="btn" type="button" disabled={appearance.performanceMode} onClick={actions.onToggleSoundEnabled}>
+        <button className="btn topMenuField" type="button" disabled={appearance.performanceMode} onClick={actions.onToggleSoundEnabled}>
           {labels.sound} {appearance.soundEnabled ? labels.soundOn : labels.soundOff}
         </button>
 
@@ -124,6 +142,8 @@ export function TopMenuAppearanceSection() {
           value={appearance.vibe}
           onChange={next => actions.onSetAppearance({ vibe: next })}
           options={buildVibeOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
         <TopMenuSelectField
@@ -133,17 +153,19 @@ export function TopMenuAppearanceSection() {
           value={appearance.language}
           onChange={actions.onSetLanguage}
           options={buildLanguageOptions()}
+          layout="stacked"
+          wrapperClassName="topMenuField"
         />
 
-        <button className="btn" type="button" onClick={actions.onCycleTheme}>
+        <button className="btn topMenuField" type="button" onClick={actions.onCycleTheme}>
           {labels.colorMode}: {appearance.colorMode}
         </button>
-        <button className="btn" type="button" onClick={actions.onTogglePerformanceMode}>
+        <button className="btn topMenuField" type="button" onClick={actions.onTogglePerformanceMode}>
           {labels.perfMode}: {appearance.performanceMode ? labels.perfOn : labels.perfOff}
         </button>
 
         {appearance.performanceMode ? (
-          <Alert severity="info" sx={{ py: 0 }}>
+          <Alert severity="info" sx={{ py: 0 }} className="topMenuFieldGridFull">
             {labels.perfFxSoundHidden}
           </Alert>
         ) : null}
