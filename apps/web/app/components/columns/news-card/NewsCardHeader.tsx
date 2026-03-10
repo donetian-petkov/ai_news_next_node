@@ -27,6 +27,16 @@ function detectTitleLanguage(raw: string): 'bg' | 'en' | 'unknown' {
   return 'unknown';
 }
 
+function hostLabelFromUrl(raw: string): string {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    return new URL(value).hostname.replace(/^www\./i, '').trim();
+  } catch {
+    return '';
+  }
+}
+
 export function NewsCardHeader() {
   const {
     view,
@@ -47,6 +57,13 @@ export function NewsCardHeader() {
   const CopyIconComp = vibeIcons.copy;
   const titleBg = String(item.titleBg || '').trim();
   const titleEn = String(item.titleEn || '').trim();
+  const sourceLabel = useMemo(() => {
+    const source = String(item.source || '').trim();
+    if (source) return source;
+    const byLink = hostLabelFromUrl(item.link);
+    if (byLink) return byLink;
+    return hostLabelFromUrl(item.feedUrl);
+  }, [item.feedUrl, item.link, item.source]);
   const [titleOverride, setTitleOverride] = useState<'auto' | 'translated' | 'original'>('auto');
   const sourceTitleLanguage = useMemo(() => detectTitleLanguage(item.title), [item.title]);
   const translatedCandidate = useMemo(() => {
@@ -95,6 +112,29 @@ export function NewsCardHeader() {
         }}
       >
         <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45 }}>
+          {sourceLabel ? (
+            <Typography
+              variant="caption"
+              sx={{
+                color: NEWS_CARD_COLOR_TOKENS.headerMuted,
+                opacity: 0.92,
+                maxWidth: 188,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontWeight: 700,
+                letterSpacing: 0.2
+              }}
+              title={sourceLabel}
+            >
+              {sourceLabel}
+            </Typography>
+          ) : null}
+          {sourceLabel ? (
+            <Typography variant="caption" sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, opacity: 0.6, flexShrink: 0 }}>
+              •
+            </Typography>
+          ) : null}
           <Typography
             variant="caption"
             sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, whiteSpace: 'nowrap', flexShrink: 0 }}

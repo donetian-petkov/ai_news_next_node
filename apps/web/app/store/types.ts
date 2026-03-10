@@ -90,6 +90,7 @@ export type NewsItem = {
   title: string;
   titleBg?: string;
   titleEn?: string;
+  source?: string;
   link: string;
   publishedMs: number;
   feedUrl: string;

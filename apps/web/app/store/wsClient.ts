@@ -236,6 +236,7 @@ function parseNews(v: unknown): NewsItem | null {
     title,
     titleBg: isString(m.titleBg) ? m.titleBg : '',
     titleEn: isString(m.titleEn) ? m.titleEn : '',
+    source: isString(m.source) ? m.source : '',
     link: isString(m.link) && m.link ? m.link : '#',
     feedUrl,
     publishedMs: isNumber(m.publishedMs) ? m.publishedMs : Date.now(),
