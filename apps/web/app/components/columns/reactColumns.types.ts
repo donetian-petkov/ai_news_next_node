@@ -39,6 +39,7 @@ export type CardLabels = {
   shareLink: string;
   shareOn: string;
   shareCopyLink: string;
+  shareCardImage: string;
   shareFacebook: string;
   shareReddit: string;
   shareX: string;
@@ -146,7 +147,7 @@ export type FeedColumnHandlers = {
   onResetNewsToTen: (feedUrl: string) => void;
   onTogglePinnedNews: (id: string) => void;
   onCopyLink: (url: string) => void;
-  onShareNews: (it: NewsItem, platform: 'copy' | 'facebook' | 'reddit' | 'x' | 'tiktok') => void;
+  onShareNews: (it: NewsItem, platform: 'copy' | 'card' | 'facebook' | 'reddit' | 'x' | 'tiktok') => void;
   onCopyNewsPayload: (it: NewsItem) => void;
   onHideItem: (it: NewsItem) => void;
   onRequestSummary: (it: NewsItem) => void;

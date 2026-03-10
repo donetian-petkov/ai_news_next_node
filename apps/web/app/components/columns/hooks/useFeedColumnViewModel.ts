@@ -68,6 +68,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     shareLink: labels.shareLink,
     shareOn: labels.shareOn,
     shareCopyLink: labels.shareCopyLink,
+    shareCardImage: labels.shareCardImage,
     shareFacebook: labels.shareFacebook,
     shareReddit: labels.shareReddit,
     shareX: labels.shareX,

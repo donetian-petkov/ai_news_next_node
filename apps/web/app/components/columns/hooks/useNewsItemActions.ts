@@ -18,7 +18,7 @@ import type { NewsItem } from '../../../store/types';
 import { COLUMN_LAYOUT_TOKENS } from '../designTokens';
 
 type AskStateMap = Record<string, { used: number; remaining: number; draft: string; pending: boolean }>;
-type SharePlatform = 'copy' | 'facebook' | 'reddit' | 'x' | 'tiktok';
+type SharePlatform = 'copy' | 'card' | 'facebook' | 'reddit' | 'x' | 'tiktok';
 
 type UseNewsItemActionsArgs = {
   dispatch: AppDispatch;
@@ -35,6 +35,12 @@ function askKey(it: NewsItem): string {
 
 function pendingKey(it: NewsItem): string {
   return `${it.feedUrl}::${it.id}`;
+}
+
+function cssEscape(value: string): string {
+  const esc = (globalThis as { CSS?: { escape?: (input: string) => string } }).CSS?.escape;
+  if (typeof esc === 'function') return esc(value);
+  return value.replace(/["\\]/g, '\\$&');
 }
 
 export function useNewsItemActions({
@@ -135,11 +141,50 @@ export function useNewsItemActions({
     const title = String(it.title || '').trim();
     const summary = String(it.summary || '').trim();
 
-    if (!link) return;
     if (platform === 'copy') {
+      if (!link) return;
       await copyLink(link);
       return;
     }
+
+    if (platform === 'card') {
+      const feedUrl = String(it.feedUrl || '').trim();
+      const id = String(it.id || '').trim();
+      if (!feedUrl || !id) return;
+
+      try {
+        const selector = `.news-item-card[data-news-id="${cssEscape(id)}"][data-news-feed-url="${cssEscape(feedUrl)}"]`;
+        const cardNode = document.querySelector(selector) as HTMLElement | null;
+        if (!cardNode) throw new Error('capture_missing_node');
+
+        const { toBlob } = await import('html-to-image');
+        const blob = await toBlob(cardNode, {
+          cacheBust: true,
+          pixelRatio: Math.max(1, Math.min(2, window.devicePixelRatio || 1)),
+          backgroundColor: '#060d1d'
+        });
+        if (!blob) throw new Error('capture_failed');
+
+        if (!navigator.clipboard || typeof window.ClipboardItem === 'undefined' || typeof navigator.clipboard.write !== 'function') {
+          throw new Error('clipboard_unsupported');
+        }
+        await navigator.clipboard.write([
+          new window.ClipboardItem({ [blob.type || 'image/png']: blob })
+        ]);
+        setClipboardNotice(labels.cardImageCopied || labels.newsCopied || labels.linkCopied);
+      } catch (error) {
+        const code = (error as Error)?.message || '';
+        setClipboardNotice(
+          code === 'clipboard_unsupported'
+            ? (labels.cardImageClipboardUnsupported || labels.linkCopied)
+            : (labels.cardImageCaptureFailed || labels.linkCopied)
+        );
+      }
+      setClipboardNoticeOpen(true);
+      return;
+    }
+
+    if (!link) return;
 
     const encodedLink = encodeURIComponent(link);
     const encodedTitle = encodeURIComponent(title || link);
@@ -173,7 +218,15 @@ export function useNewsItemActions({
       // Continue to TikTok page even if clipboard write fails.
     }
     window.open('https://www.tiktok.com/upload?lang=en', '_blank', 'noopener,noreferrer');
-  }, [copyLink, labels.linkCopied, labels.shareTikTokHint]);
+  }, [
+    copyLink,
+    labels.cardImageCaptureFailed,
+    labels.cardImageClipboardUnsupported,
+    labels.cardImageCopied,
+    labels.linkCopied,
+    labels.newsCopied,
+    labels.shareTikTokHint
+  ]);
 
   const copyNewsPayload = useCallback(async (it: NewsItem) => {
     const title = String(it.title || '').trim();

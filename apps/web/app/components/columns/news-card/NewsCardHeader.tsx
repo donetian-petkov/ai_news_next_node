@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FacebookIcon from '@mui/icons-material/Facebook';
+import ImageIcon from '@mui/icons-material/Image';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import RedditIcon from '@mui/icons-material/Reddit';
@@ -130,6 +131,10 @@ export function NewsCardHeader() {
             <MenuItem onClick={() => { onShareNews(item, 'copy'); setShareAnchorEl(null); }}>
               <ContentCopyIcon sx={{ fontSize: 16, mr: 1 }} />
               {labels.shareCopyLink}
+            </MenuItem>
+            <MenuItem onClick={() => { onShareNews(item, 'card'); setShareAnchorEl(null); }}>
+              <ImageIcon sx={{ fontSize: 16, mr: 1 }} />
+              {labels.shareCardImage}
             </MenuItem>
             <MenuItem onClick={() => { onShareNews(item, 'facebook'); setShareAnchorEl(null); }}>
               <FacebookIcon sx={{ fontSize: 16, mr: 1 }} />
