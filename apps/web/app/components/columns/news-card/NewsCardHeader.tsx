@@ -47,6 +47,25 @@ export function NewsCardHeader() {
           >
             {formatTime(item.publishedMs)}
           </Typography>
+        </Stack>
+        <Stack
+          direction="row"
+          spacing={0.6}
+          alignItems="center"
+          sx={{
+            pr: 0.2,
+            ml: 'auto',
+            flex: '0 0 auto',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+            rowGap: 0.45,
+            '@media (max-width: 660px)': {
+              width: '100%',
+              justifyContent: 'flex-start',
+              ml: 0
+            }
+          }}
+        >
           {item.isMatch ? (
             <Chip
               size="small"
@@ -70,25 +89,6 @@ export function NewsCardHeader() {
               }}
             />
           ) : null}
-        </Stack>
-        <Stack
-          direction="row"
-          spacing={0.6}
-          alignItems="center"
-          sx={{
-            pr: 0.2,
-            ml: 'auto',
-            flex: '0 0 auto',
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
-            rowGap: 0.45,
-            '@media (max-width: 660px)': {
-              width: '100%',
-              justifyContent: 'flex-start',
-              ml: 0
-            }
-          }}
-        >
           <Tooltip title={isPinnedNews ? labels.unpinNews : labels.pinNews}>
             <Button
               size="small"
