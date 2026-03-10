@@ -10,6 +10,7 @@ import RedditIcon from '@mui/icons-material/Reddit';
 import XIcon from '@mui/icons-material/X';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import { Box, Button, Chip, Link as MuiLink, Menu, MenuItem, Stack, Tooltip, Typography } from '@mui/material';
+import { FILTERED_FEED_URL } from '../../../store/constants';
 import { formatTime } from '../reactColumns.utils';
 import { NEWS_CARD_COLOR_TOKENS } from '../designTokens';
 import { useNewsCardContext } from './context/useNewsCardContext';
@@ -64,6 +65,7 @@ export function NewsCardHeader() {
     if (byLink) return byLink;
     return hostLabelFromUrl(item.feedUrl);
   }, [item.feedUrl, item.link, item.source]);
+  const showSourceLabel = item.feedUrl === FILTERED_FEED_URL && !!sourceLabel;
   const [titleOverride, setTitleOverride] = useState<'auto' | 'translated' | 'original'>('auto');
   const sourceTitleLanguage = useMemo(() => detectTitleLanguage(item.title), [item.title]);
   const translatedCandidate = useMemo(() => {
@@ -112,7 +114,7 @@ export function NewsCardHeader() {
         }}
       >
         <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45 }}>
-          {sourceLabel ? (
+          {showSourceLabel ? (
             <Typography
               variant="caption"
               sx={{
@@ -123,15 +125,30 @@ export function NewsCardHeader() {
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 fontWeight: 700,
-                letterSpacing: 0.2
+                letterSpacing: 0.2,
+                display: {
+                  xs: 'none',
+                  lg: 'inline'
+                }
               }}
               title={sourceLabel}
             >
               {sourceLabel}
             </Typography>
           ) : null}
-          {sourceLabel ? (
-            <Typography variant="caption" sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, opacity: 0.6, flexShrink: 0 }}>
+          {showSourceLabel ? (
+            <Typography
+              variant="caption"
+              sx={{
+                color: NEWS_CARD_COLOR_TOKENS.headerMuted,
+                opacity: 0.6,
+                flexShrink: 0,
+                display: {
+                  xs: 'none',
+                  lg: 'inline'
+                }
+              }}
+            >
               •
             </Typography>
           ) : null}
