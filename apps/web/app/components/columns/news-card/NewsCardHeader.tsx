@@ -45,12 +45,12 @@ export function NewsCardHeader() {
           flexWrap: 'nowrap',
           rowGap: 0.6,
           columnGap: 0.7,
-          '@media (max-width: 660px)': {
+          '@media (max-width: 860px)': {
             flexWrap: 'wrap'
           }
         }}
       >
-        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '0 1 auto', flexWrap: 'nowrap', rowGap: 0.45 }}>
+        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45 }}>
           <Typography
             variant="caption"
             sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, whiteSpace: 'nowrap', flexShrink: 0 }}
@@ -69,7 +69,7 @@ export function NewsCardHeader() {
             flexWrap: 'nowrap',
             justifyContent: 'flex-end',
             rowGap: 0.45,
-            '@media (max-width: 660px)': {
+            '@media (max-width: 860px)': {
               width: '100%',
               flexWrap: 'wrap',
               justifyContent: 'flex-start',
