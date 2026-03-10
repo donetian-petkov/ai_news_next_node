@@ -34,6 +34,7 @@ function normalizeSourceLabel(raw: string): string {
     .trim();
   if (!value) return '';
   if (!/[A-Za-z0-9А-Яа-яЁёЍѝ]/.test(value)) return '';
+  if (!/[\p{L}\p{N}]{2,}/u.test(value)) return '';
   if (/^(unknown|source|rss|feed)$/i.test(value)) return '';
   return value.slice(0, 96);
 }
@@ -147,25 +148,14 @@ export function NewsCardHeader() {
               {sourceLabel}
             </Typography>
           ) : null}
-          {showSourceLabel ? (
-            <Typography
-              variant="caption"
-              sx={{
-                color: NEWS_CARD_COLOR_TOKENS.headerMuted,
-                opacity: 0.6,
-                flexShrink: 0,
-                display: {
-                  xs: 'none',
-                  lg: 'inline'
-                }
-              }}
-            >
-              •
-            </Typography>
-          ) : null}
           <Typography
             variant="caption"
-            sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, whiteSpace: 'nowrap', flexShrink: 0 }}
+            sx={{
+              color: NEWS_CARD_COLOR_TOKENS.headerMuted,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              ml: showSourceLabel ? { xs: 0, lg: 0.8 } : 0
+            }}
           >
             {formatTime(item.publishedMs)}
           </Typography>
