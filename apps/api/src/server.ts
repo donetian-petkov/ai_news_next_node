@@ -1405,40 +1405,68 @@ async function translateTitleBilingual(
   source: string,
   budget: BudgetMode
 ): Promise<{ bg: string; en: string } | undefined> {
+  const originalTitle = normalizeTitleValue(title);
+  if (!originalTitle) return undefined;
+  const srcKey = normalizedTitleKey(originalTitle);
+  const sourceLooksBg = looksBulgarianTitle(originalTitle);
+  const sourceLooksEn = looksEnglishTitle(originalTitle);
   const maxTokens = Math.max(90, Math.min(220, budgetToTokensSummary(budget) + 70));
+
+  const translateSingle = async (lang: 'bg' | 'en'): Promise<string> => {
+    const retryText = await generateAiText(
+      'summary',
+      `${titleTranslateSingleInstruction(lang)}\nSource: ${source}\nHeadline: ${originalTitle}\n`,
+      maxTokens,
+      0
+    );
+    return normalizeTitleValue(retryText || '');
+  };
+
   const input =
     `${titleTranslateInstruction()}\n` +
     `Source: ${source}\n` +
-    `Headline: ${title}\n`;
+    `Headline: ${originalTitle}\n`;
 
   const text = await generateAiText('summary', input, maxTokens, 0);
   const parsed = text ? parseTitleTranslation(text) : undefined;
 
   let bg = normalizeTitleValue(parsed?.bg || '');
   let en = normalizeTitleValue(parsed?.en || '');
-  const srcKey = normalizedTitleKey(title);
+
+  // If the source is clearly one language, keep that side exactly as the original title
+  // and only translate the opposite side.
+  if (sourceLooksBg && !sourceLooksEn) {
+    bg = originalTitle;
+    let enKey = normalizedTitleKey(en);
+    if (!en || enKey === srcKey || !looksEnglishTitle(en)) {
+      en = await translateSingle('en');
+      enKey = normalizedTitleKey(en);
+    }
+    if (!en || enKey === srcKey) return undefined;
+    return { bg, en };
+  }
+
+  if (sourceLooksEn && !sourceLooksBg) {
+    en = originalTitle;
+    let bgKey = normalizedTitleKey(bg);
+    if (!bg || bgKey === srcKey || !looksBulgarianTitle(bg)) {
+      bg = await translateSingle('bg');
+      bgKey = normalizedTitleKey(bg);
+    }
+    if (!bg || bgKey === srcKey) return undefined;
+    return { bg, en };
+  }
+
   const bgNeedsRetry = !bg || !looksBulgarianTitle(bg);
   const enNeedsRetry = !en || !looksEnglishTitle(en);
 
   if (bgNeedsRetry) {
-    const retryBgText = await generateAiText(
-      'summary',
-      `${titleTranslateSingleInstruction('bg')}\nSource: ${source}\nHeadline: ${title}\n`,
-      maxTokens,
-      0
-    );
-    const retryBg = normalizeTitleValue(retryBgText || '');
+    const retryBg = await translateSingle('bg');
     if (retryBg && looksBulgarianTitle(retryBg)) bg = retryBg;
   }
 
   if (enNeedsRetry) {
-    const retryEnText = await generateAiText(
-      'summary',
-      `${titleTranslateSingleInstruction('en')}\nSource: ${source}\nHeadline: ${title}\n`,
-      maxTokens,
-      0
-    );
-    const retryEn = normalizeTitleValue(retryEnText || '');
+    const retryEn = await translateSingle('en');
     if (retryEn && looksEnglishTitle(retryEn)) en = retryEn;
   }
 
