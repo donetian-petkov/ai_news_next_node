@@ -1129,6 +1129,43 @@ function parseTitleTranslation(raw: string): { bg: string; en: string } | undefi
   return tryParse(m[0]);
 }
 
+function hasValidOppositeLanguageTitle(
+  originalTitle: string,
+  titleBgRaw: string | undefined,
+  titleEnRaw: string | undefined
+): boolean {
+  const original = normalizeTitleValue(originalTitle);
+  if (!original) return false;
+  const sourceKey = normalizedTitleKey(original);
+
+  const bg = normalizeTitleValue(titleBgRaw || '');
+  const en = normalizeTitleValue(titleEnRaw || '');
+  const bgKey = normalizedTitleKey(bg);
+  const enKey = normalizedTitleKey(en);
+
+  const sourceLooksBg = looksBulgarianTitle(original);
+  const sourceLooksEn = looksEnglishTitle(original);
+
+  if (sourceLooksBg && !sourceLooksEn) {
+    return !!en && !!enKey && enKey !== sourceKey && looksEnglishTitle(en);
+  }
+
+  if (sourceLooksEn && !sourceLooksBg) {
+    return !!bg && !!bgKey && bgKey !== sourceKey && looksBulgarianTitle(bg);
+  }
+
+  // Fallback for mixed/unknown script sources.
+  return !!bg && !!en && !!bgKey && !!enKey && bgKey !== enKey;
+}
+
+function needsTitleTranslation(
+  originalTitle: string,
+  titleBgRaw: string | undefined,
+  titleEnRaw: string | undefined
+): boolean {
+  return !hasValidOppositeLanguageTitle(originalTitle, titleBgRaw, titleEnRaw);
+}
+
 function normalizeMood(raw: string): Mood | undefined {
   const s = String(raw || '')
     .trim()
@@ -1886,7 +1923,7 @@ function enqueueTitleTranslateBackfill(options?: {
     if (done >= max) break;
     if (targetFeedUrl && !eligibleForFeed(it, targetFeedUrl)) continue;
     if (hiddenIds.has(it.id)) continue;
-    if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) continue;
+    if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) continue;
 
     const itemBudget = feedSettings.get(it.feedUrl)?.budget || 'standard';
     if (!manual && itemBudget !== 'high') continue;
@@ -1939,7 +1976,7 @@ async function runOneJob(job: AiJob) {
     if (job.kind === 'title_translate') {
       if (!job.manual && budget !== 'high') return;
       if (activeModel('summary') === 'none') return;
-      if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) return;
+      if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) return;
 
       const translated = await withTimeout(
         translateTitleBilingual(it.title, it.source, budget),
@@ -2507,6 +2544,20 @@ wss.on('connection', (ws: WebSocket) => {
       return;
     }
 
+    if (raw && typeof raw === 'object' && (raw as { type?: unknown }).type === 'run_title_translate_backfill') {
+      if (!aiEnabled || !aiAvailable || activeModel('summary') === 'none') return;
+      const feedUrl = String((raw as { feedUrl?: unknown }).feedUrl || '').trim();
+      const maxRaw = Number((raw as { max?: unknown }).max);
+      const max = Number.isFinite(maxRaw) ? Math.max(1, Math.min(2_000, Math.floor(maxRaw))) : 500;
+      const done = enqueueTitleTranslateBackfill({
+        feedUrl: feedUrl || undefined,
+        max,
+        manual: true
+      });
+      ws.send(JSON.stringify({ type: 'ok', message: `Queued ${done} title translations.` }));
+      return;
+    }
+
     const parsed = clientMsgSchema.safeParse(raw);
     if (!parsed.success) return;
     const msg: ClientMsg = parsed.data;
@@ -2798,7 +2849,7 @@ wss.on('connection', (ws: WebSocket) => {
         for (const it of list) {
           if (done >= MAX) break;
           if (!eligibleForFeed(it, feedUrl)) continue;
-          if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) continue;
+          if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) continue;
           enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl });
           done++;
         }
@@ -2830,7 +2881,7 @@ wss.on('connection', (ws: WebSocket) => {
         let done = 0;
         for (const it of list) {
           if (done >= MAX) break;
-          if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) continue;
+          if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) continue;
           enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl });
           done++;
         }
