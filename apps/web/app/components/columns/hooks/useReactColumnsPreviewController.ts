@@ -443,6 +443,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       vibe: (VIBE_LIST.includes(ui.vibe as VibeValue) ? ui.vibe : 'default') as VibeValue,
       scheme: (SCHEME_LIST.includes(ui.scheme as SchemeValue) ? ui.scheme : 'classic') as SchemeValue,
       buttonMode: ui.buttonMode,
+      titleDisplayLanguage: ui.titleDisplayLanguage,
       performanceMode: ui.performanceMode,
       fontSize: ui.fontSize,
       moodFilter: ui.moodFilter,

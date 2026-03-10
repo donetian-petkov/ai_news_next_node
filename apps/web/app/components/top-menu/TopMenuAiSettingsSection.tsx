@@ -10,6 +10,7 @@ import {
   buildMoodOptions,
   buildResearchLangOptions,
   buildSummaryLangOptions,
+  buildTitleDisplayLanguageOptions,
   buildTypeOptions
 } from './topMenuOptionBuilders';
 import { useTopMenuContext } from './context/useTopMenuContext';
@@ -83,6 +84,16 @@ export function TopMenuAiSettingsSection() {
             disabled={!aiSettings.aiAvailable}
             onChange={actions.onResearchLangChange}
             options={buildResearchLangOptions()}
+            layout="stacked"
+            wrapperClassName="topMenuField"
+          />
+
+          <TopMenuSelectField
+            id="titleDisplayLanguage"
+            label={labels.titleDisplayLanguagePrefix || 'Title language:'}
+            value={aiSettings.titleDisplayLanguage}
+            onChange={actions.onTitleDisplayLanguageChange}
+            options={buildTitleDisplayLanguageOptions(labels)}
             layout="stacked"
             wrapperClassName="topMenuField"
           />

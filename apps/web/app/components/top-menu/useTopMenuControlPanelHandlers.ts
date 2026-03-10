@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { sendWsMessage } from '../../store/wsClient';
-import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
+import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTitleDisplayLanguage, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 
 type Args = {
@@ -65,6 +65,9 @@ export function useTopMenuControlPanelHandlers({
     onResearchLangChange: (lang: RootState['ui']['researchLang']) => {
       const ok = sendWsMessage({ type: 'set_research_lang', lang });
       if (ok) dispatch(setAiSettings({ researchLang: lang }));
+    },
+    onTitleDisplayLanguageChange: (lang: RootState['ui']['titleDisplayLanguage']) => {
+      dispatch(setTitleDisplayLanguage(lang));
     },
     onSummaryModelChange: (model: string) => {
       const next = String(model || '').trim();

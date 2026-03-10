@@ -30,6 +30,7 @@ describe('uiSlice', () => {
       typeFilter: NewsTypeFilterValue.All,
       summaryLang: 'bilingual',
       researchLang: 'bg',
+      titleDisplayLanguage: 'original',
       summaryModel: 'gpt-4.1-nano',
       researchModel: 'gpt-4.1-mini',
       askModel: 'gpt-4.1-nano',

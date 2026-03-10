@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import ImageIcon from '@mui/icons-material/Image';
@@ -34,6 +34,18 @@ export function NewsCardHeader() {
   const CopyIconComp = vibeIcons.copy;
   const titleBg = String(item.titleBg || '').trim();
   const titleEn = String(item.titleEn || '').trim();
+  const [showOriginalTitle, setShowOriginalTitle] = useState(false);
+  const translatedBySelection = useMemo(() => {
+    if (view.titleDisplayLanguage === 'bg') return titleBg;
+    if (view.titleDisplayLanguage === 'en') return titleEn;
+    return '';
+  }, [titleBg, titleEn, view.titleDisplayLanguage]);
+  const hasSelectedTranslation = !!translatedBySelection && translatedBySelection !== item.title;
+  const displayedTitle = hasSelectedTranslation && !showOriginalTitle ? translatedBySelection : item.title;
+
+  useEffect(() => {
+    setShowOriginalTitle(false);
+  }, [item.id, view.titleDisplayLanguage, titleBg, titleEn]);
 
   return (
     <>
@@ -179,47 +191,51 @@ export function NewsCardHeader() {
         </Stack>
       </Stack>
 
-      <MuiLink
-        href={item.link}
-        target="_blank"
-        rel="noreferrer"
-        underline="hover"
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 0.6,
-          fontSize: `${1.12 * fontScale}rem`,
-          lineHeight: 1.36,
-          fontWeight: 800,
-          color: NEWS_CARD_COLOR_TOKENS.title,
-          mb: 1.1,
-          fontFamily: 'var(--news-title-font-family, var(--font-family))'
-        }}
-      >
-        <span>{item.title}</span>
-        <OpenInNewIcon sx={{ fontSize: 14 }} />
-      </MuiLink>
-
-      {(titleBg || titleEn) ? (
-        <Stack spacing={0.25} sx={{ mb: 1.0 }}>
-          {titleBg ? (
-            <Typography
-              variant="caption"
-              sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, display: 'block', lineHeight: 1.35 }}
-            >
-              BG: {titleBg}
-            </Typography>
-          ) : null}
-          {titleEn ? (
-            <Typography
-              variant="caption"
-              sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, display: 'block', lineHeight: 1.35 }}
-            >
-              EN: {titleEn}
-            </Typography>
-          ) : null}
-        </Stack>
-      ) : null}
+      <Stack direction="row" alignItems="flex-start" spacing={0.7} sx={{ mb: 1.1 }}>
+        <Tooltip
+          title={hasSelectedTranslation ? (showOriginalTitle ? labels.showTranslatedTitle : labels.showOriginalTitle) : ''}
+          disableHoverListener={!hasSelectedTranslation}
+        >
+          <Typography
+            component="button"
+            type="button"
+            onClick={() => {
+              if (!hasSelectedTranslation) return;
+              setShowOriginalTitle(prev => !prev);
+            }}
+            sx={{
+              p: 0,
+              m: 0,
+              border: 0,
+              background: 'transparent',
+              textAlign: 'left',
+              cursor: hasSelectedTranslation ? 'pointer' : 'default',
+              fontSize: `${1.12 * fontScale}rem`,
+              lineHeight: 1.36,
+              fontWeight: 800,
+              color: NEWS_CARD_COLOR_TOKENS.title,
+              fontFamily: 'var(--news-title-font-family, var(--font-family))'
+            }}
+          >
+            {displayedTitle}
+          </Typography>
+        </Tooltip>
+        <MuiLink
+          href={item.link}
+          target="_blank"
+          rel="noreferrer"
+          underline="none"
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            color: NEWS_CARD_COLOR_TOKENS.title,
+            mt: 0.2
+          }}
+          aria-label={item.title}
+        >
+          <OpenInNewIcon sx={{ fontSize: 16 }} />
+        </MuiLink>
+      </Stack>
 
       {hasBodyBlock ? (
         <Box

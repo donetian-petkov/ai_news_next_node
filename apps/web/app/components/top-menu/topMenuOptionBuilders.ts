@@ -27,6 +27,16 @@ export function buildResearchLangOptions(): Option<'bg' | 'en'>[] {
   ];
 }
 
+export function buildTitleDisplayLanguageOptions(
+  labels: Record<string, string>
+): Option<'original' | 'bg' | 'en'>[] {
+  return [
+    { value: 'original', label: labels.titleLanguageOriginal || 'Original' },
+    { value: 'bg', label: labels.titleLanguageBg || 'BG' },
+    { value: 'en', label: labels.titleLanguageEn || 'EN' }
+  ];
+}
+
 export function buildAiModelOptions(models: string[], selected?: string): Option<string>[] {
   const values = new Set<string>();
   if (selected && selected.trim()) values.add(selected.trim());

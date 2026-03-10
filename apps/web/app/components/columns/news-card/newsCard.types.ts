@@ -7,6 +7,7 @@ export type NewsCardViewModel = {
   vibeIcons: VibeIcons;
   compactBtnSx: SxProps<Theme>;
   buttonMode: 'icons' | 'text';
+  titleDisplayLanguage: 'original' | 'bg' | 'en';
   aiAvailable: boolean;
   performanceMode: boolean;
   fontScale: number;

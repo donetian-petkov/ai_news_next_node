@@ -12,6 +12,7 @@ type Args = {
     vibe: string;
     scheme: string;
     buttonMode: 'icons' | 'text';
+    titleDisplayLanguage: 'original' | 'bg' | 'en';
     performanceMode: boolean;
     fontSize: 'sm' | 'md' | 'lg' | 'xl';
     moodFilter: FeedColumnViewModel['moodFilter'];

@@ -66,6 +66,8 @@ export type CardLabels = {
   askPlaceholder: string;
   thinking: string;
   send: string;
+  showOriginalTitle: string;
+  showTranslatedTitle: string;
 };
 
 export type VibeIcons = {
@@ -99,6 +101,7 @@ export type FeedColumnViewModel = {
   aiAvailable: boolean;
   keywords: string[];
   buttonMode: 'icons' | 'text';
+  titleDisplayLanguage: 'original' | 'bg' | 'en';
   fontScale: number;
   connected: boolean;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';

@@ -10,6 +10,7 @@ type Args = {
     vibe: string;
     scheme: string;
     buttonMode: 'icons' | 'text';
+    titleDisplayLanguage: 'original' | 'bg' | 'en';
     performanceMode: boolean;
     fontSize: 'sm' | 'md' | 'lg' | 'xl';
     moodFilter: FeedColumnViewModel['moodFilter'];
@@ -94,7 +95,9 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     questionsLeft: labels.questionsLeft,
     askPlaceholder: labels.askPlaceholder,
     thinking: labels.thinking,
-    send: labels.send
+    send: labels.send,
+    showOriginalTitle: labels.showOriginalTitle || 'Show original title',
+    showTranslatedTitle: labels.showTranslatedTitle || 'Show translated title'
   }), [labels]);
 
   const connectionStatus: FeedColumnViewModel['connectionStatus'] = connected
@@ -113,6 +116,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     aiAvailable: ui.aiAvailable,
     keywords: ui.keywords,
     buttonMode: ui.buttonMode,
+    titleDisplayLanguage: ui.titleDisplayLanguage,
     fontScale,
     connected,
     connectionStatus,
@@ -121,7 +125,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     labels,
     cardLabels,
     vibeIcons
-  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.keywords, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.typeFilter, vibeIcons]);
+  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.keywords, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.titleDisplayLanguage, ui.typeFilter, vibeIcons]);
 
   return viewModel;
 }

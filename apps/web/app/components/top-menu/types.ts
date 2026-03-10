@@ -67,6 +67,7 @@ export type TopMenuControlsModel = {
     keywords: TopMenuUiState['keywords'];
     summaryLang: TopMenuUiState['summaryLang'];
     researchLang: TopMenuUiState['researchLang'];
+    titleDisplayLanguage: TopMenuUiState['titleDisplayLanguage'];
     summaryModel: TopMenuUiState['summaryModel'];
     researchModel: TopMenuUiState['researchModel'];
     askModel: TopMenuUiState['askModel'];
@@ -123,6 +124,7 @@ export type TopMenuControlsActions = {
   onSetKeywords: (keywords: string[]) => void;
   onSummaryLangChange: (lang: TopMenuUiState['summaryLang']) => void;
   onResearchLangChange: (lang: TopMenuUiState['researchLang']) => void;
+  onTitleDisplayLanguageChange: (lang: TopMenuUiState['titleDisplayLanguage']) => void;
   onSummaryModelChange: (model: string) => void;
   onResearchModelChange: (model: string) => void;
   onAskModelChange: (model: string) => void;

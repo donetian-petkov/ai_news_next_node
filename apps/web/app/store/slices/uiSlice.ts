@@ -105,6 +105,7 @@ type UiState = {
   typeFilter: TypeFilter;
   summaryLang: 'bilingual' | 'bg' | 'en';
   researchLang: 'bg' | 'en';
+  titleDisplayLanguage: 'original' | 'bg' | 'en';
   summaryModel: string;
   researchModel: string;
   askModel: string;
@@ -150,6 +151,7 @@ const initialState: UiState = {
   typeFilter: NewsTypeFilterValue.All,
   summaryLang: 'bilingual',
   researchLang: 'bg',
+  titleDisplayLanguage: 'original',
   summaryModel: DEFAULT_AI_MODELS.openai.summary[0],
   researchModel: DEFAULT_AI_MODELS.openai.research[0],
   askModel: DEFAULT_AI_MODELS.openai.ask[0],
@@ -219,13 +221,16 @@ const uiSlice = createSlice({
         state.notifyMode = next.notifyMode;
       }
     },
-    setAiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'aiAvailable' | 'aiEnabled' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'summaryModel' | 'researchModel' | 'askModel' | 'availableModels' | 'allBudget'>>>) {
+    setAiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'aiAvailable' | 'aiEnabled' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'summaryModel' | 'researchModel' | 'askModel' | 'availableModels' | 'allBudget'>>>) {
       const next = action.payload;
       if (typeof next.aiAvailable === 'boolean') state.aiAvailable = next.aiAvailable;
       if (typeof next.aiEnabled === 'boolean') state.aiEnabled = next.aiEnabled;
       if (next.aiProvider === 'openai' || next.aiProvider === 'claude' || next.aiProvider === 'openrouter') state.aiProvider = next.aiProvider;
       if (next.summaryLang === 'bg' || next.summaryLang === 'en' || next.summaryLang === 'bilingual') state.summaryLang = next.summaryLang;
       if (next.researchLang === 'bg' || next.researchLang === 'en') state.researchLang = next.researchLang;
+      if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
+        state.titleDisplayLanguage = next.titleDisplayLanguage;
+      }
       if (typeof next.summaryModel === 'string' && next.summaryModel.trim()) state.summaryModel = next.summaryModel.trim();
       if (typeof next.researchModel === 'string' && next.researchModel.trim()) state.researchModel = next.researchModel.trim();
       if (typeof next.askModel === 'string' && next.askModel.trim()) state.askModel = next.askModel.trim();
@@ -258,6 +263,12 @@ const uiSlice = createSlice({
         };
       }
       if (next.allBudget === 'mixed' || next.allBudget === 'low' || next.allBudget === 'standard' || next.allBudget === 'high') state.allBudget = next.allBudget;
+    },
+    setTitleDisplayLanguage(state, action: PayloadAction<UiState['titleDisplayLanguage']>) {
+      const next = action.payload;
+      if (next === 'original' || next === 'bg' || next === 'en') {
+        state.titleDisplayLanguage = next;
+      }
     },
     setKeywords(state, action: PayloadAction<string[]>) {
       state.keywords = dedupeKeywords(action.payload);
@@ -340,7 +351,7 @@ const uiSlice = createSlice({
         state.soundEnabled = false;
       }
     },
-    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
+    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'titleDisplayLanguage' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
       const next = action.payload;
       if (next.language === 'en' || next.language === 'bg') state.language = next.language;
       if (next.colorMode === 'system' || next.colorMode === 'dark' || next.colorMode === 'light') state.colorMode = next.colorMode;
@@ -355,6 +366,9 @@ const uiSlice = createSlice({
       if (next.notifyMode === 'matched' || next.notifyMode === 'matched_pinned' || next.notifyMode === 'pinned' || next.notifyMode === 'all') state.notifyMode = next.notifyMode;
       if (isMoodFilter(next.moodFilter)) state.moodFilter = next.moodFilter;
       if (isTypeFilter(next.typeFilter)) state.typeFilter = next.typeFilter;
+      if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
+        state.titleDisplayLanguage = next.titleDisplayLanguage;
+      }
       if (next.font === 'system' || next.font === 'manrope' || next.font === 'grotesk' || next.font === 'sora' || next.font === 'plex' || next.font === 'serif' || next.font === 'mono') state.font = next.font;
       if (next.fontSize === 'sm' || next.fontSize === 'md' || next.fontSize === 'lg' || next.fontSize === 'xl') state.fontSize = next.fontSize;
       if (next.scheme === 'classic' || next.scheme === 'vivid' || next.scheme === 'sunset' || next.scheme === 'neon' || next.scheme === 'ocean' || next.scheme === 'forest') state.scheme = next.scheme;
@@ -416,6 +430,7 @@ export const {
   setHelpOpen,
   setNotifySettings,
   setAiSettings,
+  setTitleDisplayLanguage,
   setKeywords,
   setMoodFilter,
   setTypeFilter,
