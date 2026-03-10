@@ -56,6 +56,7 @@ export function FeedColumnItemsList() {
     onCopyNewsPayload,
     onHideItem,
     onRequestSummary,
+    onRequestTitleTranslation,
     onRequestResearch,
     onToggleAsk,
     onSetAskDraft,
@@ -116,13 +117,14 @@ export function FeedColumnItemsList() {
     onCopyNews: onCopyNewsPayload,
     onHideItem,
     onRequestSummary,
+    onRequestTitleTranslation,
     onRequestResearch,
     onToggleAsk,
     onAskDraft: onSetAskDraft,
     onAskSubmit,
     onSetSummaryMode: () => {},
     onSetResearchMode: () => {}
-  }), [onAskSubmit, onCopyLink, onCopyNewsPayload, onHideItem, onRequestResearch, onRequestSummary, onSetAskDraft, onShareNews, onToggleAsk, onTogglePinnedNews]);
+  }), [onAskSubmit, onCopyLink, onCopyNewsPayload, onHideItem, onRequestResearch, onRequestSummary, onRequestTitleTranslation, onSetAskDraft, onShareNews, onToggleAsk, onTogglePinnedNews]);
 
   if (!isHydrated) {
     return (

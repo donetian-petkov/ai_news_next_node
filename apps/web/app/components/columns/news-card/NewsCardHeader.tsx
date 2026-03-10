@@ -24,7 +24,7 @@ export function NewsCardHeader() {
 
   const { labels, vibeIcons, connected, fontScale, matchAccent } = view;
   const { item, isPinnedNews, isDuplicateMatch } = state;
-  const { onTogglePinnedNews, onShareNews, onCopyNews, onHideItem } = handlers;
+  const { onTogglePinnedNews, onShareNews, onCopyNews, onHideItem, onRequestTitleTranslation } = handlers;
   const { iconOnly, hasBodyBlock, actionSx, matchActionSx } = ui;
   const [shareAnchorEl, setShareAnchorEl] = useState<null | HTMLElement>(null);
   const shareMenuOpen = Boolean(shareAnchorEl);
@@ -34,17 +34,27 @@ export function NewsCardHeader() {
   const CopyIconComp = vibeIcons.copy;
   const titleBg = String(item.titleBg || '').trim();
   const titleEn = String(item.titleEn || '').trim();
-  const [showOriginalTitle, setShowOriginalTitle] = useState(false);
-  const translatedBySelection = useMemo(() => {
+  const [titleOverride, setTitleOverride] = useState<'auto' | 'translated' | 'original'>('auto');
+  const selectedTranslation = useMemo(() => {
     if (view.titleDisplayLanguage === 'bg') return titleBg;
     if (view.titleDisplayLanguage === 'en') return titleEn;
     return '';
   }, [titleBg, titleEn, view.titleDisplayLanguage]);
-  const hasSelectedTranslation = !!translatedBySelection && translatedBySelection !== item.title;
-  const displayedTitle = hasSelectedTranslation && !showOriginalTitle ? translatedBySelection : item.title;
+  const fallbackTranslation = useMemo(() => {
+    if (titleBg && titleBg !== item.title) return titleBg;
+    if (titleEn && titleEn !== item.title) return titleEn;
+    return '';
+  }, [item.title, titleBg, titleEn]);
+  const translatedCandidate = selectedTranslation && selectedTranslation !== item.title
+    ? selectedTranslation
+    : fallbackTranslation;
+  const hasAnyTranslation = !!translatedCandidate;
+  const displayTranslated = titleOverride === 'translated'
+    || (titleOverride === 'auto' && view.titleDisplayLanguage !== 'original' && hasAnyTranslation);
+  const displayedTitle = displayTranslated && translatedCandidate ? translatedCandidate : item.title;
 
   useEffect(() => {
-    setShowOriginalTitle(false);
+    setTitleOverride('auto');
   }, [item.id, view.titleDisplayLanguage, titleBg, titleEn]);
 
   return (
@@ -193,15 +203,17 @@ export function NewsCardHeader() {
 
       <Stack direction="row" alignItems="flex-start" spacing={0.7} sx={{ mb: 1.1 }}>
         <Tooltip
-          title={hasSelectedTranslation ? (showOriginalTitle ? labels.showTranslatedTitle : labels.showOriginalTitle) : ''}
-          disableHoverListener={!hasSelectedTranslation}
+          title={displayTranslated ? labels.showOriginalTitle : labels.showTranslatedTitle}
         >
           <Typography
             component="button"
             type="button"
             onClick={() => {
-              if (!hasSelectedTranslation) return;
-              setShowOriginalTitle(prev => !prev);
+              if (hasAnyTranslation) {
+                setTitleOverride(displayTranslated ? 'original' : 'translated');
+                return;
+              }
+              onRequestTitleTranslation(item);
             }}
             sx={{
               p: 0,
@@ -209,7 +221,7 @@ export function NewsCardHeader() {
               border: 0,
               background: 'transparent',
               textAlign: 'left',
-              cursor: hasSelectedTranslation ? 'pointer' : 'default',
+              cursor: 'pointer',
               fontSize: `${1.12 * fontScale}rem`,
               lineHeight: 1.36,
               fontWeight: 800,

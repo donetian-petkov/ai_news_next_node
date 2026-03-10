@@ -1049,11 +1049,55 @@ function titleTranslateInstruction(): string {
   ].join(' ');
 }
 
+function titleTranslateSingleInstruction(lang: 'bg' | 'en'): string {
+  if (lang === 'bg') {
+    return [
+      'Translate this headline to Bulgarian.',
+      'Return plain text only.',
+      'No quotes, no markdown, no extra commentary.'
+    ].join(' ');
+  }
+  return [
+    'Translate this headline to English.',
+    'Return plain text only.',
+    'No quotes, no markdown, no extra commentary.'
+  ].join(' ');
+}
+
 function normalizeTitleValue(raw: unknown): string {
   return String(raw || '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 320);
+}
+
+function normalizedTitleKey(raw: string): string {
+  return String(raw || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function letterScriptRatios(raw: string): { cyr: number; lat: number } {
+  const text = String(raw || '');
+  const cyr = (text.match(/[А-Яа-яЁёЍѝ]/g) || []).length;
+  const lat = (text.match(/[A-Za-z]/g) || []).length;
+  const total = cyr + lat;
+  if (!total) return { cyr: 0, lat: 0 };
+  return { cyr: cyr / total, lat: lat / total };
+}
+
+function looksBulgarianTitle(raw: string): boolean {
+  const { cyr } = letterScriptRatios(raw);
+  return cyr >= 0.45;
+}
+
+function looksEnglishTitle(raw: string): boolean {
+  const { lat } = letterScriptRatios(raw);
+  return lat >= 0.55;
 }
 
 function parseTitleTranslation(raw: string): { bg: string; en: string } | undefined {
@@ -1361,15 +1405,61 @@ async function translateTitleBilingual(
   source: string,
   budget: BudgetMode
 ): Promise<{ bg: string; en: string } | undefined> {
+  const maxTokens = Math.max(90, Math.min(220, budgetToTokensSummary(budget) + 70));
   const input =
     `${titleTranslateInstruction()}\n` +
     `Source: ${source}\n` +
     `Headline: ${title}\n`;
 
-  const maxTokens = Math.max(90, Math.min(220, budgetToTokensSummary(budget) + 70));
   const text = await generateAiText('summary', input, maxTokens, 0);
-  if (!text) return undefined;
-  return parseTitleTranslation(text);
+  const parsed = text ? parseTitleTranslation(text) : undefined;
+
+  let bg = normalizeTitleValue(parsed?.bg || '');
+  let en = normalizeTitleValue(parsed?.en || '');
+  const srcKey = normalizedTitleKey(title);
+  const bgNeedsRetry = !bg || !looksBulgarianTitle(bg);
+  const enNeedsRetry = !en || !looksEnglishTitle(en);
+
+  if (bgNeedsRetry) {
+    const retryBgText = await generateAiText(
+      'summary',
+      `${titleTranslateSingleInstruction('bg')}\nSource: ${source}\nHeadline: ${title}\n`,
+      maxTokens,
+      0
+    );
+    const retryBg = normalizeTitleValue(retryBgText || '');
+    if (retryBg && looksBulgarianTitle(retryBg)) bg = retryBg;
+  }
+
+  if (enNeedsRetry) {
+    const retryEnText = await generateAiText(
+      'summary',
+      `${titleTranslateSingleInstruction('en')}\nSource: ${source}\nHeadline: ${title}\n`,
+      maxTokens,
+      0
+    );
+    const retryEn = normalizeTitleValue(retryEnText || '');
+    if (retryEn && looksEnglishTitle(retryEn)) en = retryEn;
+  }
+
+  if (!bg || !en) return undefined;
+
+  const bgKey = normalizedTitleKey(bg);
+  const enKey = normalizedTitleKey(en);
+
+  if (bgKey && enKey && bgKey === enKey) {
+    if (looksBulgarianTitle(title)) {
+      // Source is likely BG; keep BG and keep EN only if it differs.
+      if (enKey === srcKey) return undefined;
+    } else if (looksEnglishTitle(title)) {
+      // Source is likely EN; keep EN and keep BG only if it differs.
+      if (bgKey === srcKey) return undefined;
+    } else {
+      return undefined;
+    }
+  }
+
+  return { bg, en };
 }
 
 async function oneItemResearch(
@@ -1630,6 +1720,12 @@ function hasSummaryJobQueuedOrRunning(id: string, feedUrl: string): boolean {
   return aiQueue.some(job => job.kind === 'summary' && job.id === id && job.feedUrl === feedUrl);
 }
 
+function hasTitleTranslateJobQueuedOrRunning(id: string, feedUrl: string): boolean {
+  const k = `title_translate:${feedUrl || ''}::${id}`;
+  if (aiInFlight.has(k)) return true;
+  return aiQueue.some(job => job.kind === 'title_translate' && job.id === id && job.feedUrl === feedUrl);
+}
+
 function isJobExpired(job: AiJob, nowMs = Date.now()): boolean {
   return nowMs - job.enqueuedAtMs > AI_JOB_TTL_MS;
 }
@@ -1744,6 +1840,37 @@ function enqueueJob(job: AiJobInput) {
   aiQueue.push(nextJob);
 }
 
+function enqueueTitleTranslateBackfill(options?: {
+  feedUrl?: string;
+  max?: number;
+  manual?: boolean;
+}): number {
+  if (!aiEnabled || !aiAvailable) return 0;
+  if (activeModel('summary') === 'none') return 0;
+
+  const targetFeedUrl = String(options?.feedUrl || '').trim();
+  const max = Math.max(1, Math.min(2_000, Math.floor(options?.max ?? 320)));
+  const manual = !!options?.manual;
+  const list = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
+  let done = 0;
+
+  for (const it of list) {
+    if (done >= max) break;
+    if (targetFeedUrl && !eligibleForFeed(it, targetFeedUrl)) continue;
+    if (hiddenIds.has(it.id)) continue;
+    if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) continue;
+
+    const itemBudget = feedSettings.get(it.feedUrl)?.budget || 'standard';
+    if (!manual && itemBudget !== 'high') continue;
+    if (hasTitleTranslateJobQueuedOrRunning(it.id, it.feedUrl)) continue;
+
+    enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl, manual });
+    done++;
+  }
+
+  return done;
+}
+
 async function runOneJob(job: AiJob) {
   const k = jobKey(job);
   aiInFlight.add(k);
@@ -1782,7 +1909,7 @@ async function runOneJob(job: AiJob) {
     }
 
     if (job.kind === 'title_translate') {
-      if (budget !== 'high') return;
+      if (!job.manual && budget !== 'high') return;
       if (activeModel('summary') === 'none') return;
       if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) return;
 
@@ -2339,6 +2466,19 @@ wss.on('connection', (ws: WebSocket) => {
       return;
     }
 
+    if (raw && typeof raw === 'object' && (raw as { type?: unknown }).type === 'run_title_translate_item') {
+      const id = String((raw as { id?: unknown }).id || '').trim();
+      const feedUrl = String((raw as { feedUrl?: unknown }).feedUrl || '').trim();
+      if (!id || !feedUrl) return;
+      if (!aiEnabled || !aiAvailable || activeModel('summary') === 'none') return;
+
+      const it = recent.find(x => x.id === id && x.feedUrl === feedUrl) || recent.find(x => x.id === id);
+      if (!it) return;
+      enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl, manual: true });
+      ws.send(JSON.stringify({ type: 'ok', message: 'Title translation requested.' }));
+      return;
+    }
+
     const parsed = clientMsgSchema.safeParse(raw);
     if (!parsed.success) return;
     const msg: ClientMsg = parsed.data;
@@ -2356,6 +2496,9 @@ wss.on('connection', (ws: WebSocket) => {
       aiInFlight.clear();
 
       await initKeywordEmbeddings();
+      if (aiEnabled && aiAvailable) {
+        enqueueTitleTranslateBackfill({ max: 360 });
+      }
       broadcastConfig();
       markDirty();
       return;
@@ -2385,6 +2528,9 @@ wss.on('connection', (ws: WebSocket) => {
       aiInFlight.clear();
 
       await initKeywordEmbeddings();
+      if (aiEnabled && aiAvailable) {
+        enqueueTitleTranslateBackfill({ max: 360 });
+      }
       broadcastConfig();
       ws.send(JSON.stringify({
         type: 'ok',
@@ -2974,6 +3120,9 @@ wss.on('connection', (ws: WebSocket) => {
 
   // load embeddings once
   if (aiEnabled) await initKeywordEmbeddings();
+  if (aiEnabled && aiAvailable) {
+    enqueueTitleTranslateBackfill({ max: 420 });
+  }
 
   // start scheduler
   startScheduler();

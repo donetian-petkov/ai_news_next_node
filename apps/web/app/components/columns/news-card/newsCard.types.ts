@@ -44,6 +44,7 @@ export type NewsCardHandlers = {
   onCopyNews: (it: NewsItem) => void;
   onHideItem: (it: NewsItem) => void;
   onRequestSummary: (it: NewsItem) => void;
+  onRequestTitleTranslation: (it: NewsItem) => void;
   onRequestResearch: (it: NewsItem) => void;
   onToggleAsk: (id: string, feedUrl: string) => void;
   onSetSummaryMode: (mode: BodyMode) => void;

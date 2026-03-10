@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, FormControl, MenuItem, Select } from '@mui/material';
+import { FILTERED_FEED_URL } from '../../../../store/constants';
 import type { SortMode } from '../../../../store/types';
 import type { FeedFilterPreset } from '../../reactColumns.types';
 import { getFeedFilterPreset } from '../../reactColumns.utils';
@@ -13,15 +14,24 @@ export function FeedColumnGeneralSettings() {
   const { connected, compactBtnSx, compactFormSx, labels } = view;
   const advancedControlsOpen = !!state.advancedControlsByUrl[feed.url];
   const { onSetFeedInterval, onSetFeedSortMode, onSetFeedFilterPreset, onToggleAdvancedControls } = handlers;
+  const presetPollIntervals = [45, 60, 90, 120, 180, 300];
+  const isFilteredColumn = feed.url === FILTERED_FEED_URL || String(feed.label || '').toLowerCase().startsWith('filtered');
+  const currentPoll = isFilteredColumn
+    ? 120
+    : Math.max(20, Math.min(3600, Math.floor(Number(feed.intervalSec) || 120)));
+  const hasCustomPoll = !isFilteredColumn && !presetPollIntervals.includes(currentPoll);
 
   return (
     <>
       <FormControl size="small" fullWidth sx={compactFormSx}>
         <Select
-          value={String(feed.intervalSec || 120)}
+          value={String(currentPoll)}
           onChange={e => onSetFeedInterval(feed, Number(e.target.value) || 120)}
-          disabled={!connected}
+          disabled={!connected || isFilteredColumn}
         >
+          {hasCustomPoll ? (
+            <MenuItem value={String(currentPoll)}>{`Poll: ${currentPoll}s`}</MenuItem>
+          ) : null}
           <MenuItem value="45">{labels.poll45}</MenuItem>
           <MenuItem value="60">{labels.poll60}</MenuItem>
           <MenuItem value="90">{labels.poll90}</MenuItem>

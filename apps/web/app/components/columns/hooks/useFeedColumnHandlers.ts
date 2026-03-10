@@ -27,6 +27,7 @@ type Args = {
   copyNewsPayload: FeedColumnHandlers['onCopyNewsPayload'];
   hideItem: FeedColumnHandlers['onHideItem'];
   requestSummary: FeedColumnHandlers['onRequestSummary'];
+  requestTitleTranslation: FeedColumnHandlers['onRequestTitleTranslation'];
   requestResearch: FeedColumnHandlers['onRequestResearch'];
   requestAsk: FeedColumnHandlers['onAskSubmit'];
 };
@@ -52,6 +53,7 @@ export function useFeedColumnHandlers({
   copyNewsPayload,
   hideItem,
   requestSummary,
+  requestTitleTranslation,
   requestResearch,
   requestAsk
 }: Args) {
@@ -80,9 +82,10 @@ export function useFeedColumnHandlers({
     onCopyNewsPayload: copyNewsPayload,
     onHideItem: hideItem,
     onRequestSummary: requestSummary,
+    onRequestTitleTranslation: requestTitleTranslation,
     onRequestResearch: requestResearch,
     onToggleAsk: (id, feedUrl) => dispatch(toggleAskOpen({ id, feedUrl })),
     onSetAskDraft: (id, feedUrl, draft) => dispatch(setAskDraft({ id, feedUrl, draft })),
     onAskSubmit: requestAsk
-  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, removeFeed, removeOldInFeed, requestAsk, requestResearch, requestSummary, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, toggleFeedResearch, toggleFeedSummary]);
+  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, removeFeed, removeOldInFeed, requestAsk, requestResearch, requestSummary, requestTitleTranslation, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, toggleFeedResearch, toggleFeedSummary]);
 }

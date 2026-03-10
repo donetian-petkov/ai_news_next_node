@@ -119,6 +119,15 @@ export function useNewsItemActions({
     if (!ok) dispatch(clearResearchPending(key));
   }, [connected, dispatch]);
 
+  const requestTitleTranslation = useCallback((it: NewsItem) => {
+    if (!connected) return;
+    sendWsMessage({
+      type: 'run_title_translate_item',
+      id: it.id,
+      feedUrl: it.feedUrl
+    });
+  }, [connected]);
+
   const hideItem = useCallback((it: NewsItem) => {
     const ok = sendWsMessage({ type: 'hide_item', id: it.id });
     if (ok) dispatch(hideItemLocally(it.id));
@@ -300,6 +309,7 @@ export function useNewsItemActions({
 
   return {
     requestSummary,
+    requestTitleTranslation,
     requestResearch,
     hideItem,
     copyLink,

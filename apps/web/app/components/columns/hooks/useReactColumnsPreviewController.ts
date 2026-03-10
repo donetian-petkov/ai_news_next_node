@@ -403,6 +403,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
 
   const {
     requestSummary,
+    requestTitleTranslation,
     requestResearch,
     hideItem,
     copyLink,
@@ -491,6 +492,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     copyNewsPayload,
     hideItem,
     requestSummary,
+    requestTitleTranslation,
     requestResearch,
     requestAsk
   });

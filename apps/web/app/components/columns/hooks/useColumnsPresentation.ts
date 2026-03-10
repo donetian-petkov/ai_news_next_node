@@ -60,6 +60,7 @@ type Args = {
   copyNewsPayload: FeedColumnHandlers['onCopyNewsPayload'];
   hideItem: FeedColumnHandlers['onHideItem'];
   requestSummary: FeedColumnHandlers['onRequestSummary'];
+  requestTitleTranslation: FeedColumnHandlers['onRequestTitleTranslation'];
   requestResearch: FeedColumnHandlers['onRequestResearch'];
   requestAsk: FeedColumnHandlers['onAskSubmit'];
 };
@@ -103,6 +104,7 @@ export function useColumnsPresentation({
   copyNewsPayload,
   hideItem,
   requestSummary,
+  requestTitleTranslation,
   requestResearch,
   requestAsk
 }: Args) {
@@ -146,6 +148,7 @@ export function useColumnsPresentation({
     copyNewsPayload,
     hideItem,
     requestSummary,
+    requestTitleTranslation,
     requestResearch,
     requestAsk
   });

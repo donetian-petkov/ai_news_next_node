@@ -154,6 +154,7 @@ export type FeedColumnHandlers = {
   onCopyNewsPayload: (it: NewsItem) => void;
   onHideItem: (it: NewsItem) => void;
   onRequestSummary: (it: NewsItem) => void;
+  onRequestTitleTranslation: (it: NewsItem) => void;
   onRequestResearch: (it: NewsItem) => void;
   onToggleAsk: (id: string, feedUrl: string) => void;
   onSetAskDraft: (id: string, feedUrl: string, draft: string) => void;
