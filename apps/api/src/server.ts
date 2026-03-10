@@ -140,6 +140,8 @@ type News = {
   type: 'news';
   id: string;
   title: string;
+  titleBg?: string;
+  titleEn?: string;
   link: string;
   source: string;
   published?: string;
@@ -1037,6 +1039,52 @@ function researchInstruction(lang: ResearchLang): string {
   return common + ' Write in English.';
 }
 
+function titleTranslateInstruction(): string {
+  return [
+    'Translate the headline to Bulgarian and English.',
+    'Return strict JSON only with exactly two keys: "bg" and "en".',
+    'Do not add markdown, code fences, or extra keys.',
+    'Keep meaning and names intact.',
+    'Keep each headline concise and natural.'
+  ].join(' ');
+}
+
+function normalizeTitleValue(raw: unknown): string {
+  return String(raw || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 320);
+}
+
+function parseTitleTranslation(raw: string): { bg: string; en: string } | undefined {
+  const text = String(raw || '').trim();
+  if (!text) return undefined;
+
+  const normalized = text
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  const tryParse = (candidate: string): { bg: string; en: string } | undefined => {
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown>;
+      const bg = normalizeTitleValue(parsed.bg);
+      const en = normalizeTitleValue(parsed.en);
+      if (!bg || !en) return undefined;
+      return { bg, en };
+    } catch {
+      return undefined;
+    }
+  };
+
+  const direct = tryParse(normalized);
+  if (direct) return direct;
+
+  const m = normalized.match(/\{[\s\S]*\}/);
+  if (!m) return undefined;
+  return tryParse(m[0]);
+}
+
 function normalizeMood(raw: string): Mood | undefined {
   const s = String(raw || '')
     .trim()
@@ -1308,6 +1356,22 @@ async function oneLineSummary(
   return generateAiText('summary', input, budgetToTokensSummary(budget), 0.2);
 }
 
+async function translateTitleBilingual(
+  title: string,
+  source: string,
+  budget: BudgetMode
+): Promise<{ bg: string; en: string } | undefined> {
+  const input =
+    `${titleTranslateInstruction()}\n` +
+    `Source: ${source}\n` +
+    `Headline: ${title}\n`;
+
+  const maxTokens = Math.max(90, Math.min(220, budgetToTokensSummary(budget) + 70));
+  const text = await generateAiText('summary', input, maxTokens, 0);
+  if (!text) return undefined;
+  return parseTitleTranslation(text);
+}
+
 async function oneItemResearch(
   title: string,
   source: string,
@@ -1466,6 +1530,8 @@ function broadcastNewsUpdate(it: NewsInternal) {
     type: 'news',
     id: it.id,
     title: it.title,
+    titleBg: it.titleBg,
+    titleEn: it.titleEn,
     link: it.link,
     source: it.source,
     published: it.published,
@@ -1522,7 +1588,7 @@ function shouldHaveSummary(it: NewsInternal): boolean {
 }
 
 // ---------------- AI JOB QUEUE (non-blocking) ----------------
-type AiJobKind = 'summary' | 'research' | 'mood' | 'news_type';
+type AiJobKind = 'summary' | 'title_translate' | 'research' | 'mood' | 'news_type';
 type AiJobInput = { kind: AiJobKind; id: string; feedUrl: string; manual?: boolean };
 type AiJob = AiJobInput & { enqueuedAtMs: number };
 type DeadLetterAiJob = {
@@ -1545,6 +1611,7 @@ const AI_QUEUE_MAX = Math.max(200, parseInt(process.env.AI_QUEUE_MAX || '600', 1
 const AI_JOB_TTL_MS = Math.max(15_000, Number.parseInt(process.env.AI_JOB_TTL_MS ?? '180_000', 10) || 180_000);
 const AI_DEAD_LETTER_MAX = Math.max(50, Number.parseInt(process.env.AI_DEAD_LETTER_MAX ?? '400', 10) || 400);
 const AI_SUMMARY_TIMEOUT_MS = Math.max(4_000, Number.parseInt(process.env.AI_SUMMARY_TIMEOUT_MS ?? '22_000', 10) || 22_000);
+const AI_TITLE_TRANSLATE_TIMEOUT_MS = Math.max(6_000, Number.parseInt(process.env.AI_TITLE_TRANSLATE_TIMEOUT_MS ?? '24_000', 10) || 24_000);
 const AI_RESEARCH_TIMEOUT_MS = Math.max(8_000, Number.parseInt(process.env.AI_RESEARCH_TIMEOUT_MS ?? '45_000', 10) || 45_000);
 const AI_RESEARCH_TIMEOUT_MANUAL_MS = Math.max(
   AI_RESEARCH_TIMEOUT_MS,
@@ -1608,9 +1675,10 @@ function purgeExpiredQueuedJobs() {
 
 function jobPriority(j: AiJob): number {
   if (j.kind === 'summary') return j.manual ? 0 : 1;
-  if (j.kind === 'research') return j.manual ? 2 : 3;
-  if (j.kind === 'mood') return 4;
-  return 5; // news_type
+  if (j.kind === 'research') return j.manual ? 2 : 4;
+  if (j.kind === 'title_translate') return 3;
+  if (j.kind === 'mood') return 5;
+  return 6; // news_type
 }
 
 function dequeueNextJob(): AiJob | undefined {
@@ -1707,6 +1775,25 @@ async function runOneJob(job: AiJob) {
       );
       if (text) {
         it.summary = text;
+        broadcastNewsUpdate(it);
+        markDirty();
+      }
+      return;
+    }
+
+    if (job.kind === 'title_translate') {
+      if (budget !== 'high') return;
+      if (activeModel('summary') === 'none') return;
+      if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) return;
+
+      const translated = await withTimeout(
+        translateTitleBilingual(it.title, it.source, budget),
+        AI_TITLE_TRANSLATE_TIMEOUT_MS,
+        `title_translate:${it.id}`
+      );
+      if (translated) {
+        it.titleBg = translated.bg;
+        it.titleEn = translated.en;
         broadcastNewsUpdate(it);
         markDirty();
       }
@@ -1942,6 +2029,7 @@ async function processFeed(fi: FeedInfo) {
 
   const s = feedSettings.get(fi.url)!;
   const rt = feedRuntime.get(fi.url)!;
+  const budget = s.budget || 'standard';
 
   // compute interval (per-feed override)
   const intervalSec = Math.max(20, Math.min(3600, Number(s.intervalSec || fi.intervalSec || defaultIntervalForKind(fi.kind))));
@@ -2020,6 +2108,8 @@ async function processFeed(fi: FeedInfo) {
         type: 'news',
         id,
         title,
+        titleBg: undefined,
+        titleEn: undefined,
         link,
         source,
         published,
@@ -2049,6 +2139,7 @@ async function processFeed(fi: FeedInfo) {
           feedSettings.get(FILTERED_FEED_URL)?.researchEnabled && filteredOk;
 
         if (wantFeedSummary || wantFilteredSummary) enqueueJob({ kind: 'summary', id, feedUrl: fi.url });
+        if (budget === 'high') enqueueJob({ kind: 'title_translate', id, feedUrl: fi.url });
         enqueueJob({ kind: 'mood', id, feedUrl: fi.url });
         enqueueJob({ kind: 'news_type', id, feedUrl: fi.url });
         if (wantFeedResearch || wantFilteredResearch) enqueueJob({ kind: 'research', id, feedUrl: fi.url });
@@ -2525,6 +2616,20 @@ wss.on('connection', (ws: WebSocket) => {
       }
 
       feedSettings.get(feedUrl)!.budget = budget;
+
+      if (budget === 'high' && aiEnabled && aiAvailable && activeModel('summary') !== 'none') {
+        const MAX = 260;
+        const list = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
+        let done = 0;
+        for (const it of list) {
+          if (done >= MAX) break;
+          if (!eligibleForFeed(it, feedUrl)) continue;
+          if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) continue;
+          enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl });
+          done++;
+        }
+      }
+
       broadcastConfig();
       markDirty();
       return;
@@ -2543,6 +2648,18 @@ wss.on('connection', (ws: WebSocket) => {
 
       if (feedSettings.has(FILTERED_FEED_URL)) {
         feedSettings.get(FILTERED_FEED_URL)!.budget = budget;
+      }
+
+      if (budget === 'high' && aiEnabled && aiAvailable && activeModel('summary') !== 'none') {
+        const MAX = 420;
+        const list = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
+        let done = 0;
+        for (const it of list) {
+          if (done >= MAX) break;
+          if (it.titleBg && it.titleBg.trim() && it.titleEn && it.titleEn.trim()) continue;
+          enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl });
+          done++;
+        }
       }
 
       broadcastConfig();

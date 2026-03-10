@@ -32,6 +32,8 @@ export function NewsCardHeader() {
   const ShareIconComp = vibeIcons.share;
   const HideIconComp = vibeIcons.hide;
   const CopyIconComp = vibeIcons.copy;
+  const titleBg = String(item.titleBg || '').trim();
+  const titleEn = String(item.titleEn || '').trim();
 
   return (
     <>
@@ -197,6 +199,27 @@ export function NewsCardHeader() {
         <span>{item.title}</span>
         <OpenInNewIcon sx={{ fontSize: 14 }} />
       </MuiLink>
+
+      {(titleBg || titleEn) ? (
+        <Stack spacing={0.25} sx={{ mb: 1.0 }}>
+          {titleBg ? (
+            <Typography
+              variant="caption"
+              sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, display: 'block', lineHeight: 1.35 }}
+            >
+              BG: {titleBg}
+            </Typography>
+          ) : null}
+          {titleEn ? (
+            <Typography
+              variant="caption"
+              sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, display: 'block', lineHeight: 1.35 }}
+            >
+              EN: {titleEn}
+            </Typography>
+          ) : null}
+        </Stack>
+      ) : null}
 
       {hasBodyBlock ? (
         <Box

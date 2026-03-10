@@ -88,6 +88,8 @@ export type FeedInfo = {
 export type NewsItem = {
   id: string;
   title: string;
+  titleBg?: string;
+  titleEn?: string;
   link: string;
   publishedMs: number;
   feedUrl: string;
