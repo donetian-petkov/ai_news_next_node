@@ -2752,17 +2752,6 @@ wss.on('connection', (ws: WebSocket) => {
       feedSettings.get(feedUrl)!.summaryEnabled = enabled;
       broadcastConfig();
 
-      for (const it of recent) {
-        if (!eligibleForFeed(it, feedUrl)) continue;
-        if (!it.summary && !it.research) continue;
-        it.summary = '';
-        it.research = '';
-        if (enabled && aiEnabled && aiAvailable && activeModel('summary') !== 'none') {
-          enqueueJob({ kind: 'summary', id: it.id, feedUrl: it.feedUrl });
-        }
-        broadcastNewsUpdate(it);
-      }
-
       // enqueue bounded backfill
       if (enabled && aiEnabled && aiAvailable && activeModel('summary') !== 'none') {
         const MAX = 220;
