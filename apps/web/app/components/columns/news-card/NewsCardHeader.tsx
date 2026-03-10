@@ -38,9 +38,19 @@ export function NewsCardHeader() {
         direction="row"
         justifyContent="space-between"
         alignItems="flex-start"
-        sx={{ mb: 0.9, pt: 0.35, px: 0.8, flexWrap: 'wrap', rowGap: 0.6, columnGap: 0.7 }}
+        sx={{
+          mb: 0.9,
+          pt: 0.35,
+          px: 0.8,
+          flexWrap: 'nowrap',
+          rowGap: 0.6,
+          columnGap: 0.7,
+          '@media (max-width: 660px)': {
+            flexWrap: 'wrap'
+          }
+        }}
       >
-        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'wrap', rowGap: 0.45 }}>
+        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '0 1 auto', flexWrap: 'nowrap', rowGap: 0.45 }}>
           <Typography
             variant="caption"
             sx={{ color: NEWS_CARD_COLOR_TOKENS.headerMuted, whiteSpace: 'nowrap', flexShrink: 0 }}
@@ -55,12 +65,13 @@ export function NewsCardHeader() {
           sx={{
             pr: 0.2,
             ml: 'auto',
-            flex: '0 0 auto',
-            flexWrap: 'wrap',
+            flex: '0 1 auto',
+            flexWrap: 'nowrap',
             justifyContent: 'flex-end',
             rowGap: 0.45,
             '@media (max-width: 660px)': {
               width: '100%',
+              flexWrap: 'wrap',
               justifyContent: 'flex-start',
               ml: 0
             }
