@@ -14,6 +14,19 @@ import { formatTime } from '../reactColumns.utils';
 import { NEWS_CARD_COLOR_TOKENS } from '../designTokens';
 import { useNewsCardContext } from './context/useNewsCardContext';
 
+function detectTitleLanguage(raw: string): 'bg' | 'en' | 'unknown' {
+  const text = String(raw || '');
+  const cyr = (text.match(/[А-Яа-яЁёЍѝ]/g) || []).length;
+  const lat = (text.match(/[A-Za-z]/g) || []).length;
+  const total = cyr + lat;
+  if (!total) return 'unknown';
+  const cyrRatio = cyr / total;
+  const latRatio = lat / total;
+  if (cyrRatio >= 0.45 && cyrRatio > latRatio) return 'bg';
+  if (latRatio >= 0.55 && latRatio > cyrRatio) return 'en';
+  return 'unknown';
+}
+
 export function NewsCardHeader() {
   const {
     view,
@@ -35,19 +48,25 @@ export function NewsCardHeader() {
   const titleBg = String(item.titleBg || '').trim();
   const titleEn = String(item.titleEn || '').trim();
   const [titleOverride, setTitleOverride] = useState<'auto' | 'translated' | 'original'>('auto');
-  const selectedTranslation = useMemo(() => {
-    if (view.titleDisplayLanguage === 'bg') return titleBg;
-    if (view.titleDisplayLanguage === 'en') return titleEn;
-    return '';
-  }, [titleBg, titleEn, view.titleDisplayLanguage]);
-  const fallbackTranslation = useMemo(() => {
-    if (titleBg && titleBg !== item.title) return titleBg;
-    if (titleEn && titleEn !== item.title) return titleEn;
-    return '';
-  }, [item.title, titleBg, titleEn]);
-  const translatedCandidate = selectedTranslation && selectedTranslation !== item.title
-    ? selectedTranslation
-    : fallbackTranslation;
+  const sourceTitleLanguage = useMemo(() => detectTitleLanguage(item.title), [item.title]);
+  const translatedCandidate = useMemo(() => {
+    const bgCandidate = titleBg && titleBg !== item.title ? titleBg : '';
+    const enCandidate = titleEn && titleEn !== item.title ? titleEn : '';
+
+    if (view.titleDisplayLanguage === 'bg') {
+      if (sourceTitleLanguage === 'bg') return '';
+      return bgCandidate;
+    }
+
+    if (view.titleDisplayLanguage === 'en') {
+      if (sourceTitleLanguage === 'en') return '';
+      return enCandidate;
+    }
+
+    if (sourceTitleLanguage === 'bg') return enCandidate;
+    if (sourceTitleLanguage === 'en') return bgCandidate;
+    return bgCandidate || enCandidate;
+  }, [item.title, sourceTitleLanguage, titleBg, titleEn, view.titleDisplayLanguage]);
   const hasAnyTranslation = !!translatedCandidate;
   const displayTranslated = titleOverride === 'translated'
     || (titleOverride === 'auto' && view.titleDisplayLanguage !== 'original' && hasAnyTranslation);
