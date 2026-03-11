@@ -119,29 +119,26 @@ export function NewsCardHeader() {
           px: 0.8,
           flexWrap: 'nowrap',
           rowGap: 0.6,
-          columnGap: 0.7,
+          columnGap: 1.25,
           '@media (max-width: 860px)': {
             flexWrap: 'wrap'
           }
         }}
       >
-        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45 }}>
+        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45, pr: { xs: 0.4, sm: 1.2 } }}>
           {showSourceLabel ? (
             <Typography
               variant="caption"
               sx={{
                 color: NEWS_CARD_COLOR_TOKENS.headerMuted,
                 opacity: 0.92,
-                maxWidth: 188,
+                maxWidth: { xs: 120, sm: 170, md: 210 },
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 fontWeight: 700,
                 letterSpacing: 0.2,
-                display: {
-                  xs: 'none',
-                  lg: 'inline'
-                }
+                display: 'inline'
               }}
               title={sourceLabel}
             >
@@ -167,6 +164,7 @@ export function NewsCardHeader() {
           sx={{
             pr: 0.2,
             ml: 'auto',
+            pl: { xs: 0, sm: 0.6 },
             flex: '0 1 auto',
             flexWrap: 'nowrap',
             justifyContent: 'flex-end',
