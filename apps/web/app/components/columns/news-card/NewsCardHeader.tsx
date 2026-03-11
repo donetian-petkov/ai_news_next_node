@@ -119,39 +119,19 @@ export function NewsCardHeader() {
           px: 0.8,
           flexWrap: 'nowrap',
           rowGap: 0.6,
-          columnGap: 1.25,
+          columnGap: 1.35,
           '@media (max-width: 860px)': {
             flexWrap: 'wrap'
           }
         }}
       >
-        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45, pr: { xs: 0.4, sm: 1.2 } }}>
-          {showSourceLabel ? (
-            <Typography
-              variant="caption"
-              sx={{
-                color: NEWS_CARD_COLOR_TOKENS.headerMuted,
-                opacity: 0.92,
-                maxWidth: { xs: 120, sm: 170, md: 210 },
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontWeight: 700,
-                letterSpacing: 0.2,
-                display: 'inline'
-              }}
-              title={sourceLabel}
-            >
-              {sourceLabel}
-            </Typography>
-          ) : null}
+        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap', rowGap: 0.45, pr: { xs: 0.9, sm: 1.8 } }}>
           <Typography
             variant="caption"
             sx={{
               color: NEWS_CARD_COLOR_TOKENS.headerMuted,
               whiteSpace: 'nowrap',
-              flexShrink: 0,
-              ml: showSourceLabel ? { xs: 0, lg: 0.8 } : 0
+              flexShrink: 0
             }}
           >
             {formatTime(item.publishedMs)}
@@ -164,7 +144,7 @@ export function NewsCardHeader() {
           sx={{
             pr: 0.2,
             ml: 'auto',
-            pl: { xs: 0, sm: 0.6 },
+            pl: { xs: 0, sm: 0.85 },
             flex: '0 1 auto',
             flexWrap: 'nowrap',
             justifyContent: 'flex-end',
@@ -187,6 +167,7 @@ export function NewsCardHeader() {
                 borderColor: matchAccent,
                 fontWeight: 800,
                 flexShrink: 0,
+                ml: { xs: 0, sm: 0.7 },
                 whiteSpace: isDuplicateMatch ? 'pre-line' : 'nowrap',
                 height: isDuplicateMatch ? 'auto' : undefined,
                 '& .MuiChip-label': isDuplicateMatch
@@ -276,7 +257,7 @@ export function NewsCardHeader() {
         </Stack>
       </Stack>
 
-      <Stack direction="row" alignItems="flex-start" spacing={0.7} sx={{ mb: 1.1 }}>
+      <Stack direction="row" alignItems="flex-start" spacing={0.7} sx={{ mb: showSourceLabel ? 0.45 : 1.1 }}>
         <Tooltip
           title={displayTranslated ? labels.showOriginalTitle : labels.showTranslatedTitle}
         >
@@ -323,6 +304,26 @@ export function NewsCardHeader() {
           <OpenInNewIcon sx={{ fontSize: 16 }} />
         </MuiLink>
       </Stack>
+      {showSourceLabel ? (
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            mb: hasBodyBlock ? 1.05 : 0,
+            color: NEWS_CARD_COLOR_TOKENS.headerMuted,
+            opacity: 0.92,
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontWeight: 700,
+            letterSpacing: 0.2
+          }}
+          title={sourceLabel}
+        >
+          {sourceLabel}
+        </Typography>
+      ) : null}
 
       {hasBodyBlock ? (
         <Box
