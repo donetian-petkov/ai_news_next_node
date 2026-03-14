@@ -48,12 +48,22 @@ export function NewsCardBody() {
   const showResearchBlock = hasResearchBlock && !narrativeReplacement;
   const perspectives = insights?.perspectives;
   const selectedPerspectiveText = perspectives?.[perspective];
+  const levelLabels: Record<'high' | 'medium' | 'low', string> = {
+    high: labels.levelHigh,
+    medium: labels.levelMedium,
+    low: labels.levelLow
+  };
+  const velocityLabels: Record<'watch' | 'rising' | 'viral', string> = {
+    watch: labels.emergingWatch,
+    rising: labels.emergingRising,
+    viral: labels.emergingViral
+  };
   const factSections = insights?.facts ? [
-    ['People', insights.facts.people],
-    ['Locations', insights.facts.locations],
-    ['Dates', insights.facts.dates],
-    ['Numbers', insights.facts.numbers],
-    ['Quotes', insights.facts.quotes]
+    [labels.peopleLabel, insights.facts.people],
+    [labels.locationsLabel, insights.facts.locations],
+    [labels.datesLabel, insights.facts.dates],
+    [labels.numbersLabel, insights.facts.numbers],
+    [labels.quotesLabel, insights.facts.quotes]
   ] as const : [];
   const aiInsightGroupSx = {
     mt: 1.05,
@@ -100,13 +110,13 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Headline risk
+            {labels.headlineRiskSection}
           </Typography>
           <Chip
             size="small"
             color="warning"
             variant="outlined"
-            label={`${labels.sensationalismDetected}: ${insights.sensationalism.level}`}
+            label={`${labels.sensationalismDetected}: ${levelLabels[insights.sensationalism.level]}`}
             sx={{ mb: insights.sensationalism.reasons.length || insights.sensationalism.alternativeHeadline ? 0.55 : 0 }}
           />
           {insights.sensationalism.reasons.length ? (
@@ -116,7 +126,7 @@ export function NewsCardBody() {
           ) : null}
           {insights.sensationalism.alternativeHeadline ? (
             <Typography variant="caption" sx={insightMetaSx}>
-              AI headline: {insights.sensationalism.alternativeHeadline}
+              {labels.aiHeadlineLabel}: {insights.sensationalism.alternativeHeadline}
             </Typography>
           ) : null}
         </Box>
@@ -137,7 +147,7 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Bias
+            {labels.biasSection}
           </Typography>
           <Chip
             size="small"
@@ -185,17 +195,17 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Impact
+            {labels.impactSection}
           </Typography>
           <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.storyImpact}: {insights.impact.score}
+            {labels.storyImpact}: {levelLabels[insights.impact.score]}
           </Typography>
           <Typography variant="body2" sx={insightBodySx}>
             {insights.impact.summary}
           </Typography>
           {insights.impact.industries.length ? (
             <Typography variant="caption" sx={insightMetaSx}>
-              Industries: {insights.impact.industries.join(' • ')}
+              {labels.industriesLabel}: {insights.impact.industries.join(' • ')}
             </Typography>
           ) : null}
         </Box>
@@ -218,10 +228,10 @@ export function NewsCardBody() {
             onChange={event => setPerspective(event.target.value as typeof perspective)}
             sx={{ mb: 0.5 }}
           >
-            <MenuItem value="investor">Investor</MenuItem>
-            <MenuItem value="government">Government</MenuItem>
-            <MenuItem value="consumer">Consumer</MenuItem>
-            <MenuItem value="tech">Tech industry</MenuItem>
+            <MenuItem value="investor">{labels.perspectiveInvestor}</MenuItem>
+            <MenuItem value="government">{labels.perspectiveGovernment}</MenuItem>
+            <MenuItem value="consumer">{labels.perspectiveConsumer}</MenuItem>
+            <MenuItem value="tech">{labels.perspectiveTech}</MenuItem>
           </Select>
           {selectedPerspectiveText ? (
             <Typography variant="body2" sx={insightBodySx}>
@@ -257,13 +267,13 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Emerging
+            {labels.emergingSection}
           </Typography>
           <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.emergingStory}: {item.emergingSignal.velocity}
+            {labels.emergingStory}: {velocityLabels[item.emergingSignal.velocity]}
           </Typography>
           <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.2 }}>
-            {item.emergingSignal.reason} · {item.emergingSignal.clusterSize} related stories · {item.emergingSignal.sources.join(', ')}
+            {item.emergingSignal.reason} · {item.emergingSignal.clusterSize} {labels.relatedStories} · {item.emergingSignal.sources.join(', ')}
           </Typography>
         </Box>
       )
@@ -276,7 +286,7 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Comparison
+            {labels.comparisonSection}
           </Typography>
           <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
             {labels.historicalComparison}
@@ -298,7 +308,7 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Outlook
+            {labels.outlookSection}
           </Typography>
           <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
             {labels.futureScenario}
@@ -323,7 +333,7 @@ export function NewsCardBody() {
       element: (
         <Box sx={insightSectionSx}>
           <Typography variant="overline" sx={insightSectionTitleSx}>
-            Local
+            {labels.localSection}
           </Typography>
           <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
             {labels.localImpact}: {insights.localImpact.region || localImpactRegion}
@@ -450,9 +460,9 @@ export function NewsCardBody() {
         <Box sx={aiInsightGroupSx}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 0.85 }}>
             <Typography variant="overline" sx={{ ...insightSectionTitleSx, mb: 0 }}>
-              AI insights
+              {labels.aiInsights}
             </Typography>
-            <Chip size="small" color="success" variant="outlined" label={`Ready · ${insightPanels.length}`} />
+            <Chip size="small" color="success" variant="outlined" label={`${labels.aiReady} · ${insightPanels.length}`} />
           </Stack>
           <Stack spacing={0.9}>
             {visibleInsightPanels.map(panel => (
@@ -466,7 +476,7 @@ export function NewsCardBody() {
               onClick={() => setShowAllInsights(current => !current)}
               sx={{ mt: 0.55, color: accent, textTransform: 'none', fontWeight: 700 }}
             >
-              {showAllInsights ? 'Show fewer AI insights' : `Show ${hiddenInsightCount} more AI insight${hiddenInsightCount === 1 ? '' : 's'}`}
+              {showAllInsights ? labels.showFewerAiInsights : labels.showMoreAiInsights}
             </Button>
           ) : null}
         </Box>

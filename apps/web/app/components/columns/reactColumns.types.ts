@@ -78,6 +78,35 @@ export type CardLabels = {
   localImpact: string;
   topicTracking: string;
   emergingStory: string;
+  aiInsights: string;
+  aiReady: string;
+  showMoreAiInsights: string;
+  showFewerAiInsights: string;
+  headlineRiskSection: string;
+  biasSection: string;
+  impactSection: string;
+  comparisonSection: string;
+  outlookSection: string;
+  localSection: string;
+  emergingSection: string;
+  peopleLabel: string;
+  locationsLabel: string;
+  datesLabel: string;
+  numbersLabel: string;
+  quotesLabel: string;
+  industriesLabel: string;
+  aiHeadlineLabel: string;
+  relatedStories: string;
+  perspectiveInvestor: string;
+  perspectiveGovernment: string;
+  perspectiveConsumer: string;
+  perspectiveTech: string;
+  levelHigh: string;
+  levelMedium: string;
+  levelLow: string;
+  emergingWatch: string;
+  emergingRising: string;
+  emergingViral: string;
 };
 
 export type VibeIcons = {

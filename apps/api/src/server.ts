@@ -1419,18 +1419,67 @@ function extractFactHighlights(item: NewsInternal): FactHighlightsInsight | unde
     : undefined;
 }
 
+type InsightLocale = 'bg' | 'en';
+type IndustryKey = 'semiconductors' | 'cloud' | 'defense' | 'finance' | 'policy' | 'crypto' | 'energy' | 'technology';
+
+function insightLocale(item?: NewsInternal): InsightLocale {
+  if (researchLang === 'bg') return 'bg';
+  const sample = item
+    ? [item.title, item.summary, item.research, item.__ctx, item.__linkText]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .join(' ')
+    : '';
+  return /[\u0400-\u04FF]/.test(sample) ? 'bg' : 'en';
+}
+
+function insightText(locale: InsightLocale, en: string, bg: string): string {
+  return locale === 'bg' ? bg : en;
+}
+
+function localizedIndustryLabel(key: IndustryKey, locale: InsightLocale): string {
+  const labels: Record<IndustryKey, { en: string; bg: string }> = {
+    semiconductors: { en: 'Semiconductors', bg: 'Полупроводници' },
+    cloud: { en: 'Cloud computing', bg: 'Облачни услуги' },
+    defense: { en: 'Defense', bg: 'Отбрана' },
+    finance: { en: 'Finance', bg: 'Финанси' },
+    policy: { en: 'Public policy', bg: 'Публични политики' },
+    crypto: { en: 'Cryptocurrency', bg: 'Криптовалути' },
+    energy: { en: 'Energy', bg: 'Енергетика' },
+    technology: { en: 'Technology', bg: 'Технологии' }
+  };
+  return locale === 'bg' ? labels[key].bg : labels[key].en;
+}
+
+function industryKeysForItem(item: NewsInternal): IndustryKey[] {
+  const text = combinedInsightText(item).toLocaleLowerCase();
+  const industries: IndustryKey[] = [];
+  const add = (key: IndustryKey) => {
+    if (!industries.includes(key)) industries.push(key);
+  };
+  if (/(chip|semiconductor|nvidia|tsmc|intel)/i.test(text)) add('semiconductors');
+  if (/(cloud|data center|ai model|server)/i.test(text)) add('cloud');
+  if (/(army|defense|missile|military|security)/i.test(text)) add('defense');
+  if (/(bank|finance|market|stocks|investor)/i.test(text)) add('finance');
+  if (/(regulator|law|policy|parliament|senate|european union|eu)/i.test(text)) add('policy');
+  if (/(crypto|bitcoin|blockchain)/i.test(text)) add('crypto');
+  if (/(climate|energy|oil|gas|solar|wind)/i.test(text)) add('energy');
+  if (/(ai|software|technology|platform|app)/i.test(text)) add('technology');
+  return industries.slice(0, 6);
+}
+
 function detectSensationalism(item: NewsInternal): SensationalismInsight | undefined {
+  const locale = insightLocale(item);
   const title = compactSentence(item.title, 220);
   if (!title) return undefined;
   const lower = title.toLocaleLowerCase();
   const reasons: string[] = [];
-  if (/[!?]{2,}/.test(title)) reasons.push('Repeated exclamation or question punctuation');
-  if (/[A-Z]{4,}/.test(title)) reasons.push('Excessive all-caps wording');
+  if (/[!?]{2,}/.test(title)) reasons.push(insightText(locale, 'Repeated exclamation or question punctuation', 'Повтаряща се удивителна или въпросителна пунктуация'));
+  if (/[A-Z]{4,}/.test(title)) reasons.push(insightText(locale, 'Excessive all-caps wording', 'Прекалено много думи с главни букви'));
   if (/(shocking|outrage|rage|furious|slams|destroys|explodes|massive|must see|you won.?t believe|panic)/i.test(lower)) {
-    reasons.push('Emotionally charged wording');
+    reasons.push(insightText(locale, 'Emotionally charged wording', 'Емоционално натоварен език'));
   }
   if (/(secret|exposed|what happened next|watch now|gone wrong)/i.test(lower)) {
-    reasons.push('Clickbait phrasing');
+    reasons.push(insightText(locale, 'Clickbait phrasing', 'Кликбейт формулировка'));
   }
   if (!reasons.length) return undefined;
   const level: InsightSeverity = reasons.length >= 3 ? 'high' : reasons.length === 2 ? 'medium' : 'low';
@@ -1440,69 +1489,62 @@ function detectSensationalism(item: NewsInternal): SensationalismInsight | undef
     reasons,
     alternativeHeadline: title.replace(/[!?]+/g, '').replace(/\b(shocking|outrageous|massive|furious)\b/gi, '').replace(/\s+/g, ' ').trim() || title,
     summary: level === 'high'
-      ? 'Headline looks highly sensational and likely optimized for clicks.'
-      : 'Headline shows signs of clickbait framing.'
+      ? insightText(locale, 'Headline looks highly sensational and likely optimized for clicks.', 'Заглавието изглежда силно сензационно и вероятно е оптимизирано за кликове.')
+      : insightText(locale, 'Headline shows signs of clickbait framing.', 'Заглавието показва признаци на кликбейт рамкиране.')
   };
 }
 
 function detectBias(item: NewsInternal): BiasInsight | undefined {
+  const locale = insightLocale(item);
   const text = combinedInsightText(item);
   if (!text) return undefined;
   const lower = text.toLocaleLowerCase();
-  let leaning = 'mixed or unclear';
-  if (/(government|regulator|state media|officials say|national security)/i.test(lower)) leaning = 'institutional / pro-government framing';
-  else if (/(activists|rights groups|grassroots|workers|protesters)/i.test(lower)) leaning = 'activist / civil-society framing';
-  else if (/(investors|markets|earnings|shareholders|business leaders)/i.test(lower)) leaning = 'market / investor framing';
+  let leaning = insightText(locale, 'mixed or unclear', 'смесено или неясно');
+  if (/(government|regulator|state media|officials say|national security)/i.test(lower)) leaning = insightText(locale, 'institutional / pro-government framing', 'институционално / проправителствено рамкиране');
+  else if (/(activists|rights groups|grassroots|workers|protesters)/i.test(lower)) leaning = insightText(locale, 'activist / civil-society framing', 'активистко / гражданско рамкиране');
+  else if (/(investors|markets|earnings|shareholders|business leaders)/i.test(lower)) leaning = insightText(locale, 'market / investor framing', 'пазарно / инвеститорско рамкиране');
 
-  let emotionalTone = 'measured';
-  if (/(fear|anger|outrage|panic|crisis|chaos|furious)/i.test(lower)) emotionalTone = 'emotionally charged';
-  else if (/(hope|optimism|breakthrough|relief)/i.test(lower)) emotionalTone = 'positive / reassuring';
+  let emotionalTone = insightText(locale, 'measured', 'умерен');
+  if (/(fear|anger|outrage|panic|crisis|chaos|furious)/i.test(lower)) emotionalTone = insightText(locale, 'emotionally charged', 'емоционално натоварен');
+  else if (/(hope|optimism|breakthrough|relief)/i.test(lower)) emotionalTone = insightText(locale, 'positive / reassuring', 'положителен / успокояващ');
 
   let framing = '';
   if (/(critics say|supporters say|officials say|according to)/i.test(lower)) {
-    framing = 'Story relies on selective attribution and highlights one side more strongly.';
+    framing = insightText(locale, 'Story relies on selective attribution and highlights one side more strongly.', 'Материалът разчита на селективно приписване и подчертава едната страна по-силно.');
   } else if (/(investigation|alleged|claims|accused)/i.test(lower)) {
-    framing = 'Story frames the topic through conflict or accusation language.';
+    framing = insightText(locale, 'Story frames the topic through conflict or accusation language.', 'Материалът рамкира темата чрез език на конфликт или обвинение.');
   }
 
-  const severity: InsightSeverity = emotionalTone === 'emotionally charged' || framing ? 'medium' : 'low';
-  if (leaning === 'mixed or unclear' && emotionalTone === 'measured' && !framing) return undefined;
+  const severity: InsightSeverity = emotionalTone === insightText(locale, 'emotionally charged', 'емоционално натоварен') || framing ? 'medium' : 'low';
+  if (leaning === insightText(locale, 'mixed or unclear', 'смесено или неясно') && emotionalTone === insightText(locale, 'measured', 'умерен') && !framing) return undefined;
   return {
     detected: true,
     leaning,
     emotionalTone,
-    framing: framing || 'Differences in framing are present but limited.',
+    framing: framing || insightText(locale, 'Differences in framing are present but limited.', 'Разлики в рамкирането има, но са ограничени.'),
     confidence: severity === 'medium' ? 'medium' : 'low',
     severity,
-    summary: `Potential bias detected: ${leaning}; tone is ${emotionalTone}.`
+    summary: locale === 'bg'
+      ? `Засечен е възможен уклон: ${leaning}; тонът е ${emotionalTone}.`
+      : `Potential bias detected: ${leaning}; tone is ${emotionalTone}.`
   };
 }
 
 function industriesForItem(item: NewsInternal): string[] {
-  const text = combinedInsightText(item).toLocaleLowerCase();
-  const industries: string[] = [];
-  const add = (label: string) => {
-    if (!industries.includes(label)) industries.push(label);
-  };
-  if (/(chip|semiconductor|nvidia|tsmc|intel)/i.test(text)) add('Semiconductors');
-  if (/(cloud|data center|ai model|server)/i.test(text)) add('Cloud computing');
-  if (/(army|defense|missile|military|security)/i.test(text)) add('Defense');
-  if (/(bank|finance|market|stocks|investor)/i.test(text)) add('Finance');
-  if (/(regulator|law|policy|parliament|senate|european union|eu)/i.test(text)) add('Public policy');
-  if (/(crypto|bitcoin|blockchain)/i.test(text)) add('Cryptocurrency');
-  if (/(climate|energy|oil|gas|solar|wind)/i.test(text)) add('Energy');
-  if (/(ai|software|technology|platform|app)/i.test(text)) add('Technology');
-  return industries.slice(0, 6);
+  const locale = insightLocale(item);
+  return industryKeysForItem(item).map(key => localizedIndustryLabel(key, locale));
 }
 
 function buildStoryImpact(item: NewsInternal): StoryImpactInsight | undefined {
+  const locale = insightLocale(item);
   const text = combinedInsightText(item).toLocaleLowerCase();
   if (!text) return undefined;
-  const industries = industriesForItem(item);
+  const industryKeys = industryKeysForItem(item);
+  const industries = industryKeys.map(key => localizedIndustryLabel(key, locale));
   const policy = /(regulator|law|policy|vote|election|government|parliament|sanction)/i.test(text);
   const markets = /(market|stocks|earnings|prices|investor|trade|tariff)/i.test(text);
   const tech = /(ai|chip|software|cyber|platform|cloud|data)/i.test(text);
-  const score: ImpactLevel = (policy && markets) || (markets && tech) || industries.length >= 3
+  const score: ImpactLevel = (policy && markets) || (markets && tech) || industryKeys.length >= 3
     ? 'high'
     : (policy || markets || tech)
       ? 'medium'
@@ -1510,68 +1552,79 @@ function buildStoryImpact(item: NewsInternal): StoryImpactInsight | undefined {
   if (score === 'low') return undefined;
   return {
     score,
-    economic: markets ? 'Could move spending, pricing, or capital allocation in exposed sectors.' : 'Direct economic impact looks limited for now.',
-    political: policy ? 'Likely to influence policy debate, regulation, or government messaging.' : 'Political fallout appears secondary unless the story broadens.',
-    tech: tech ? 'May affect product roadmaps, infrastructure demand, or compliance work in tech.' : 'Tech implications appear indirect.',
+    economic: markets ? insightText(locale, 'Could move spending, pricing, or capital allocation in exposed sectors.', 'Може да повлияе на разходите, ценообразуването или разпределението на капитал в засегнатите сектори.') : insightText(locale, 'Direct economic impact looks limited for now.', 'Прякото икономическо въздействие засега изглежда ограничено.'),
+    political: policy ? insightText(locale, 'Likely to influence policy debate, regulation, or government messaging.', 'Вероятно ще повлияе на политическия дебат, регулациите или правителственото говорене.') : insightText(locale, 'Political fallout appears secondary unless the story broadens.', 'Политическите последици изглеждат вторични, освен ако темата не се разшири.'),
+    tech: tech ? insightText(locale, 'May affect product roadmaps, infrastructure demand, or compliance work in tech.', 'Може да засегне продуктовите планове, търсенето на инфраструктура или изискванията за съответствие в технологичния сектор.') : insightText(locale, 'Tech implications appear indirect.', 'Технологичните последици изглеждат по-скоро косвени.'),
     industries,
     summary: score === 'high'
-      ? 'High cross-sector impact is likely if the story continues to develop.'
-      : 'Impact is meaningful but concentrated in a narrower set of stakeholders.'
+      ? insightText(locale, 'High cross-sector impact is likely if the story continues to develop.', 'Вероятно е силно въздействие върху няколко сектора, ако темата продължи да се развива.')
+      : insightText(locale, 'Impact is meaningful but concentrated in a narrower set of stakeholders.', 'Въздействието е съществено, но е концентрирано в по-тесен кръг засегнати страни.')
   };
 }
 
 function buildPerspectives(item: NewsInternal): Partial<Record<PerspectiveKey, string>> | undefined {
+  const locale = insightLocale(item);
   const impact = buildStoryImpact(item);
   const title = compactSentence(item.title, 180);
-  const industries = impact?.industries.length ? impact.industries.join(', ') : 'affected sectors';
+  const industries = impact?.industries.length ? impact.industries.join(', ') : insightText(locale, 'affected sectors', 'засегнатите сектори');
   const perspectives: Partial<Record<PerspectiveKey, string>> = {
-    investor: `Investors will watch whether ${title || 'this story'} changes revenue, risk, or valuation across ${industries}.`,
-    government: `Governments will focus on public stability, regulation, and strategic exposure if this story expands.`,
-    consumer: `Consumers will care most about price changes, service reliability, and any effect on daily life.`,
-    tech: `Technology teams will look for infrastructure, compliance, and product implications tied to ${industries}.`
+    investor: locale === 'bg'
+      ? `Инвеститорите ще следят дали ${title || 'тази тема'} променя приходите, риска или оценките в ${industries}.`
+      : `Investors will watch whether ${title || 'this story'} changes revenue, risk, or valuation across ${industries}.`,
+    government: insightText(locale, 'Governments will focus on public stability, regulation, and strategic exposure if this story expands.', 'Правителствата ще се фокусират върху обществената стабилност, регулациите и стратегическата изложеност, ако темата се разрасне.'),
+    consumer: insightText(locale, 'Consumers will care most about price changes, service reliability, and any effect on daily life.', 'Потребителите ще се интересуват най-вече от промени в цените, надеждността на услугите и отражението върху ежедневието.'),
+    tech: locale === 'bg'
+      ? `Технологичните екипи ще следят инфраструктурните, регулаторните и продуктовите последици за ${industries}.`
+      : `Technology teams will look for infrastructure, compliance, and product implications tied to ${industries}.`
   };
   return perspectives;
 }
 
 function buildHistoricalComparison(item: NewsInternal): HistoricalComparisonInsight | undefined {
+  const locale = insightLocale(item);
   const text = combinedInsightText(item).toLocaleLowerCase();
   const comparisons: string[] = [];
-  if (/(privacy|data|regulation|platform)/i.test(text)) comparisons.push('EU GDPR rollout');
-  if (/(bank|credit|liquidity|regulation|financial)/i.test(text)) comparisons.push('2008 financial crisis regulations');
-  if (/(supply chain|chip|semiconductor)/i.test(text)) comparisons.push('2020-2021 semiconductor shortages');
-  if (/(war|sanction|ukraine|russia|energy)/i.test(text)) comparisons.push('2022 European energy shock');
+  if (/(privacy|data|regulation|platform)/i.test(text)) comparisons.push(insightText(locale, 'EU GDPR rollout', 'въвеждането на GDPR в ЕС'));
+  if (/(bank|credit|liquidity|regulation|financial)/i.test(text)) comparisons.push(insightText(locale, '2008 financial crisis regulations', 'регулациите след финансовата криза от 2008 г.'));
+  if (/(supply chain|chip|semiconductor)/i.test(text)) comparisons.push(insightText(locale, '2020-2021 semiconductor shortages', 'недостига на полупроводници през 2020-2021 г.'));
+  if (/(war|sanction|ukraine|russia|energy)/i.test(text)) comparisons.push(insightText(locale, '2022 European energy shock', 'европейския енергиен шок през 2022 г.'));
   if (!comparisons.length) return undefined;
   return {
     comparisons: comparisons.slice(0, 3),
-    explanation: 'The current story echoes earlier episodes where regulation, supply pressure, or geopolitical risk forced rapid adaptation.'
+    explanation: insightText(locale, 'The current story echoes earlier episodes where regulation, supply pressure, or geopolitical risk forced rapid adaptation.', 'Текущата тема напомня по-ранни случаи, при които регулации, натиск върху доставките или геополитически риск наложиха бърза адаптация.')
   };
 }
 
 function buildFutureScenarios(item: NewsInternal): FutureScenarioInsight | undefined {
+  const locale = insightLocale(item);
   const impact = buildStoryImpact(item);
+  const industryKeys = industryKeysForItem(item);
   const text = combinedInsightText(item).toLocaleLowerCase();
   const scenarios: string[] = [];
-  if (/(regulator|government|parliament|law)/i.test(text)) scenarios.push('Regulators or lawmakers intervene');
-  if (impact?.industries.includes('Technology') || /(ai|software|cloud|chip)/i.test(text)) scenarios.push('Companies adjust products, hiring, or infrastructure plans');
-  if (/(lawsuit|investigation|complaint|probe|alleged)/i.test(text)) scenarios.push('Legal or enforcement action expands');
-  if (impact?.industries.includes('Finance')) scenarios.push('Markets reprice risk across exposed companies');
+  if (/(regulator|government|parliament|law)/i.test(text)) scenarios.push(insightText(locale, 'Regulators or lawmakers intervene', 'Регулатори или законодатели се намесват'));
+  if (industryKeys.includes('technology') || /(ai|software|cloud|chip)/i.test(text)) scenarios.push(insightText(locale, 'Companies adjust products, hiring, or infrastructure plans', 'Компаниите коригират продукти, наемане или инфраструктурни планове'));
+  if (/(lawsuit|investigation|complaint|probe|alleged)/i.test(text)) scenarios.push(insightText(locale, 'Legal or enforcement action expands', 'Разширяват се правни или контролни действия'));
+  if (industryKeys.includes('finance')) scenarios.push(insightText(locale, 'Markets reprice risk across exposed companies', 'Пазарите преоценяват риска при засегнатите компании'));
   if (!scenarios.length) return undefined;
   return {
-    disclaimer: 'Disclaimer: this is a scenario forecast, not a factual prediction.',
+    disclaimer: insightText(locale, 'Disclaimer: this is a scenario forecast, not a factual prediction.', 'Отказ от отговорност: това е сценарен прогнозен анализ, а не фактическа прогноза.'),
     scenarios: scenarios.slice(0, 4),
     outlook: impact?.score === 'high'
-      ? 'Near-term follow-up is likely and could widen the story materially.'
-      : 'Follow-up is plausible, but the next moves depend on official confirmation and market response.'
+      ? insightText(locale, 'Near-term follow-up is likely and could widen the story materially.', 'В близък план е вероятно развитие, което може съществено да разшири темата.')
+      : insightText(locale, 'Follow-up is plausible, but the next moves depend on official confirmation and market response.', 'По-нататъшно развитие е възможно, но следващите стъпки зависят от официално потвърждение и пазарна реакция.')
   };
 }
 
 function buildLocalImpact(item: NewsInternal, region: string): LocalImpactInsight | undefined {
+  const locale = insightLocale(item);
   const impact = buildStoryImpact(item);
   if (!impact) return undefined;
-  const safeRegion = compactSentence(region || 'United States', 120) || 'United States';
+  const safeRegion = compactSentence(region || insightText(locale, 'United States', 'България'), 120) || insightText(locale, 'United States', 'България');
   return {
     region: safeRegion,
-    summary: `Impact on ${safeRegion}: watch for effects on ${impact.industries.length ? impact.industries.join(', ') : 'local businesses and public policy'}, especially if the story drives regulation or price changes.`
+    summary: locale === 'bg'
+      ? `Въздействие върху ${safeRegion}: следете ефекти върху ${impact.industries.length ? impact.industries.join(', ') : 'местния бизнес и публичните политики'}, особено ако темата води до регулации или промени в цените.`
+      : `Impact on ${safeRegion}: watch for effects on ${impact.industries.length ? impact.industries.join(', ') : 'local businesses and public policy'}, especially if the story drives regulation or price changes.`
   };
 }
 
@@ -1582,6 +1635,7 @@ function topicHitsForItem(item: NewsInternal): string[] {
 }
 
 function emergingSignalForItem(item: NewsInternal): EmergingStorySignal | undefined {
+  const locale = insightLocale(item);
   if (!aiFeatures.emergingStoryDetector || !item.isMatch || item.filteredOk === false) return undefined;
   const base = normalizeText(item.title).slice(0, 160);
   if (!base) return undefined;
@@ -1607,8 +1661,8 @@ function emergingSignalForItem(item: NewsInternal): EmergingStorySignal | undefi
     sources,
     velocity,
     reason: clusterSize >= 5
-      ? 'This topic is repeating across multiple sources quickly.'
-      : 'Similar matched stories are appearing across more than one source.'
+      ? insightText(locale, 'This topic is repeating across multiple sources quickly.', 'Темата се повтаря бързо в множество източници.')
+      : insightText(locale, 'Similar matched stories are appearing across more than one source.', 'Подобни истории се появяват в повече от един източник.')
   };
 }
 
