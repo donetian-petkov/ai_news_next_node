@@ -16,6 +16,7 @@ A real-time, multi-column news intelligence dashboard with AI summaries, AI rese
 |---|---|
 | Live ingestion | RSS / Reddit / YouTube streams over WebSocket |
 | AI workflows | Summary, Research, Ask Agent (per-news contextual chat) |
+| AI insights | Optional per-story bias, headline risk, keywords, impact, perspectives, comparisons, scenarios, local impact |
 | Stream control | Per-column budget, polling, sort, filters, pin/remove, age cleanup |
 | UX controls | Top menu + mobile drawer, shortcuts, notifications, EN/BG interface |
 | Personalization | Vibes, schemes, fonts, button modes, performance mode |
@@ -37,8 +38,30 @@ A real-time, multi-column news intelligence dashboard with AI summaries, AI rese
 - Summary and Research language controls.
 - Per-column AI budget (`low`, `standard`, `high`) + global apply-all budget.
 - Ask Agent per news item with remaining-question limits and contextual replies.
+- Optional AI insight features per story:
+  - bias detection
+  - sensationalism / headline risk detection
+  - keyword extraction
+  - story impact
+  - perspective simulator
+  - topic tracking
+  - emerging story signal
+  - historical comparison
+  - future scenarios
+  - local impact
+- New AI insight features are off by default and can be enabled from the top menu.
+- AI analysis is collapsed by default on each card and rendered as a separate section below Summary / Research.
+- Cached stories are reprocessed immediately when AI insight settings or research language change, so already-loaded items update without waiting for a fresh poll.
 - Mood and Type filters (disabled automatically in performance mode).
 - AI-off fallback behavior (UI indicates unavailable AI features).
+
+### AI Insight Card Behavior
+- Summary remains the main story text.
+- Research remains a separate long-form block when available.
+- AI analysis is an optional collapsed section with its own heading and readiness state.
+- The `Keywords` block is intentionally lightweight and may list named entities / quoted fragments rather than full factual sentences.
+- Historical comparison shows the main comparison first, with any extra comparisons listed as secondary context.
+- Future scenario is explicitly marked as speculative.
 
 ### Interaction + UX
 - Top quick actions: Search, Add Stream, Toggle controls/menu, hide all research/summaries.
