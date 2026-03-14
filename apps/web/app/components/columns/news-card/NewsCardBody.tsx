@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Box, Button, Chip, CircularProgress, MenuItem, Select, Stack, Typography } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Box, Button, Chip, CircularProgress, Collapse, MenuItem, Select, Stack, Typography } from '@mui/material';
 import { NEWS_CARD_COLOR_TOKENS } from '../designTokens';
 import { useNewsCardContext } from './context/useNewsCardContext';
 
@@ -38,14 +39,13 @@ export function NewsCardBody() {
     researchConfidence
   } = state;
   const [perspective, setPerspective] = useState<'investor' | 'government' | 'consumer' | 'tech'>('investor');
-  const [showAllInsights, setShowAllInsights] = useState(false);
+  const [showAiInsights, setShowAiInsights] = useState(false);
 
   const { onSetSummaryMode, onSetResearchMode } = handlers;
   const { hasSummaryBlock, hasResearchBlock, summaryVisible, researchVisible } = ui;
   const insights = item.insights;
-  const narrativeReplacement = !!(insights?.historical || insights?.future || insights?.localImpact);
-  const showSummaryBlock = hasSummaryBlock && !narrativeReplacement;
-  const showResearchBlock = hasResearchBlock && !narrativeReplacement;
+  const showSummaryBlock = hasSummaryBlock;
+  const showResearchBlock = hasResearchBlock;
   const perspectives = insights?.perspectives;
   const selectedPerspectiveText = perspectives?.[perspective];
   const levelLabels: Record<'high' | 'medium' | 'low', string> = {
@@ -65,9 +65,23 @@ export function NewsCardBody() {
     [labels.numbersLabel, insights.facts.numbers],
     [labels.quotesLabel, insights.facts.quotes]
   ] as const : [];
+  const visibleFactSections = factSections.filter(([, values]) => values.length);
+  const sectionShellSx = {
+    mt: 1.05
+  } as const;
+  const sectionTitleSx = {
+    display: 'block',
+    mb: 0.45,
+    fontSize: `${0.69 * fontScale}rem`,
+    lineHeight: 1.2,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    fontWeight: 800,
+    color: NEWS_CARD_COLOR_TOKENS.confidenceText
+  } as const;
   const aiInsightGroupSx = {
-    mt: 1.05,
-    px: 1.15,
+    mt: 0.9,
+    px: 1.05,
     py: 0.95,
     border: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerStrong}`,
     borderRadius: '14px',
@@ -80,16 +94,6 @@ export function NewsCardBody() {
     border: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerSoft}`,
     borderRadius: '10px',
     background: 'rgba(255,255,255,0.018)'
-  } as const;
-  const insightSectionTitleSx = {
-    display: 'block',
-    mb: 0.55,
-    fontSize: `${0.69 * fontScale}rem`,
-    lineHeight: 1.2,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    fontWeight: 800,
-    color: NEWS_CARD_COLOR_TOKENS.confidenceText
   } as const;
   const insightBodySx = {
     fontSize: `${0.91 * fontScale}rem`,
@@ -109,23 +113,22 @@ export function NewsCardBody() {
       key: 'sensationalism',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
-            {labels.headlineRiskSection}
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.headlineRiskSection}
+            </Typography>
+            <Chip size="small" color="warning" variant="outlined" label={levelLabels[insights.sensationalism.level]} />
+          </Stack>
+          <Typography variant="body2" sx={{ ...insightBodySx, fontWeight: 700 }}>
+            {insights.sensationalism.summary}
           </Typography>
-          <Chip
-            size="small"
-            color="warning"
-            variant="outlined"
-            label={`${labels.sensationalismDetected}: ${levelLabels[insights.sensationalism.level]}`}
-            sx={{ mb: insights.sensationalism.reasons.length || insights.sensationalism.alternativeHeadline ? 0.55 : 0 }}
-          />
           {insights.sensationalism.reasons.length ? (
             <Typography variant="caption" sx={insightMetaSx}>
-              {insights.sensationalism.reasons.join(' · ')}
+              {labels.reasonsLabel}: {insights.sensationalism.reasons.join(' · ')}
             </Typography>
           ) : null}
           {insights.sensationalism.alternativeHeadline ? (
-            <Typography variant="caption" sx={insightMetaSx}>
+            <Typography variant="body2" sx={{ ...insightBodySx, mt: 0.55 }}>
               {labels.aiHeadlineLabel}: {insights.sensationalism.alternativeHeadline}
             </Typography>
           ) : null}
@@ -135,55 +138,46 @@ export function NewsCardBody() {
   }
 
   if (insights?.bias?.detected) {
-    const biasLabelParts = [
-      `${labels.biasDetected}: ${insights.bias.severity}`,
-      insights.bias.leaning,
-      insights.bias.emotionalTone,
-      insights.bias.framing
-    ].filter(Boolean);
-
     insightPanels.push({
       key: 'bias',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
-            {labels.biasSection}
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.biasSection}
+            </Typography>
+            <Chip size="small" color="info" variant="outlined" label={levelLabels[insights.bias.severity]} />
+          </Stack>
+          <Typography variant="body2" sx={{ ...insightBodySx, fontWeight: 700 }}>
+            {insights.bias.summary}
           </Typography>
-          <Chip
-            size="small"
-            color="info"
-            variant="outlined"
-            label={biasLabelParts.join(' · ')}
-            sx={{
-              height: 'auto',
-              alignItems: 'flex-start',
-              '& .MuiChip-label': {
-                display: 'block',
-                whiteSpace: 'normal',
-                paddingTop: '6px',
-                paddingBottom: '6px',
-                lineHeight: 1.35
-              }
-            }}
-          />
+          <Typography variant="caption" sx={insightMetaSx}>
+            {labels.leaningLabel}: {insights.bias.leaning}
+          </Typography>
+          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.2 }}>
+            {labels.toneLabel}: {insights.bias.emotionalTone}
+          </Typography>
+          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.2 }}>
+            {labels.framingLabel}: {insights.bias.framing}
+          </Typography>
         </Box>
       )
     });
   }
 
-  if (factSections.length) {
+  if (visibleFactSections.length) {
     insightPanels.push({
       key: 'facts',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
+          <Typography variant="overline" sx={sectionTitleSx}>
             {labels.factHighlights}
           </Typography>
-          {factSections.map(([label, values]) => values.length ? (
+          {visibleFactSections.map(([label, values]) => (
             <Typography key={label} variant="body2" sx={{ ...insightBodySx, whiteSpace: 'pre-wrap', fontSize: `${0.89 * fontScale}rem` }}>
               <strong>{label}:</strong> {values.join(' • ')}
             </Typography>
-          ) : null)}
+          ))}
         </Box>
       )
     });
@@ -194,12 +188,12 @@ export function NewsCardBody() {
       key: 'impact',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
-            {labels.impactSection}
-          </Typography>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.storyImpact}: {levelLabels[insights.impact.score]}
-          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.impactSection}
+            </Typography>
+            <Chip size="small" color="success" variant="outlined" label={levelLabels[insights.impact.score]} />
+          </Stack>
           <Typography variant="body2" sx={insightBodySx}>
             {insights.impact.summary}
           </Typography>
@@ -218,7 +212,7 @@ export function NewsCardBody() {
       key: 'perspective',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
+          <Typography variant="overline" sx={sectionTitleSx}>
             {labels.perspective}
           </Typography>
           <Select
@@ -248,7 +242,7 @@ export function NewsCardBody() {
       key: 'topics',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
+          <Typography variant="overline" sx={sectionTitleSx}>
             {labels.topicTracking}
           </Typography>
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
@@ -266,14 +260,17 @@ export function NewsCardBody() {
       key: 'emerging',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
-            {labels.emergingSection}
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.emergingSection}
+            </Typography>
+            <Chip size="small" color="warning" variant="outlined" label={velocityLabels[item.emergingSignal.velocity]} />
+          </Stack>
+          <Typography variant="body2" sx={insightBodySx}>
+            {item.emergingSignal.reason}
           </Typography>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.emergingStory}: {velocityLabels[item.emergingSignal.velocity]}
-          </Typography>
-          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.2 }}>
-            {item.emergingSignal.reason} · {item.emergingSignal.clusterSize} {labels.relatedStories} · {item.emergingSignal.sources.join(', ')}
+          <Typography variant="caption" sx={insightMetaSx}>
+            {item.emergingSignal.clusterSize} {labels.relatedStories} · {item.emergingSignal.sources.join(', ')}
           </Typography>
         </Box>
       )
@@ -285,18 +282,20 @@ export function NewsCardBody() {
       key: 'historical',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
+          <Typography variant="overline" sx={sectionTitleSx}>
             {labels.comparisonSection}
           </Typography>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.historicalComparison}
+          <Typography variant="body2" sx={{ ...insightBodySx, fontWeight: 700 }}>
+            {insights.historical.comparisons[0]}
           </Typography>
           <Typography variant="body2" sx={insightBodySx}>
             {insights.historical.explanation}
           </Typography>
-          <Typography variant="caption" sx={insightMetaSx}>
-            {insights.historical.comparisons.join(' • ')}
-          </Typography>
+          {insights.historical.comparisons.length > 1 ? (
+            <Typography variant="caption" sx={insightMetaSx}>
+              {labels.additionalComparisons}: {insights.historical.comparisons.slice(1).join(' • ')}
+            </Typography>
+          ) : null}
         </Box>
       )
     });
@@ -307,19 +306,20 @@ export function NewsCardBody() {
       key: 'future',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
-            {labels.outlookSection}
-          </Typography>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.futureScenario}
-          </Typography>
-          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0, mb: 0.35 }}>
-            {insights.future.disclaimer}
-          </Typography>
-          <Typography variant="body2" sx={insightBodySx}>
-            {insights.future.scenarios.join(' • ')}
-          </Typography>
-          <Typography variant="caption" sx={insightMetaSx}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.outlookSection}
+            </Typography>
+            <Chip size="small" color="warning" variant="outlined" label={labels.speculativeLabel} />
+          </Stack>
+          <Stack spacing={0.35}>
+            {insights.future.scenarios.map(scenario => (
+              <Typography key={scenario} variant="body2" sx={insightBodySx}>
+                • {scenario}
+              </Typography>
+            ))}
+          </Stack>
+          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.55 }}>
             {insights.future.outlook}
           </Typography>
         </Box>
@@ -332,12 +332,12 @@ export function NewsCardBody() {
       key: 'local',
       element: (
         <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={insightSectionTitleSx}>
-            {labels.localSection}
-          </Typography>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.localImpact}: {insights.localImpact.region || localImpactRegion}
-          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.localSection}
+            </Typography>
+            <Chip size="small" color="default" variant="outlined" label={insights.localImpact.region || localImpactRegion} />
+          </Stack>
           <Typography variant="body2" sx={insightBodySx}>
             {insights.localImpact.summary}
           </Typography>
@@ -345,9 +345,6 @@ export function NewsCardBody() {
       )
     });
   }
-
-  const visibleInsightPanels = showAllInsights ? insightPanels : insightPanels.slice(0, 2);
-  const hiddenInsightCount = Math.max(0, insightPanels.length - visibleInsightPanels.length);
 
   return (
     <>
@@ -382,7 +379,10 @@ export function NewsCardBody() {
       ) : null}
 
       {showSummaryBlock ? (
-        <Box>
+        <Box sx={sectionShellSx}>
+          <Typography variant="overline" sx={sectionTitleSx}>
+            {labels.summary}
+          </Typography>
           {summaryVisible && !hideAllSummaries ? (
             <Typography
               variant="body2"
@@ -421,7 +421,10 @@ export function NewsCardBody() {
       ) : null}
 
       {showResearchBlock && !hideAllResearch ? (
-        <Box sx={{ mt: 1 }}>
+        <Box sx={{ ...sectionShellSx, pt: 0.95, borderTop: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerSoft}` }}>
+          <Typography variant="overline" sx={sectionTitleSx}>
+            {labels.research}
+          </Typography>
           {researchVisible ? (
             <>
               {researchConfidence ? (
@@ -457,28 +460,38 @@ export function NewsCardBody() {
       ) : null}
 
       {insightPanels.length ? (
-        <Box sx={aiInsightGroupSx}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 0.85 }}>
-            <Typography variant="overline" sx={{ ...insightSectionTitleSx, mb: 0 }}>
-              {labels.aiInsights}
-            </Typography>
-            <Chip size="small" color="success" variant="outlined" label={`${labels.aiReady} · ${insightPanels.length}`} />
+        <Box sx={{ mt: 1.3, pt: 1.05, borderTop: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerStrong}` }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap">
+            <Box>
+              <Typography variant="overline" sx={sectionTitleSx}>
+                {labels.aiInsights}
+              </Typography>
+              <Typography variant="caption" sx={{ color: NEWS_CARD_COLOR_TOKENS.confidenceText, display: 'block', mt: -0.1 }}>
+                {labels.aiInsightsHint}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
+              <Chip size="small" color="success" variant="outlined" label={`${labels.aiReady} · ${insightPanels.length}`} />
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setShowAiInsights(current => !current)}
+                endIcon={<ExpandMoreIcon sx={{ transform: showAiInsights ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 160ms ease' }} />}
+                sx={{ color: accent, textTransform: 'none', fontWeight: 700 }}
+              >
+                {showAiInsights ? labels.hideAiAnalysis : labels.showAiAnalysis}
+              </Button>
+            </Stack>
           </Stack>
-          <Stack spacing={0.9}>
-            {visibleInsightPanels.map(panel => (
-              <Box key={panel.key}>{panel.element}</Box>
-            ))}
-          </Stack>
-          {hiddenInsightCount > 0 ? (
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => setShowAllInsights(current => !current)}
-              sx={{ mt: 0.55, color: accent, textTransform: 'none', fontWeight: 700 }}
-            >
-              {showAllInsights ? labels.showFewerAiInsights : labels.showMoreAiInsights}
-            </Button>
-          ) : null}
+          <Collapse in={showAiInsights} timeout="auto" unmountOnExit>
+            <Box sx={aiInsightGroupSx}>
+              <Stack spacing={0.9}>
+                {insightPanels.map(panel => (
+                  <Box key={panel.key}>{panel.element}</Box>
+                ))}
+              </Stack>
+            </Box>
+          </Collapse>
         </Box>
       ) : null}
 

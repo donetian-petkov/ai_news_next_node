@@ -1407,6 +1407,17 @@ function extractFactHighlights(item: NewsInternal): FactHighlightsInsight | unde
     quotes: capitalizeWords(quoteMatches.filter(isLikelyQuoteFact), 2)
   };
 
+  const normalizedDates = new Set(facts.dates.map(value => normalizeText(value)));
+  facts.numbers = facts.numbers.filter(value => {
+    const normalized = normalizeText(value);
+    if (/^\d{4}$/.test(normalized) && normalizedDates.has(normalized)) return false;
+    return true;
+  });
+
+  if (!facts.people.length && !facts.locations.length && !facts.quotes.length) {
+    return undefined;
+  }
+
   const signalScore =
     (facts.people.length ? 2 : 0) +
     (facts.locations.length ? 1 : 0) +
@@ -1434,6 +1445,25 @@ function insightLocale(item?: NewsInternal): InsightLocale {
 
 function insightText(locale: InsightLocale, en: string, bg: string): string {
   return locale === 'bg' ? bg : en;
+}
+
+function capitalizeInsight(text: string): string {
+  return text ? `${text.slice(0, 1).toLocaleUpperCase()}${text.slice(1)}` : text;
+}
+
+function joinInsightList(locale: InsightLocale, values: string[]): string {
+  if (!values.length) return locale === 'bg' ? 'засегнатите сектори' : 'the affected sectors';
+  if (values.length === 1) return values[0];
+  if (values.length === 2) {
+    return locale === 'bg'
+      ? `${values[0]} и ${values[1]}`
+      : `${values[0]} and ${values[1]}`;
+  }
+  const last = values[values.length - 1];
+  const rest = values.slice(0, -1).join(', ');
+  return locale === 'bg'
+    ? `${rest} и ${last}`
+    : `${rest}, and ${last}`;
 }
 
 function localizedIndustryLabel(key: IndustryKey, locale: InsightLocale): string {
@@ -1499,14 +1529,14 @@ function detectBias(item: NewsInternal): BiasInsight | undefined {
   const text = combinedInsightText(item);
   if (!text) return undefined;
   const lower = text.toLocaleLowerCase();
-  let leaning = insightText(locale, 'mixed or unclear', 'смесено или неясно');
-  if (/(government|regulator|state media|officials say|national security)/i.test(lower)) leaning = insightText(locale, 'institutional / pro-government framing', 'институционално / проправителствено рамкиране');
-  else if (/(activists|rights groups|grassroots|workers|protesters)/i.test(lower)) leaning = insightText(locale, 'activist / civil-society framing', 'активистко / гражданско рамкиране');
-  else if (/(investors|markets|earnings|shareholders|business leaders)/i.test(lower)) leaning = insightText(locale, 'market / investor framing', 'пазарно / инвеститорско рамкиране');
+  let leaning = insightText(locale, 'no clear leaning', 'няма ясен уклон');
+  if (/(government|regulator|state media|officials say|national security)/i.test(lower)) leaning = insightText(locale, 'closer to the government viewpoint', 'по-близо до правителствената гледна точка');
+  else if (/(activists|rights groups|grassroots|workers|protesters)/i.test(lower)) leaning = insightText(locale, 'closer to a civil-society viewpoint', 'по-близо до гражданска гледна точка');
+  else if (/(investors|markets|earnings|shareholders|business leaders)/i.test(lower)) leaning = insightText(locale, 'closer to an investor viewpoint', 'по-близо до инвеститорска гледна точка');
 
-  let emotionalTone = insightText(locale, 'measured', 'умерен');
-  if (/(fear|anger|outrage|panic|crisis|chaos|furious)/i.test(lower)) emotionalTone = insightText(locale, 'emotionally charged', 'емоционално натоварен');
-  else if (/(hope|optimism|breakthrough|relief)/i.test(lower)) emotionalTone = insightText(locale, 'positive / reassuring', 'положителен / успокояващ');
+  let emotionalTone = insightText(locale, 'measured', 'сдържан');
+  if (/(fear|anger|outrage|panic|crisis|chaos|furious)/i.test(lower)) emotionalTone = insightText(locale, 'emotionally charged', 'емоционален');
+  else if (/(hope|optimism|breakthrough|relief)/i.test(lower)) emotionalTone = insightText(locale, 'reassuring', 'успокояващ');
 
   let framing = '';
   if (/(critics say|supporters say|officials say|according to)/i.test(lower)) {
@@ -1515,18 +1545,34 @@ function detectBias(item: NewsInternal): BiasInsight | undefined {
     framing = insightText(locale, 'Story frames the topic through conflict or accusation language.', 'Материалът рамкира темата чрез език на конфликт или обвинение.');
   }
 
-  const severity: InsightSeverity = emotionalTone === insightText(locale, 'emotionally charged', 'емоционално натоварен') || framing ? 'medium' : 'low';
-  if (leaning === insightText(locale, 'mixed or unclear', 'смесено или неясно') && emotionalTone === insightText(locale, 'measured', 'умерен') && !framing) return undefined;
+  const severity: InsightSeverity = emotionalTone === insightText(locale, 'emotionally charged', 'емоционален') || framing ? 'medium' : 'low';
+  if (leaning === insightText(locale, 'no clear leaning', 'няма ясен уклон') && emotionalTone === insightText(locale, 'measured', 'сдържан') && !framing) return undefined;
   return {
     detected: true,
     leaning,
     emotionalTone,
-    framing: framing || insightText(locale, 'Differences in framing are present but limited.', 'Разлики в рамкирането има, но са ограничени.'),
+    framing: framing || insightText(locale, 'No strong framing distortion stands out.', 'Не се вижда силно изкривяване в подбора на факти.'),
     confidence: severity === 'medium' ? 'medium' : 'low',
     severity,
     summary: locale === 'bg'
-      ? `Засечен е възможен уклон: ${leaning}; тонът е ${emotionalTone}.`
-      : `Potential bias detected: ${leaning}; tone is ${emotionalTone}.`
+      ? (
+          leaning === insightText(locale, 'no clear leaning', 'няма ясен уклон')
+            ? (
+                emotionalTone === insightText(locale, 'emotionally charged', 'емоционален')
+                  ? 'Не се вижда ясен политически уклон, но езикът е емоционален.'
+                  : 'Не се вижда ясен политически уклон.'
+              )
+            : `${capitalizeInsight(leaning)}.`
+        )
+      : (
+          leaning === insightText(locale, 'no clear leaning', 'няма ясен уклон')
+            ? (
+                emotionalTone === insightText(locale, 'emotionally charged', 'емоционален')
+                  ? 'No clear political leaning stands out, but the language is emotionally charged.'
+                  : 'No clear political leaning stands out.'
+              )
+            : `${capitalizeInsight(leaning)}.`
+        )
   };
 }
 
@@ -1550,32 +1596,32 @@ function buildStoryImpact(item: NewsInternal): StoryImpactInsight | undefined {
       ? 'medium'
       : 'low';
   if (score === 'low') return undefined;
+  const targetSectors = joinInsightList(locale, industries.slice(0, 3));
   return {
     score,
-    economic: markets ? insightText(locale, 'Could move spending, pricing, or capital allocation in exposed sectors.', 'Може да повлияе на разходите, ценообразуването или разпределението на капитал в засегнатите сектори.') : insightText(locale, 'Direct economic impact looks limited for now.', 'Прякото икономическо въздействие засега изглежда ограничено.'),
-    political: policy ? insightText(locale, 'Likely to influence policy debate, regulation, or government messaging.', 'Вероятно ще повлияе на политическия дебат, регулациите или правителственото говорене.') : insightText(locale, 'Political fallout appears secondary unless the story broadens.', 'Политическите последици изглеждат вторични, освен ако темата не се разшири.'),
-    tech: tech ? insightText(locale, 'May affect product roadmaps, infrastructure demand, or compliance work in tech.', 'Може да засегне продуктовите планове, търсенето на инфраструктура или изискванията за съответствие в технологичния сектор.') : insightText(locale, 'Tech implications appear indirect.', 'Технологичните последици изглеждат по-скоро косвени.'),
+    economic: markets ? insightText(locale, 'Watch for moves in prices, costs, or investor expectations.', 'Следете за ефект върху цени, разходи или очаквания на инвеститорите.') : insightText(locale, 'No broad economic effect stands out yet.', 'Засега не се вижда широк икономически ефект.'),
+    political: policy ? insightText(locale, 'A regulatory or political response is plausible.', 'Възможна е регулаторна или политическа реакция.') : insightText(locale, 'A political effect looks limited for now.', 'Политическият ефект засега изглежда ограничен.'),
+    tech: tech ? insightText(locale, 'Technology companies may need to adjust products, infrastructure, or compliance.', 'Технологичните компании може да коригират продукти, инфраструктура или съответствие.') : insightText(locale, 'No direct technology effect stands out yet.', 'Засега не се вижда пряк ефект върху технологичния сектор.'),
     industries,
     summary: score === 'high'
-      ? insightText(locale, 'High cross-sector impact is likely if the story continues to develop.', 'Вероятно е силно въздействие върху няколко сектора, ако темата продължи да се развива.')
-      : insightText(locale, 'Impact is meaningful but concentrated in a narrower set of stakeholders.', 'Въздействието е съществено, но е концентрирано в по-тесен кръг засегнати страни.')
+      ? insightText(locale, `The clearest risk is for ${targetSectors}, with spillover into broader markets or policy if the story grows.`, `Най-ясният риск е за ${targetSectors}, а при развитие на темата може да има по-широк пазарен или регулаторен ефект.`)
+      : insightText(locale, `The most likely effect is on ${targetSectors}, not on the whole economy.`, `Най-вероятният ефект е върху ${targetSectors}, а не върху цялата икономика.`)
   };
 }
 
 function buildPerspectives(item: NewsInternal): Partial<Record<PerspectiveKey, string>> | undefined {
   const locale = insightLocale(item);
   const impact = buildStoryImpact(item);
-  const title = compactSentence(item.title, 180);
   const industries = impact?.industries.length ? impact.industries.join(', ') : insightText(locale, 'affected sectors', 'засегнатите сектори');
   const perspectives: Partial<Record<PerspectiveKey, string>> = {
     investor: locale === 'bg'
-      ? `Инвеститорите ще следят дали ${title || 'тази тема'} променя приходите, риска или оценките в ${industries}.`
-      : `Investors will watch whether ${title || 'this story'} changes revenue, risk, or valuation across ${industries}.`,
-    government: insightText(locale, 'Governments will focus on public stability, regulation, and strategic exposure if this story expands.', 'Правителствата ще се фокусират върху обществената стабилност, регулациите и стратегическата изложеност, ако темата се разрасне.'),
-    consumer: insightText(locale, 'Consumers will care most about price changes, service reliability, and any effect on daily life.', 'Потребителите ще се интересуват най-вече от промени в цените, надеждността на услугите и отражението върху ежедневието.'),
+      ? `За инвеститорите въпросът е дали новината ще промени приходи, разходи или регулаторен риск за ${industries}.`
+      : `For investors, the question is whether the story changes revenue, costs, or regulatory risk for ${industries}.`,
+    government: insightText(locale, 'For governments, the main question is whether regulation, diplomacy, or market-stability measures will be needed.', 'За правителствата основният въпрос е дали ще трябват регулации, дипломатически действия или мерки за стабилност.'),
+    consumer: insightText(locale, 'For consumers, this matters only if it leads to higher prices, weaker service, or supply disruption.', 'За потребителите това има значение само ако доведе до по-високи цени, по-слаба услуга или проблеми с доставките.'),
     tech: locale === 'bg'
-      ? `Технологичните екипи ще следят инфраструктурните, регулаторните и продуктовите последици за ${industries}.`
-      : `Technology teams will look for infrastructure, compliance, and product implications tied to ${industries}.`
+      ? `За технологичния сектор темата има значение, ако засегне инфраструктура, доставки или правилата за работа в ${industries}.`
+      : `For technology teams, this matters if it affects infrastructure, supply, or operating rules across ${industries}.`
   };
   return perspectives;
 }
@@ -1591,7 +1637,9 @@ function buildHistoricalComparison(item: NewsInternal): HistoricalComparisonInsi
   if (!comparisons.length) return undefined;
   return {
     comparisons: comparisons.slice(0, 3),
-    explanation: insightText(locale, 'The current story echoes earlier episodes where regulation, supply pressure, or geopolitical risk forced rapid adaptation.', 'Текущата тема напомня по-ранни случаи, при които регулации, натиск върху доставките или геополитически риск наложиха бърза адаптация.')
+    explanation: locale === 'bg'
+      ? 'Сходството е в това, че темата може да доведе до бърза регулаторна, пазарна или логистична реакция.'
+      : 'The similarity is that the story could force a fast regulatory, market, or supply response.'
   };
 }
 
@@ -1607,11 +1655,11 @@ function buildFutureScenarios(item: NewsInternal): FutureScenarioInsight | undef
   if (industryKeys.includes('finance')) scenarios.push(insightText(locale, 'Markets reprice risk across exposed companies', 'Пазарите преоценяват риска при засегнатите компании'));
   if (!scenarios.length) return undefined;
   return {
-    disclaimer: insightText(locale, 'Disclaimer: this is a scenario forecast, not a factual prediction.', 'Отказ от отговорност: това е сценарен прогнозен анализ, а не фактическа прогноза.'),
+    disclaimer: insightText(locale, 'Speculative', 'Спекулативно'),
     scenarios: scenarios.slice(0, 4),
     outlook: impact?.score === 'high'
-      ? insightText(locale, 'Near-term follow-up is likely and could widen the story materially.', 'В близък план е вероятно развитие, което може съществено да разшири темата.')
-      : insightText(locale, 'Follow-up is plausible, but the next moves depend on official confirmation and market response.', 'По-нататъшно развитие е възможно, но следващите стъпки зависят от официално потвърждение и пазарна реакция.')
+      ? insightText(locale, 'Near-term follow-up is likely and could broaden the effect of the story.', 'Вероятно е скоро развитие, което може да разшири ефекта на темата.')
+      : insightText(locale, 'Further movement is plausible, but it depends on confirmation and reaction from markets or institutions.', 'Възможно е развитие, но то зависи от потвърждение и реакция на пазара или институциите.')
   };
 }
 
@@ -1623,9 +1671,33 @@ function buildLocalImpact(item: NewsInternal, region: string): LocalImpactInsigh
   return {
     region: safeRegion,
     summary: locale === 'bg'
-      ? `Въздействие върху ${safeRegion}: следете ефекти върху ${impact.industries.length ? impact.industries.join(', ') : 'местния бизнес и публичните политики'}, особено ако темата води до регулации или промени в цените.`
-      : `Impact on ${safeRegion}: watch for effects on ${impact.industries.length ? impact.industries.join(', ') : 'local businesses and public policy'}, especially if the story drives regulation or price changes.`
+      ? `За ${safeRegion} темата е най-важна за ${impact.industries.length ? joinInsightList(locale, impact.industries.slice(0, 3)) : 'местния бизнес и публичните политики'}. Следете дали ще има регулации, ценови промени или ефект върху доставки и услуги.`
+      : `For ${safeRegion}, the story matters most for ${impact.industries.length ? joinInsightList(locale, impact.industries.slice(0, 3)) : 'local business and public policy'}. Watch for regulation, price changes, or effects on supply and services.`
   };
+}
+
+function reviewGeneratedInsights(item: NewsInternal, insights: NewsInsights): NewsInsights | undefined {
+  const reviewed: NewsInsights = { ...insights };
+  const locale = insightLocale(item);
+
+  if (reviewed.bias) {
+    const mixed = reviewed.bias.leaning === insightText(locale, 'no clear leaning', 'няма ясен уклон');
+    const neutralFraming = reviewed.bias.framing === insightText(locale, 'No strong framing distortion stands out.', 'Не се вижда силно изкривяване в подбора на факти.');
+    if (mixed && reviewed.bias.severity === 'low' && neutralFraming) {
+      delete reviewed.bias;
+    }
+  }
+
+  if (reviewed.facts) {
+    const hasStrongKeywords = reviewed.facts.people.length > 0 || reviewed.facts.locations.length > 0 || reviewed.facts.quotes.length > 0;
+    if (!hasStrongKeywords) delete reviewed.facts;
+  }
+
+  if (reviewed.impact && !reviewed.impact.industries.length && reviewed.impact.score === 'medium') {
+    delete reviewed.impact;
+  }
+
+  return Object.keys(reviewed).length ? reviewed : undefined;
 }
 
 function topicHitsForItem(item: NewsInternal): string[] {
@@ -1700,7 +1772,7 @@ function generateInsightsForItem(item: NewsInternal, budget: BudgetMode): NewsIn
     const localImpact = buildLocalImpact(item, localRegion);
     if (localImpact) insights.localImpact = localImpact;
   }
-  return Object.keys(insights).length ? insights : undefined;
+  return reviewGeneratedInsights(item, insights);
 }
 
 function refreshDerivedDataForItem(item: NewsInternal) {

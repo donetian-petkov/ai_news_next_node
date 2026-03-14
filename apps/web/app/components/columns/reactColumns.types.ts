@@ -82,6 +82,9 @@ export type CardLabels = {
   aiReady: string;
   showMoreAiInsights: string;
   showFewerAiInsights: string;
+  showAiAnalysis: string;
+  hideAiAnalysis: string;
+  aiInsightsHint: string;
   headlineRiskSection: string;
   biasSection: string;
   impactSection: string;
@@ -97,6 +100,12 @@ export type CardLabels = {
   industriesLabel: string;
   aiHeadlineLabel: string;
   relatedStories: string;
+  reasonsLabel: string;
+  toneLabel: string;
+  framingLabel: string;
+  leaningLabel: string;
+  additionalComparisons: string;
+  speculativeLabel: string;
   perspectiveInvestor: string;
   perspectiveGovernment: string;
   perspectiveConsumer: string;
