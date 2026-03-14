@@ -15,10 +15,8 @@ export function useTopMenuFocusAndSearch({ initialSearchQuery, onSearchCommit }:
   const focusTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!searchDraft && initialSearchQuery) {
-      setSearchDraft(initialSearchQuery);
-    }
-  }, [initialSearchQuery, searchDraft]);
+    setSearchDraft(initialSearchQuery);
+  }, [initialSearchQuery]);
 
   useEffect(() => {
     return () => {
@@ -71,4 +69,3 @@ export function useTopMenuFocusAndSearch({ initialSearchQuery, onSearchCommit }:
     clearSearch
   };
 }
-

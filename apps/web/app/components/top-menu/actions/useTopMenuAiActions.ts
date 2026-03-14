@@ -43,6 +43,10 @@ function getProviderKeyLocal(provider: TopMenuAiProvider): string {
   return String(map[provider] || '').trim();
 }
 
+export function hasProviderKeyLocal(provider: TopMenuAiProvider): boolean {
+  return !!getProviderKeyLocal(provider);
+}
+
 export function useTopMenuAiActions({ dispatch, t, labels, feeds }: Args) {
   const applyAllBudget = useCallback((budget: 'low' | 'standard' | 'high') => {
     const ok = sendWsMessage({ type: 'set_all_budget', budget });

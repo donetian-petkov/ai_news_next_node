@@ -303,8 +303,7 @@ const uiSlice = createSlice({
         state.insightFeatures = normalizeInsightFeatures(next.insightFeatures, state.insightFeatures);
       }
       if (typeof next.localImpactRegion === 'string') {
-        const region = next.localImpactRegion.trim();
-        if (region) state.localImpactRegion = region.slice(0, 120);
+        state.localImpactRegion = next.localImpactRegion.trim().slice(0, 120);
       }
       if (Array.isArray(next.trackedTopics)) {
         state.trackedTopics = dedupeTrimmedList(next.trackedTopics, 80);
@@ -465,7 +464,7 @@ const uiSlice = createSlice({
       if (next.insightFeatures && typeof next.insightFeatures === 'object') {
         state.insightFeatures = normalizeInsightFeatures(next.insightFeatures, state.insightFeatures);
       }
-      if (typeof next.localImpactRegion === 'string' && next.localImpactRegion.trim()) {
+      if (typeof next.localImpactRegion === 'string') {
         state.localImpactRegion = next.localImpactRegion.trim().slice(0, 120);
       }
       if (Array.isArray(next.trackedTopics)) {

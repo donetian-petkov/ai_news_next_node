@@ -14,17 +14,10 @@ export function TopMenuDesktopOverlay() {
     labels,
     searchVisible,
     addStreamVisible,
-    controls,
-    onToggleSearch,
-    onToggleAddStream,
-    onToggleControls
+    onToggleMenu
   } = useTopMenuContext();
 
-  const handleClose = () => {
-    if (searchVisible) onToggleSearch();
-    if (addStreamVisible) onToggleAddStream();
-    if (!controls.model.collapsed) onToggleControls();
-  };
+  const handleClose = () => onToggleMenu();
 
   if (isMobile || !showDesktopBody) return null;
 

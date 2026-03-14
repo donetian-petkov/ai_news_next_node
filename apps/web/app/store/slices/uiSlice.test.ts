@@ -217,6 +217,8 @@ describe('uiSlice', () => {
     expect(state.performanceMode).toBe(true);
     state = uiReducer(state, setKeywords(['  war  ', 'energy', 'WAR']));
     expect(state.keywords).toEqual(['war', 'energy']);
+    state = uiReducer(state, setAiSettings({ localImpactRegion: '' }));
+    expect(state.localImpactRegion).toBe('');
     state = uiReducer(state, setMoodFilter(NewsMoodFilterValue.Sadness));
     state = uiReducer(state, setTypeFilter(NewsTypeFilterValue.Politics));
     expect(state.moodFilter).toBe(NewsMoodFilterValue.All);

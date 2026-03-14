@@ -86,11 +86,11 @@ export function useTopMenuControlPanelHandlers({
     },
     onSetLocalImpactRegion: (region: string) => {
       const next = String(region || '').trim();
-      dispatch(setAiSettings({ localImpactRegion: next || ui.localImpactRegion }));
+      dispatch(setAiSettings({ localImpactRegion: next }));
       sendWsMessage({
         type: 'set_ai_features',
         features: ui.insightFeatures,
-        localRegion: next || ui.localImpactRegion,
+        localRegion: next,
         trackedTopics: ui.trackedTopics
       });
     },
