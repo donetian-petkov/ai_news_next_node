@@ -101,6 +101,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     send: labels.send,
     showOriginalTitle: labels.showOriginalTitle || 'Show original title',
     showTranslatedTitle: labels.showTranslatedTitle || 'Show translated title',
+    summaryRepeatsTitle: labels.summaryRepeatsTitle || 'Summary repeats the title',
     biasDetected: labels.biasDetected || 'Bias detected',
     sensationalismDetected: labels.sensationalismDetected || 'Headline risk',
     factHighlights: labels.factHighlights || 'Fact highlights',

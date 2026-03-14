@@ -68,6 +68,7 @@ export type CardLabels = {
   send: string;
   showOriginalTitle: string;
   showTranslatedTitle: string;
+  summaryRepeatsTitle: string;
   biasDetected: string;
   sensationalismDetected: string;
   factHighlights: string;

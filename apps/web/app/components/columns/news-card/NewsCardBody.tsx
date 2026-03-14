@@ -6,6 +6,46 @@ import { Box, Button, Chip, CircularProgress, Collapse, MenuItem, Select, Stack,
 import { NEWS_CARD_COLOR_TOKENS } from '../designTokens';
 import { useNewsCardContext } from './context/useNewsCardContext';
 
+function normalizeSummaryComparisonText(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .replace(/[“”„"'"'`’]/g, '')
+    .replace(/[^a-zа-я0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokenizeSummaryComparisonText(value: string): string[] {
+  return normalizeSummaryComparisonText(value)
+    .split(' ')
+    .filter(token => token.length > 2);
+}
+
+function isSummaryRedundantWithTitle(summary: string, titleCandidates: string[]): boolean {
+  const normalizedSummary = normalizeSummaryComparisonText(summary);
+  if (!normalizedSummary) return false;
+
+  return titleCandidates.some(title => {
+    const normalizedTitle = normalizeSummaryComparisonText(title);
+    if (!normalizedTitle) return false;
+    if (normalizedSummary === normalizedTitle) return true;
+    if ((normalizedSummary.includes(normalizedTitle) || normalizedTitle.includes(normalizedSummary))
+      && Math.abs(normalizedSummary.length - normalizedTitle.length) <= 24) {
+      return true;
+    }
+
+    const titleTokens = Array.from(new Set(tokenizeSummaryComparisonText(normalizedTitle)));
+    const summaryTokens = Array.from(new Set(tokenizeSummaryComparisonText(normalizedSummary)));
+    if (!titleTokens.length || !summaryTokens.length) return false;
+
+    const overlap = titleTokens.filter(token => summaryTokens.includes(token)).length;
+    const titleCoverage = overlap / titleTokens.length;
+    const summaryCoverage = overlap / summaryTokens.length;
+
+    return titleCoverage >= 0.8 && summaryCoverage >= 0.68 && summaryTokens.length <= titleTokens.length + 4;
+  });
+}
+
 export function NewsCardBody() {
   const {
     view,
@@ -47,6 +87,11 @@ export function NewsCardBody() {
   const insightStatus = item.insightStatus;
   const showSummaryBlock = hasSummaryBlock;
   const showResearchBlock = hasResearchBlock;
+  const summaryRedundantWithTitle = summaryVisible && !hideAllSummaries && isSummaryRedundantWithTitle(summaryText, [
+    item.title,
+    item.titleBg || '',
+    item.titleEn || ''
+  ]);
   const perspectives = insights?.perspectives;
   const selectedPerspectiveText = perspectives?.[perspective];
   const levelLabels: Record<'high' | 'medium' | 'low', string> = {
@@ -381,10 +426,15 @@ export function NewsCardBody() {
 
       {showSummaryBlock ? (
         <Box sx={sectionShellSx}>
-          <Typography variant="overline" sx={sectionTitleSx}>
-            {labels.summary}
-          </Typography>
-          {summaryVisible && !hideAllSummaries ? (
+          <Stack direction="row" spacing={0.8} alignItems="center" useFlexGap flexWrap="wrap" sx={{ mb: 0.45 }}>
+            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
+              {labels.summary}
+            </Typography>
+            {summaryRedundantWithTitle ? (
+              <Chip size="small" variant="outlined" label={labels.summaryRepeatsTitle} />
+            ) : null}
+          </Stack>
+          {summaryVisible && !hideAllSummaries && !summaryRedundantWithTitle ? (
             <Typography
               variant="body2"
               sx={{
@@ -398,7 +448,7 @@ export function NewsCardBody() {
               {summaryText}
             </Typography>
           ) : null}
-          {summaryVisible && summaryLong ? (
+          {summaryVisible && summaryLong && !summaryRedundantWithTitle ? (
             <Button
               size="small"
               variant="text"
