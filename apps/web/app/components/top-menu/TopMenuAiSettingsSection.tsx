@@ -1,7 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { Alert, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  Divider,
+  FormControlLabel,
+  LinearProgress,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
 import {
   buildAiModelOptions,
@@ -15,6 +27,20 @@ import {
 } from './topMenuOptionBuilders';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
+const FEATURE_ROWS: Array<{ key: keyof ReturnType<typeof useTopMenuContext>['controls']['model']['aiSettings']['insightFeatures']; label: string; hint: string }> = [
+  { key: 'biasDetection', label: 'Bias detector', hint: 'Political leaning, tone, and framing.' },
+  { key: 'sensationalismDetection', label: 'Rage bait detector', hint: 'Flags clickbait headlines and suggests safer alternatives.' },
+  { key: 'factHighlights', label: 'Fact highlights', hint: 'People, places, dates, numbers, and quotes under each story.' },
+  { key: 'storyImpact', label: 'Impact prediction', hint: 'Economic, political, and tech implications.' },
+  { key: 'perspectiveSimulator', label: 'Perspective simulator', hint: 'Investor, government, consumer, and tech views.' },
+  { key: 'historicalComparison', label: 'Historical comparison', hint: 'Similar past events and patterns.' },
+  { key: 'futureScenarioGenerator', label: 'Future scenarios', hint: 'Possible next outcomes with a disclaimer.' },
+  { key: 'localImpactDetector', label: 'Local impact', hint: 'How global stories affect the selected region.' },
+  { key: 'topicTracking', label: 'Topic tracking', hint: 'Follow recurring topics and only surface major updates.' },
+  { key: 'emergingStoryDetector', label: 'Emerging stories', hint: 'Optional column for repeated stories rising fast.' },
+  { key: 'dailyBriefing', label: 'Daily briefing', hint: 'Enables the on-demand briefing generator below.' }
+];
+
 export function TopMenuAiSettingsSection() {
   const {
     labels,
@@ -27,6 +53,14 @@ export function TopMenuAiSettingsSection() {
   const providerModels = aiSettings.availableModels[aiSettings.aiProvider];
   const [providerKeyDraft, setProviderKeyDraft] = useState('');
   const [keywordsDraft, setKeywordsDraft] = useState('');
+  const [topicsDraft, setTopicsDraft] = useState('');
+
+  const briefingFeedSelection = useMemo(() => {
+    if (aiSettings.dailyBriefingFeedUrls.length) {
+      return new Set(aiSettings.dailyBriefingFeedUrls);
+    }
+    return new Set(aiSettings.availableFeeds.map(feed => feed.url));
+  }, [aiSettings.availableFeeds, aiSettings.dailyBriefingFeedUrls]);
 
   const addKeywords = () => {
     const additions = String(keywordsDraft || '')
@@ -49,6 +83,49 @@ export function TopMenuAiSettingsSection() {
   const removeKeyword = (keyword: string) => {
     const target = keyword.toLocaleLowerCase();
     actions.onSetKeywords(aiSettings.keywords.filter(v => v.toLocaleLowerCase() !== target));
+  };
+
+  const addTopics = () => {
+    const additions = String(topicsDraft || '')
+      .split(/[,\n]+/g)
+      .map(v => v.trim())
+      .filter(Boolean);
+    if (!additions.length) return;
+    const seen = new Set(aiSettings.trackedTopics.map(v => v.toLocaleLowerCase()));
+    const next = [...aiSettings.trackedTopics];
+    additions.forEach(v => {
+      const key = v.toLocaleLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      next.push(v);
+    });
+    actions.onSetTrackedTopics(next);
+    setTopicsDraft('');
+  };
+
+  const toggleBriefingFeed = (feedUrl: string) => {
+    const current = new Set(briefingFeedSelection);
+    if (current.has(feedUrl)) current.delete(feedUrl);
+    else current.add(feedUrl);
+    actions.onSetDailyBriefingPrefs({ dailyBriefingFeedUrls: Array.from(current) });
+  };
+
+  const openEmailDraft = () => {
+    const latest = aiSettings.briefing.latest;
+    if (!latest || !aiSettings.dailyBriefingEmail.trim()) return;
+    const subject = encodeURIComponent(latest.title);
+    const body = encodeURIComponent(latest.body);
+    window.open(`mailto:${encodeURIComponent(aiSettings.dailyBriefingEmail.trim())}?subject=${subject}&body=${body}`, '_self');
+  };
+
+  const playBriefingAudio = () => {
+    const latest = aiSettings.briefing.latest;
+    if (!latest) return;
+    const text = latest.audioScript || latest.body;
+    if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
@@ -173,6 +250,12 @@ export function TopMenuAiSettingsSection() {
             layout="stacked"
             wrapperClassName="topMenuField"
           />
+
+          {!aiSettings.aiAvailable ? (
+            <Alert severity="info" sx={{ py: 0 }} className="topMenuFieldGridFull">
+              {labels.aiUnavailable}
+            </Alert>
+          ) : null}
         </div>
 
         <Box className="topMenuCardBlock" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
@@ -203,6 +286,34 @@ export function TopMenuAiSettingsSection() {
               {labels.providerKeySave || 'Save key'}
             </Button>
           </Stack>
+        </Box>
+
+        <Box className="topMenuCardBlock" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.8 }}>
+            AI features
+          </Typography>
+          <div className="topMenuFieldGrid">
+            {FEATURE_ROWS.map(feature => (
+              <Box key={feature.key} className="topMenuField" sx={{ border: '1px solid var(--panel-border)', borderRadius: 1.5, px: 1, py: 0.6 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={!!aiSettings.insightFeatures[feature.key]}
+                      onChange={event => actions.onSetInsightFeature(feature.key, event.target.checked)}
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{feature.label}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>{feature.hint}</Typography>
+                    </Box>
+                  }
+                  sx={{ alignItems: 'flex-start', m: 0 }}
+                />
+              </Box>
+            ))}
+          </div>
         </Box>
 
         <Box className="topMenuCardBlock" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
@@ -241,11 +352,180 @@ export function TopMenuAiSettingsSection() {
           ) : null}
         </Box>
 
-        {!aiSettings.aiAvailable ? (
-          <Alert severity="info" sx={{ py: 0 }} className="topMenuFieldGridFull">
-            {labels.aiUnavailable}
-          </Alert>
-        ) : null}
+        <Box className="topMenuCardBlock" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.8 }}>
+            Topic tracking
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <TextField
+              size="small"
+              fullWidth
+              label="Tracked topics"
+              placeholder="Artificial Intelligence, War in Ukraine, Climate Change"
+              value={topicsDraft}
+              onChange={e => setTopicsDraft(e.target.value)}
+            />
+            <Button size="small" variant="contained" onClick={addTopics} disabled={!String(topicsDraft || '').trim()}>
+              Add
+            </Button>
+          </Stack>
+          {aiSettings.trackedTopics.length ? (
+            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              {aiSettings.trackedTopics.map(topic => (
+                <Chip
+                  key={topic.toLocaleLowerCase()}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  label={topic}
+                  onDelete={() => actions.onSetTrackedTopics(aiSettings.trackedTopics.filter(v => v.toLocaleLowerCase() !== topic.toLocaleLowerCase()))}
+                />
+              ))}
+            </Stack>
+          ) : null}
+
+          <Divider sx={{ my: 1.1 }} />
+
+          <TextField
+            size="small"
+            fullWidth
+            label="Local impact region"
+            placeholder="United States"
+            value={aiSettings.localImpactRegion}
+            onChange={e => actions.onSetLocalImpactRegion(e.target.value)}
+          />
+        </Box>
+
+        <Box className="topMenuCardBlock" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.8 }}>
+            <Typography variant="caption">
+              Daily briefing
+            </Typography>
+            {aiSettings.briefing.loading ? <LinearProgress sx={{ width: 120 }} /> : null}
+          </Stack>
+
+          <div className="topMenuFieldGrid">
+            <TopMenuSelectField
+              id="dailyBriefingDelivery"
+              label="Delivery"
+              value={aiSettings.dailyBriefingDelivery}
+              onChange={value => actions.onSetDailyBriefingPrefs({ dailyBriefingDelivery: value as typeof aiSettings.dailyBriefingDelivery })}
+              options={[
+                { value: 'site', label: 'Within site' },
+                { value: 'email', label: 'Email draft' }
+              ]}
+              layout="stacked"
+              wrapperClassName="topMenuField"
+            />
+            <TopMenuSelectField
+              id="dailyBriefingFormat"
+              label="Format"
+              value={aiSettings.dailyBriefingFormat}
+              onChange={value => actions.onSetDailyBriefingPrefs({ dailyBriefingFormat: value as typeof aiSettings.dailyBriefingFormat })}
+              options={[
+                { value: 'executive', label: 'Executive' },
+                { value: 'bullets', label: 'Bullets' },
+                { value: 'narrative', label: 'Narrative' }
+              ]}
+              layout="stacked"
+              wrapperClassName="topMenuField"
+            />
+            <Box className="topMenuField" sx={{ display: 'flex', alignItems: 'center', pt: 1.2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={aiSettings.dailyBriefingAudio}
+                    onChange={event => actions.onSetDailyBriefingPrefs({ dailyBriefingAudio: event.target.checked })}
+                  />
+                }
+                label="Audio narration"
+                sx={{ m: 0 }}
+              />
+            </Box>
+          </div>
+
+          {aiSettings.dailyBriefingDelivery === 'email' ? (
+            <TextField
+              size="small"
+              fullWidth
+              sx={{ mt: 1 }}
+              label="Email"
+              placeholder="briefing@example.com"
+              value={aiSettings.dailyBriefingEmail}
+              onChange={e => actions.onSetDailyBriefingPrefs({ dailyBriefingEmail: e.target.value })}
+            />
+          ) : null}
+
+          <Typography variant="caption" sx={{ display: 'block', mt: 1, mb: 0.5 }}>
+            Included columns
+          </Typography>
+          <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
+            {aiSettings.availableFeeds.map(feed => {
+              const selected = briefingFeedSelection.has(feed.url);
+              return (
+                <Chip
+                  key={feed.url}
+                  size="small"
+                  clickable
+                  color={selected ? 'primary' : 'default'}
+                  variant={selected ? 'filled' : 'outlined'}
+                  label={feed.label}
+                  onClick={() => toggleBriefingFeed(feed.url)}
+                />
+              );
+            })}
+          </Stack>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 1 }}>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={actions.onGenerateDailyBriefing}
+              disabled={aiSettings.briefing.loading}
+            >
+              Generate briefing
+            </Button>
+            {aiSettings.dailyBriefingDelivery === 'email' ? (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={openEmailDraft}
+                disabled={!aiSettings.briefing.latest || !aiSettings.dailyBriefingEmail.trim()}
+              >
+                Open email draft
+              </Button>
+            ) : null}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={playBriefingAudio}
+              disabled={!aiSettings.briefing.latest}
+            >
+              Play audio
+            </Button>
+          </Stack>
+
+          {aiSettings.briefing.error ? (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {aiSettings.briefing.error}
+            </Alert>
+          ) : null}
+
+          {aiSettings.briefing.latest ? (
+            <Box sx={{ mt: 1, p: 1, border: '1px solid var(--panel-border)', borderRadius: 1.5, background: 'rgba(255,255,255,0.03)' }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.4 }}>
+                {aiSettings.briefing.latest.title}
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
+                {new Date(aiSettings.briefing.latest.generatedAtMs).toLocaleString()} · {aiSettings.briefing.latest.itemCount} stories
+              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {aiSettings.briefing.latest.body}
+              </Typography>
+            </Box>
+          ) : null}
+        </Box>
       </div>
     </details>
   );

@@ -3,7 +3,9 @@
 import { useMemo } from 'react';
 import { sendWsMessage } from '../../store/wsClient';
 import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTitleDisplayLanguage, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
+import { failBriefing, requestBriefing } from '../../store/slices/briefingSlice';
 import type { AppDispatch, RootState } from '../../store/store';
+import type { TopMenuControlsActions } from './types';
 
 type Args = {
   dispatch: AppDispatch;
@@ -72,6 +74,38 @@ export function useTopMenuControlPanelHandlers({
         sendWsMessage({ type: 'run_title_translate_backfill', max: 700 });
       }
     },
+    onSetInsightFeature: (key: keyof RootState['ui']['insightFeatures'], enabled: boolean) => {
+      const features = { ...ui.insightFeatures, [key]: enabled };
+      const ok = sendWsMessage({
+        type: 'set_ai_features',
+        features,
+        localRegion: ui.localImpactRegion,
+        trackedTopics: ui.trackedTopics
+      });
+      if (ok) dispatch(setAiSettings({ insightFeatures: features }));
+    },
+    onSetLocalImpactRegion: (region: string) => {
+      const next = String(region || '').trim();
+      dispatch(setAiSettings({ localImpactRegion: next || ui.localImpactRegion }));
+      sendWsMessage({
+        type: 'set_ai_features',
+        features: ui.insightFeatures,
+        localRegion: next || ui.localImpactRegion,
+        trackedTopics: ui.trackedTopics
+      });
+    },
+    onSetTrackedTopics: (topics: string[]) => {
+      const cleaned = Array.isArray(topics)
+        ? topics.map(v => String(v || '').trim()).filter(Boolean)
+        : [];
+      const ok = sendWsMessage({
+        type: 'set_ai_features',
+        features: ui.insightFeatures,
+        localRegion: ui.localImpactRegion,
+        trackedTopics: cleaned
+      });
+      if (ok) dispatch(setAiSettings({ trackedTopics: cleaned }));
+    },
     onSummaryModelChange: (model: string) => {
       const next = String(model || '').trim();
       if (!next) return;
@@ -93,6 +127,21 @@ export function useTopMenuControlPanelHandlers({
     onMoodFilterChange: (value: RootState['ui']['moodFilter']) => dispatch(setMoodFilter(value)),
     onTypeFilterChange: (value: RootState['ui']['typeFilter']) => dispatch(setTypeFilter(value)),
     onApplyAllBudget: applyAllBudget,
+    onSetDailyBriefingPrefs: (patch: Parameters<TopMenuControlsActions['onSetDailyBriefingPrefs']>[0]) => dispatch(setAiSettings(patch)),
+    onGenerateDailyBriefing: () => {
+      dispatch(requestBriefing());
+      const ok = sendWsMessage({
+        type: 'generate_daily_briefing',
+        delivery: ui.dailyBriefingDelivery,
+        email: ui.dailyBriefingEmail,
+        format: ui.dailyBriefingFormat,
+        includeAudio: ui.dailyBriefingAudio,
+        feedUrls: ui.dailyBriefingFeedUrls
+      });
+      if (!ok) {
+        dispatch(failBriefing('WebSocket is disconnected. Daily briefing was not sent.'));
+      }
+    },
     onSetAppearance: (patch: Partial<RootState['ui']>) => dispatch(setAppearanceSettings(patch)),
     onSetLanguage: (lang: 'en' | 'bg') => dispatch(setLanguage(lang)),
     onCycleTheme: cycleTheme,
@@ -102,5 +151,5 @@ export function useTopMenuControlPanelHandlers({
       dispatch(setAppearanceSettings({ soundEnabled: next }));
       if (next) triggerSoundCue('success');
     }
-  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.performanceMode, ui.soundEnabled]);
+  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.insightFeatures, ui.localImpactRegion, ui.performanceMode, ui.soundEnabled, ui.trackedTopics]);
 }

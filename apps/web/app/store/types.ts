@@ -73,6 +73,109 @@ export type ColumnFilters = {
   onlySummaries: boolean;
 };
 
+export type BriefingDelivery = 'site' | 'email';
+export type BriefingFormat = 'executive' | 'bullets' | 'narrative';
+
+export type AiInsightFeatureSettings = {
+  biasDetection: boolean;
+  sensationalismDetection: boolean;
+  factHighlights: boolean;
+  storyImpact: boolean;
+  dailyBriefing: boolean;
+  topicTracking: boolean;
+  perspectiveSimulator: boolean;
+  emergingStoryDetector: boolean;
+  historicalComparison: boolean;
+  futureScenarioGenerator: boolean;
+  localImpactDetector: boolean;
+};
+
+export type InsightConfidence = 'low' | 'medium' | 'high';
+export type InsightSeverity = 'low' | 'medium' | 'high';
+export type ImpactLevel = 'low' | 'medium' | 'high';
+export type PerspectiveKey = 'investor' | 'government' | 'consumer' | 'tech';
+
+export type BiasInsight = {
+  detected: boolean;
+  leaning: string;
+  emotionalTone: string;
+  framing: string;
+  confidence: InsightConfidence;
+  severity: InsightSeverity;
+  summary: string;
+};
+
+export type SensationalismInsight = {
+  detected: boolean;
+  level: InsightSeverity;
+  reasons: string[];
+  alternativeHeadline?: string;
+  summary: string;
+};
+
+export type FactHighlightsInsight = {
+  people: string[];
+  locations: string[];
+  dates: string[];
+  numbers: string[];
+  quotes: string[];
+};
+
+export type StoryImpactInsight = {
+  score: ImpactLevel;
+  economic: string;
+  political: string;
+  tech: string;
+  industries: string[];
+  summary: string;
+};
+
+export type HistoricalComparisonInsight = {
+  comparisons: string[];
+  explanation: string;
+};
+
+export type FutureScenarioInsight = {
+  disclaimer: string;
+  scenarios: string[];
+  outlook: string;
+};
+
+export type LocalImpactInsight = {
+  region: string;
+  summary: string;
+};
+
+export type NewsInsights = {
+  bias?: BiasInsight;
+  sensationalism?: SensationalismInsight;
+  facts?: FactHighlightsInsight;
+  impact?: StoryImpactInsight;
+  perspectives?: Partial<Record<PerspectiveKey, string>>;
+  historical?: HistoricalComparisonInsight;
+  future?: FutureScenarioInsight;
+  localImpact?: LocalImpactInsight;
+};
+
+export type EmergingStorySignal = {
+  clusterSize: number;
+  sources: string[];
+  velocity: 'watch' | 'rising' | 'viral';
+  reason: string;
+};
+
+export type DailyBriefingResult = {
+  title: string;
+  body: string;
+  audioScript: string;
+  generatedAtMs: number;
+  itemCount: number;
+  delivery: BriefingDelivery;
+  email?: string;
+  format: BriefingFormat;
+  feedUrls: string[];
+};
+
 export type FeedInfo = {
   url: string;
   label: string;
@@ -98,6 +201,9 @@ export type NewsItem = {
   summary?: string;
   summaryPending?: boolean;
   research?: string;
+  insights?: NewsInsights;
+  topicHits?: string[];
+  emergingSignal?: EmergingStorySignal;
   mood?: NewsMood;
   newsType?: NewsType;
   filteredOk?: boolean;

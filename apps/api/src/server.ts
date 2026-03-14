@@ -92,6 +92,108 @@ type NewsType = `${NewsTypeValue}`;
 type FeedKind = 'rss' | 'reddit' | 'youtube';
 
 type BudgetMode = 'low' | 'standard' | 'high';
+type InsightConfidence = 'low' | 'medium' | 'high';
+type InsightSeverity = 'low' | 'medium' | 'high';
+type ImpactLevel = 'low' | 'medium' | 'high';
+type PerspectiveKey = 'investor' | 'government' | 'consumer' | 'tech';
+type BriefingDelivery = 'site' | 'email';
+type BriefingFormat = 'executive' | 'bullets' | 'narrative';
+
+type AiInsightFeatureSettings = {
+  biasDetection: boolean;
+  sensationalismDetection: boolean;
+  factHighlights: boolean;
+  storyImpact: boolean;
+  dailyBriefing: boolean;
+  topicTracking: boolean;
+  perspectiveSimulator: boolean;
+  emergingStoryDetector: boolean;
+  historicalComparison: boolean;
+  futureScenarioGenerator: boolean;
+  localImpactDetector: boolean;
+};
+
+type BiasInsight = {
+  detected: boolean;
+  leaning: string;
+  emotionalTone: string;
+  framing: string;
+  confidence: InsightConfidence;
+  severity: InsightSeverity;
+  summary: string;
+};
+
+type SensationalismInsight = {
+  detected: boolean;
+  level: InsightSeverity;
+  reasons: string[];
+  alternativeHeadline?: string;
+  summary: string;
+};
+
+type FactHighlightsInsight = {
+  people: string[];
+  locations: string[];
+  dates: string[];
+  numbers: string[];
+  quotes: string[];
+};
+
+type StoryImpactInsight = {
+  score: ImpactLevel;
+  economic: string;
+  political: string;
+  tech: string;
+  industries: string[];
+  summary: string;
+};
+
+type HistoricalComparisonInsight = {
+  comparisons: string[];
+  explanation: string;
+};
+
+type FutureScenarioInsight = {
+  disclaimer: string;
+  scenarios: string[];
+  outlook: string;
+};
+
+type LocalImpactInsight = {
+  region: string;
+  summary: string;
+};
+
+type EmergingStorySignal = {
+  clusterSize: number;
+  sources: string[];
+  velocity: 'watch' | 'rising' | 'viral';
+  reason: string;
+};
+
+type NewsInsights = {
+  bias?: BiasInsight;
+  sensationalism?: SensationalismInsight;
+  facts?: FactHighlightsInsight;
+  impact?: StoryImpactInsight;
+  perspectives?: Partial<Record<PerspectiveKey, string>>;
+  historical?: HistoricalComparisonInsight;
+  future?: FutureScenarioInsight;
+  localImpact?: LocalImpactInsight;
+};
+
+type DailyBriefingResult = {
+  type: 'daily_briefing';
+  title: string;
+  body: string;
+  audioScript: string;
+  generatedAtMs: number;
+  itemCount: number;
+  delivery: BriefingDelivery;
+  email?: string;
+  format: BriefingFormat;
+  feedUrls: string[];
+};
 
 type SortMode = 'newest' | 'oldest' | 'matched';
 
@@ -155,6 +257,9 @@ type News = {
   summary?: string;
   summaryPending?: boolean;
   research?: string;
+  insights?: NewsInsights;
+  topicHits?: string[];
+  emergingSignal?: EmergingStorySignal;
   mood?: Mood;
   newsType?: NewsType;
 };
@@ -183,6 +288,9 @@ type Config = {
   researchModel: string;
   askModel: string;
   availableModels: ModelOptionsByProvider;
+  aiFeatures: AiInsightFeatureSettings;
+  localRegion: string;
+  trackedTopics: string[];
 
   matchThreshold: number;
   dedupeThreshold: number;
@@ -310,6 +418,76 @@ function parseKeywords(): string[] {
   return parseKeywordsCsv(raw);
 }
 let keywords = parseKeywords();
+
+const DEFAULT_AI_INSIGHT_FEATURES: AiInsightFeatureSettings = {
+  biasDetection: false,
+  sensationalismDetection: false,
+  factHighlights: false,
+  storyImpact: false,
+  dailyBriefing: false,
+  topicTracking: false,
+  perspectiveSimulator: false,
+  emergingStoryDetector: false,
+  historicalComparison: false,
+  futureScenarioGenerator: false,
+  localImpactDetector: false
+};
+
+function isLegacyAutoEnabledInsightFeatures(input: unknown): boolean {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
+  const features = input as Record<string, unknown>;
+  return features.biasDetection === true
+    && features.sensationalismDetection === true
+    && features.factHighlights === true
+    && features.storyImpact === true
+    && features.dailyBriefing === true
+    && features.topicTracking === true
+    && features.perspectiveSimulator === true
+    && features.emergingStoryDetector === true
+    && features.historicalComparison === false
+    && features.futureScenarioGenerator === false
+    && features.localImpactDetector === false;
+}
+
+function normalizeTrimmedList(input: unknown, max = 80): string[] {
+  if (!Array.isArray(input)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of input) {
+    const value = String(raw || '').trim();
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value.slice(0, 120));
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function normalizeAiFeatureSettings(
+  input: unknown,
+  fallback: AiInsightFeatureSettings = DEFAULT_AI_INSIGHT_FEATURES
+): AiInsightFeatureSettings {
+  const src = (input && typeof input === 'object') ? input as Record<string, unknown> : {};
+  return {
+    biasDetection: typeof src.biasDetection === 'boolean' ? src.biasDetection : fallback.biasDetection,
+    sensationalismDetection: typeof src.sensationalismDetection === 'boolean' ? src.sensationalismDetection : fallback.sensationalismDetection,
+    factHighlights: typeof src.factHighlights === 'boolean' ? src.factHighlights : fallback.factHighlights,
+    storyImpact: typeof src.storyImpact === 'boolean' ? src.storyImpact : fallback.storyImpact,
+    dailyBriefing: typeof src.dailyBriefing === 'boolean' ? src.dailyBriefing : fallback.dailyBriefing,
+    topicTracking: typeof src.topicTracking === 'boolean' ? src.topicTracking : fallback.topicTracking,
+    perspectiveSimulator: typeof src.perspectiveSimulator === 'boolean' ? src.perspectiveSimulator : fallback.perspectiveSimulator,
+    emergingStoryDetector: typeof src.emergingStoryDetector === 'boolean' ? src.emergingStoryDetector : fallback.emergingStoryDetector,
+    historicalComparison: typeof src.historicalComparison === 'boolean' ? src.historicalComparison : fallback.historicalComparison,
+    futureScenarioGenerator: typeof src.futureScenarioGenerator === 'boolean' ? src.futureScenarioGenerator : fallback.futureScenarioGenerator,
+    localImpactDetector: typeof src.localImpactDetector === 'boolean' ? src.localImpactDetector : fallback.localImpactDetector
+  };
+}
+
+let aiFeatures: AiInsightFeatureSettings = { ...DEFAULT_AI_INSIGHT_FEATURES };
+let localRegion = 'United States';
+let trackedTopics: string[] = [];
 
 // ---- AI configuration (.env) ----
 const aiProviderParsed = aiProviderSchema.safeParse(process.env.AI_PROVIDER || 'openai');
@@ -613,6 +791,9 @@ const APP_STATE_ROW_ID = 1;
 type PersistedState = {
   version: number;
   keywords?: string[];
+  aiFeatures?: AiInsightFeatureSettings;
+  localRegion?: string;
+  trackedTopics?: string[];
   feeds: FeedInfo[];
   feedSettings: Record<string, FeedSettings>;
   hiddenIds: string[];
@@ -669,6 +850,9 @@ function saveStateNow() {
   const st: PersistedState = {
     version: 1,
     keywords,
+    aiFeatures,
+    localRegion,
+    trackedTopics,
     feeds: feedsList,
     feedSettings: feedSettingsObj(),
     hiddenIds: Array.from(hiddenIds),
@@ -931,6 +1115,7 @@ async function refreshMatchStateForRecent() {
     it.isMatch = isMatch;
     it.matchScore = matchScore;
     it.filteredOk = filteredOk;
+    refreshDerivedDataForItem(it);
   }
 
   for (const it of sorted) {
@@ -1015,6 +1200,378 @@ function pickRssContextCombined(item: any, limitChars: number): string {
 
   if (!cleanedParts.length) return '';
   return cleanedParts.join(' -- ').slice(0, Math.max(0, limitChars));
+}
+
+function insightFeatureAllowed(feature: keyof AiInsightFeatureSettings, budget: BudgetMode): boolean {
+  if (feature === 'biasDetection' || feature === 'sensationalismDetection' || feature === 'factHighlights') {
+    return budget === 'standard' || budget === 'high';
+  }
+  return budget === 'high';
+}
+
+function combinedInsightText(item: NewsInternal): string {
+  return [
+    item.title,
+    item.titleBg,
+    item.titleEn,
+    item.summary,
+    item.research,
+    item.__ctx,
+    item.__linkText
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function compactSentence(value: string, max = 220): string {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+function capitalizeWords(values: string[], max = 6): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of values) {
+    const value = compactSentence(raw, 90);
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function extractFactHighlights(item: NewsInternal): FactHighlightsInsight | undefined {
+  const text = combinedInsightText(item);
+  if (!text) return undefined;
+  const peopleMatches = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g) || [];
+  const locationMatches = text.match(/\b(?:in|from|at|near|across|inside)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/g) || [];
+  const dateMatches = text.match(/\b(?:\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?|\d{4}|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,\s*\d{4})?)\b/gi) || [];
+  const numberMatches = text.match(/\b\d[\d,.%$]*(?:\s?(?:million|billion|trillion|k|m|bn))?\b/gi) || [];
+  const quoteMatches = text.match(/["“][^"”]{8,180}["”]/g) || [];
+
+  const facts: FactHighlightsInsight = {
+    people: capitalizeWords(peopleMatches, 6),
+    locations: capitalizeWords(locationMatches.map(match => match.replace(/^(?:in|from|at|near|across|inside)\s+/i, '')), 6),
+    dates: capitalizeWords(dateMatches, 6),
+    numbers: capitalizeWords(numberMatches, 6),
+    quotes: capitalizeWords(quoteMatches.map(match => match.replace(/^["“]|["”]$/g, '')), 4)
+  };
+
+  return facts.people.length || facts.locations.length || facts.dates.length || facts.numbers.length || facts.quotes.length
+    ? facts
+    : undefined;
+}
+
+function detectSensationalism(item: NewsInternal): SensationalismInsight | undefined {
+  const title = compactSentence(item.title, 220);
+  if (!title) return undefined;
+  const lower = title.toLocaleLowerCase();
+  const reasons: string[] = [];
+  if (/[!?]{2,}/.test(title)) reasons.push('Repeated exclamation or question punctuation');
+  if (/[A-Z]{4,}/.test(title)) reasons.push('Excessive all-caps wording');
+  if (/(shocking|outrage|rage|furious|slams|destroys|explodes|massive|must see|you won.?t believe|panic)/i.test(lower)) {
+    reasons.push('Emotionally charged wording');
+  }
+  if (/(secret|exposed|what happened next|watch now|gone wrong)/i.test(lower)) {
+    reasons.push('Clickbait phrasing');
+  }
+  if (!reasons.length) return undefined;
+  const level: InsightSeverity = reasons.length >= 3 ? 'high' : reasons.length === 2 ? 'medium' : 'low';
+  return {
+    detected: true,
+    level,
+    reasons,
+    alternativeHeadline: title.replace(/[!?]+/g, '').replace(/\b(shocking|outrageous|massive|furious)\b/gi, '').replace(/\s+/g, ' ').trim() || title,
+    summary: level === 'high'
+      ? 'Headline looks highly sensational and likely optimized for clicks.'
+      : 'Headline shows signs of clickbait framing.'
+  };
+}
+
+function detectBias(item: NewsInternal): BiasInsight | undefined {
+  const text = combinedInsightText(item);
+  if (!text) return undefined;
+  const lower = text.toLocaleLowerCase();
+  let leaning = 'mixed or unclear';
+  if (/(government|regulator|state media|officials say|national security)/i.test(lower)) leaning = 'institutional / pro-government framing';
+  else if (/(activists|rights groups|grassroots|workers|protesters)/i.test(lower)) leaning = 'activist / civil-society framing';
+  else if (/(investors|markets|earnings|shareholders|business leaders)/i.test(lower)) leaning = 'market / investor framing';
+
+  let emotionalTone = 'measured';
+  if (/(fear|anger|outrage|panic|crisis|chaos|furious)/i.test(lower)) emotionalTone = 'emotionally charged';
+  else if (/(hope|optimism|breakthrough|relief)/i.test(lower)) emotionalTone = 'positive / reassuring';
+
+  let framing = '';
+  if (/(critics say|supporters say|officials say|according to)/i.test(lower)) {
+    framing = 'Story relies on selective attribution and highlights one side more strongly.';
+  } else if (/(investigation|alleged|claims|accused)/i.test(lower)) {
+    framing = 'Story frames the topic through conflict or accusation language.';
+  }
+
+  const severity: InsightSeverity = emotionalTone === 'emotionally charged' || framing ? 'medium' : 'low';
+  if (leaning === 'mixed or unclear' && emotionalTone === 'measured' && !framing) return undefined;
+  return {
+    detected: true,
+    leaning,
+    emotionalTone,
+    framing: framing || 'Differences in framing are present but limited.',
+    confidence: severity === 'medium' ? 'medium' : 'low',
+    severity,
+    summary: `Potential bias detected: ${leaning}; tone is ${emotionalTone}.`
+  };
+}
+
+function industriesForItem(item: NewsInternal): string[] {
+  const text = combinedInsightText(item).toLocaleLowerCase();
+  const industries: string[] = [];
+  const add = (label: string) => {
+    if (!industries.includes(label)) industries.push(label);
+  };
+  if (/(chip|semiconductor|nvidia|tsmc|intel)/i.test(text)) add('Semiconductors');
+  if (/(cloud|data center|ai model|server)/i.test(text)) add('Cloud computing');
+  if (/(army|defense|missile|military|security)/i.test(text)) add('Defense');
+  if (/(bank|finance|market|stocks|investor)/i.test(text)) add('Finance');
+  if (/(regulator|law|policy|parliament|senate|european union|eu)/i.test(text)) add('Public policy');
+  if (/(crypto|bitcoin|blockchain)/i.test(text)) add('Cryptocurrency');
+  if (/(climate|energy|oil|gas|solar|wind)/i.test(text)) add('Energy');
+  if (/(ai|software|technology|platform|app)/i.test(text)) add('Technology');
+  return industries.slice(0, 6);
+}
+
+function buildStoryImpact(item: NewsInternal): StoryImpactInsight | undefined {
+  const text = combinedInsightText(item).toLocaleLowerCase();
+  if (!text) return undefined;
+  const industries = industriesForItem(item);
+  const policy = /(regulator|law|policy|vote|election|government|parliament|sanction)/i.test(text);
+  const markets = /(market|stocks|earnings|prices|investor|trade|tariff)/i.test(text);
+  const tech = /(ai|chip|software|cyber|platform|cloud|data)/i.test(text);
+  const score: ImpactLevel = (policy && markets) || (markets && tech) || industries.length >= 3
+    ? 'high'
+    : (policy || markets || tech)
+      ? 'medium'
+      : 'low';
+  if (score === 'low') return undefined;
+  return {
+    score,
+    economic: markets ? 'Could move spending, pricing, or capital allocation in exposed sectors.' : 'Direct economic impact looks limited for now.',
+    political: policy ? 'Likely to influence policy debate, regulation, or government messaging.' : 'Political fallout appears secondary unless the story broadens.',
+    tech: tech ? 'May affect product roadmaps, infrastructure demand, or compliance work in tech.' : 'Tech implications appear indirect.',
+    industries,
+    summary: score === 'high'
+      ? 'High cross-sector impact is likely if the story continues to develop.'
+      : 'Impact is meaningful but concentrated in a narrower set of stakeholders.'
+  };
+}
+
+function buildPerspectives(item: NewsInternal): Partial<Record<PerspectiveKey, string>> | undefined {
+  const impact = buildStoryImpact(item);
+  const title = compactSentence(item.title, 180);
+  const industries = impact?.industries.length ? impact.industries.join(', ') : 'affected sectors';
+  const perspectives: Partial<Record<PerspectiveKey, string>> = {
+    investor: `Investors will watch whether ${title || 'this story'} changes revenue, risk, or valuation across ${industries}.`,
+    government: `Governments will focus on public stability, regulation, and strategic exposure if this story expands.`,
+    consumer: `Consumers will care most about price changes, service reliability, and any effect on daily life.`,
+    tech: `Technology teams will look for infrastructure, compliance, and product implications tied to ${industries}.`
+  };
+  return perspectives;
+}
+
+function buildHistoricalComparison(item: NewsInternal): HistoricalComparisonInsight | undefined {
+  const text = combinedInsightText(item).toLocaleLowerCase();
+  const comparisons: string[] = [];
+  if (/(privacy|data|regulation|platform)/i.test(text)) comparisons.push('EU GDPR rollout');
+  if (/(bank|credit|liquidity|regulation|financial)/i.test(text)) comparisons.push('2008 financial crisis regulations');
+  if (/(supply chain|chip|semiconductor)/i.test(text)) comparisons.push('2020-2021 semiconductor shortages');
+  if (/(war|sanction|ukraine|russia|energy)/i.test(text)) comparisons.push('2022 European energy shock');
+  if (!comparisons.length) return undefined;
+  return {
+    comparisons: comparisons.slice(0, 3),
+    explanation: 'The current story echoes earlier episodes where regulation, supply pressure, or geopolitical risk forced rapid adaptation.'
+  };
+}
+
+function buildFutureScenarios(item: NewsInternal): FutureScenarioInsight | undefined {
+  const impact = buildStoryImpact(item);
+  const text = combinedInsightText(item).toLocaleLowerCase();
+  const scenarios: string[] = [];
+  if (/(regulator|government|parliament|law)/i.test(text)) scenarios.push('Regulators or lawmakers intervene');
+  if (impact?.industries.includes('Technology') || /(ai|software|cloud|chip)/i.test(text)) scenarios.push('Companies adjust products, hiring, or infrastructure plans');
+  if (/(lawsuit|investigation|complaint|probe|alleged)/i.test(text)) scenarios.push('Legal or enforcement action expands');
+  if (impact?.industries.includes('Finance')) scenarios.push('Markets reprice risk across exposed companies');
+  if (!scenarios.length) return undefined;
+  return {
+    disclaimer: 'Disclaimer: this is a scenario forecast, not a factual prediction.',
+    scenarios: scenarios.slice(0, 4),
+    outlook: impact?.score === 'high'
+      ? 'Near-term follow-up is likely and could widen the story materially.'
+      : 'Follow-up is plausible, but the next moves depend on official confirmation and market response.'
+  };
+}
+
+function buildLocalImpact(item: NewsInternal, region: string): LocalImpactInsight | undefined {
+  const impact = buildStoryImpact(item);
+  if (!impact) return undefined;
+  const safeRegion = compactSentence(region || 'United States', 120) || 'United States';
+  return {
+    region: safeRegion,
+    summary: `Impact on ${safeRegion}: watch for effects on ${impact.industries.length ? impact.industries.join(', ') : 'local businesses and public policy'}, especially if the story drives regulation or price changes.`
+  };
+}
+
+function topicHitsForItem(item: NewsInternal): string[] {
+  if (!aiFeatures.topicTracking || !trackedTopics.length) return [];
+  const text = combinedInsightText(item).toLocaleLowerCase();
+  return trackedTopics.filter(topic => text.includes(topic.toLocaleLowerCase())).slice(0, 8);
+}
+
+function emergingSignalForItem(item: NewsInternal): EmergingStorySignal | undefined {
+  if (!aiFeatures.emergingStoryDetector || !item.isMatch || item.filteredOk === false) return undefined;
+  const base = normalizeText(item.title).slice(0, 160);
+  if (!base) return undefined;
+  const tokens = new Set(base.split(/\s+/g).filter(token => token.length > 3));
+  if (!tokens.size) return undefined;
+  const related = recent.filter(candidate => {
+    if (candidate.id === item.id) return false;
+    if (!candidate.isMatch || candidate.filteredOk === false) return false;
+    if (Math.abs(candidate.publishedMs - item.publishedMs) > 18 * 60 * 60 * 1000) return false;
+    const candidateTokens = new Set(normalizeText(candidate.title).split(/\s+/g).filter(token => token.length > 3));
+    let overlap = 0;
+    tokens.forEach(token => {
+      if (candidateTokens.has(token)) overlap += 1;
+    });
+    return overlap >= Math.max(2, Math.floor(tokens.size * 0.4));
+  });
+  const clusterSize = related.length + 1;
+  if (clusterSize < 2) return undefined;
+  const sources = Array.from(new Set([item.source, ...related.map(candidate => candidate.source)])).filter(Boolean).slice(0, 6);
+  const velocity: EmergingStorySignal['velocity'] = clusterSize >= 5 ? 'viral' : clusterSize >= 3 ? 'rising' : 'watch';
+  return {
+    clusterSize,
+    sources,
+    velocity,
+    reason: clusterSize >= 5
+      ? 'This topic is repeating across multiple sources quickly.'
+      : 'Similar matched stories are appearing across more than one source.'
+  };
+}
+
+function generateInsightsForItem(item: NewsInternal, budget: BudgetMode): NewsInsights | undefined {
+  const insights: NewsInsights = {};
+  if (aiFeatures.biasDetection && insightFeatureAllowed('biasDetection', budget)) {
+    const bias = detectBias(item);
+    if (bias) insights.bias = bias;
+  }
+  if (aiFeatures.sensationalismDetection && insightFeatureAllowed('sensationalismDetection', budget)) {
+    const sensationalism = detectSensationalism(item);
+    if (sensationalism) insights.sensationalism = sensationalism;
+  }
+  if (aiFeatures.factHighlights && insightFeatureAllowed('factHighlights', budget)) {
+    const facts = extractFactHighlights(item);
+    if (facts) insights.facts = facts;
+  }
+  if (aiFeatures.storyImpact && insightFeatureAllowed('storyImpact', budget)) {
+    const impact = buildStoryImpact(item);
+    if (impact) insights.impact = impact;
+  }
+  if (aiFeatures.perspectiveSimulator && insightFeatureAllowed('perspectiveSimulator', budget)) {
+    const perspectives = buildPerspectives(item);
+    if (perspectives && Object.keys(perspectives).length) insights.perspectives = perspectives;
+  }
+  if (aiFeatures.historicalComparison && insightFeatureAllowed('historicalComparison', budget)) {
+    const historical = buildHistoricalComparison(item);
+    if (historical) insights.historical = historical;
+  }
+  if (aiFeatures.futureScenarioGenerator && insightFeatureAllowed('futureScenarioGenerator', budget)) {
+    const future = buildFutureScenarios(item);
+    if (future) insights.future = future;
+  }
+  if (aiFeatures.localImpactDetector && insightFeatureAllowed('localImpactDetector', budget)) {
+    const localImpact = buildLocalImpact(item, localRegion);
+    if (localImpact) insights.localImpact = localImpact;
+  }
+  return Object.keys(insights).length ? insights : undefined;
+}
+
+function refreshDerivedDataForItem(item: NewsInternal) {
+  const budget = feedSettings.get(item.feedUrl)?.budget || 'standard';
+  item.insights = generateInsightsForItem(item, budget);
+  item.topicHits = topicHitsForItem(item);
+  item.emergingSignal = emergingSignalForItem(item);
+}
+
+function canGenerateDailyBriefing(feedUrls: string[]): { ok: true; items: NewsInternal[] } | { ok: false; reason: string } {
+  if (!aiEnabled || !aiAvailable) {
+    return { ok: false, reason: 'AI must be enabled and configured before a briefing can be created.' };
+  }
+  if (!aiFeatures.dailyBriefing) {
+    return { ok: false, reason: 'Daily briefing is turned off in AI features.' };
+  }
+  const selected = feedUrls.length ? feedUrls : currentFeeds().map(feed => feed.url);
+  const uniqueSelected = Array.from(new Set(selected));
+  const selectedHighBudget = uniqueSelected.some(feedUrl => (feedSettings.get(feedUrl)?.budget || 'standard') === 'high');
+  if (!selectedHighBudget) {
+    return { ok: false, reason: 'Daily briefing requires at least one selected high-budget column.' };
+  }
+  const items = recent
+    .filter(item => uniqueSelected.includes(item.feedUrl))
+    .sort((a, b) => b.publishedMs - a.publishedMs)
+    .slice(0, 16);
+  if (!items.length) {
+    return { ok: false, reason: 'No recent stories are available for the selected columns.' };
+  }
+  return { ok: true, items };
+}
+
+function isValidEmailAddress(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function generateDailyBriefingPayload(
+  items: NewsInternal[],
+  delivery: BriefingDelivery,
+  email: string | undefined,
+  format: BriefingFormat,
+  includeAudio: boolean,
+  feedUrls: string[]
+): DailyBriefingResult {
+  const topItems = items.slice(0, 8);
+  const lines = topItems.map(item => {
+    const lead = compactSentence(item.summary || item.research || item.title, 180) || item.title;
+    const impact = item.insights?.impact?.summary || '';
+    return { item, lead, impact };
+  });
+
+  let body = '';
+  if (format === 'bullets') {
+    body = lines
+      .map(({ item, lead, impact }) => `• ${item.title}\n${lead}${impact ? `\nImpact: ${impact}` : ''}`)
+      .join('\n\n');
+  } else if (format === 'narrative') {
+    body = lines
+      .map(({ item, lead, impact }) => `${item.source}: ${lead}${impact ? ` ${impact}` : ''}`)
+      .join('\n\n');
+  } else {
+    body = [
+      'Executive briefing',
+      '',
+      ...lines.map(({ item, lead, impact }) => `${item.title}\n${lead}${impact ? `\nWhy it matters: ${impact}` : ''}`)
+    ].join('\n\n');
+  }
+
+  return {
+    type: 'daily_briefing',
+    title: `Daily briefing · ${new Date().toLocaleDateString()}`,
+    body,
+    audioScript: includeAudio ? body.replace(/•/g, 'Story:') : '',
+    generatedAtMs: Date.now(),
+    itemCount: items.length,
+    delivery,
+    email: email || undefined,
+    format,
+    feedUrls
+  };
 }
 
 function summaryInstruction(lang: SummaryLang): string {
@@ -1657,6 +2214,9 @@ function broadcastConfig() {
     researchModel: activeSelection.research,
     askModel: activeSelection.ask,
     availableModels: modelOptionsByProvider,
+    aiFeatures,
+    localRegion,
+    trackedTopics,
 
     matchThreshold: MATCH_THRESHOLD,
     dedupeThreshold: DEDUPE_THRESHOLD,
@@ -1698,6 +2258,9 @@ function broadcastNewsUpdate(it: NewsInternal) {
     summary: it.summary,
     summaryPending: hasSummaryJobQueuedOrRunning(it.id, it.feedUrl),
     research: it.research,
+    insights: it.insights,
+    topicHits: it.topicHits,
+    emergingSignal: it.emergingSignal,
     mood: it.mood,
     newsType: it.newsType
   } satisfies News);
@@ -2018,6 +2581,7 @@ async function runOneJob(job: AiJob) {
       );
       if (text) {
         it.summary = text;
+        refreshDerivedDataForItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         summaryRetryCooldownUntilMs.delete(summaryItemKey(it.id, it.feedUrl));
@@ -2039,6 +2603,7 @@ async function runOneJob(job: AiJob) {
       if (translated) {
         it.titleBg = translated.bg;
         it.titleEn = translated.en;
+        refreshDerivedDataForItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -2063,6 +2628,7 @@ async function runOneJob(job: AiJob) {
       );
       if (mood) {
         it.mood = mood;
+        refreshDerivedDataForItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -2087,6 +2653,7 @@ async function runOneJob(job: AiJob) {
       );
       if (newsType) {
         it.newsType = newsType;
+        refreshDerivedDataForItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -2132,6 +2699,7 @@ async function runOneJob(job: AiJob) {
       }
       if (text) {
         it.research = text;
+        refreshDerivedDataForItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -2386,6 +2954,7 @@ async function processFeed(fi: FeedInfo) {
 
       recent.push(pkt);
       if (recent.length > MAX_RECENT_ITEMS) recent.shift();
+      refreshDerivedDataForItem(pkt);
 
       // enqueue AI jobs (auto per-column)
       if (aiEnabled && aiAvailable) {
@@ -2459,6 +3028,17 @@ function applyLoadedState(st: PersistedState | null) {
   if (Array.isArray(st.keywords)) {
     keywords = normalizeKeywordList(st.keywords);
   }
+  if (st.aiFeatures) {
+    aiFeatures = isLegacyAutoEnabledInsightFeatures(st.aiFeatures)
+      ? { ...DEFAULT_AI_INSIGHT_FEATURES }
+      : normalizeAiFeatureSettings(st.aiFeatures, aiFeatures);
+  }
+  if (typeof st.localRegion === 'string' && st.localRegion.trim()) {
+    localRegion = st.localRegion.trim().slice(0, 120);
+  }
+  if (Array.isArray(st.trackedTopics)) {
+    trackedTopics = normalizeTrimmedList(st.trackedTopics, 80);
+  }
 
   if (Array.isArray(st.feeds) && st.feeds.length) {
     feedsList = st.feeds;
@@ -2483,7 +3063,10 @@ function applyLoadedState(st: PersistedState | null) {
   if (Array.isArray(st.recent)) {
     // restore recent items
     for (const it of st.recent) {
-      if (it && it.id && it.title) recent.push(it);
+      if (it && it.id && it.title) {
+        recent.push(it);
+        refreshDerivedDataForItem(it);
+      }
       if (it?.id) seen.add(it.id);
     }
   }
@@ -2504,6 +3087,8 @@ function applyLoadedState(st: PersistedState | null) {
       label: 'Filtered'
     });
   }
+
+  recent.forEach(item => refreshDerivedDataForItem(item));
 }
 
 async function loadState() {
@@ -2551,6 +3136,9 @@ wss.on('connection', (ws: WebSocket) => {
     researchModel: activeSelection.research,
     askModel: activeSelection.ask,
     availableModels: modelOptionsByProvider,
+    aiFeatures,
+    localRegion,
+    trackedTopics,
 
     matchThreshold: MATCH_THRESHOLD,
     dedupeThreshold: DEDUPE_THRESHOLD,
@@ -2808,6 +3396,51 @@ wss.on('connection', (ws: WebSocket) => {
       return;
     }
 
+    if (msg.type === 'set_ai_features') {
+      if (msg.features) {
+        aiFeatures = normalizeAiFeatureSettings(msg.features, aiFeatures);
+      }
+      if (typeof msg.localRegion === 'string' && msg.localRegion.trim()) {
+        localRegion = msg.localRegion.trim().slice(0, 120);
+      }
+      if (Array.isArray(msg.trackedTopics)) {
+        trackedTopics = normalizeTrimmedList(msg.trackedTopics, 80);
+      }
+      recent.forEach(item => {
+        refreshDerivedDataForItem(item);
+        broadcastNewsUpdate(item);
+      });
+      broadcastConfig();
+      markDirty();
+      return;
+    }
+
+    if (msg.type === 'generate_daily_briefing') {
+      const delivery: BriefingDelivery = msg.delivery === 'email' ? 'email' : 'site';
+      const email = String(msg.email || '').trim();
+      const format: BriefingFormat = msg.format === 'bullets' || msg.format === 'narrative' ? msg.format : 'executive';
+      const feedUrls = normalizeTrimmedList(msg.feedUrls, 80);
+      if (delivery === 'email' && (!email || !isValidEmailAddress(email))) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Daily briefing email address is invalid.' }));
+        return;
+      }
+      const eligibility = canGenerateDailyBriefing(feedUrls);
+      if (!eligibility.ok) {
+        ws.send(JSON.stringify({ type: 'error', message: `Daily briefing unavailable: ${eligibility.reason}` }));
+        return;
+      }
+      const briefing = generateDailyBriefingPayload(
+        eligibility.items,
+        delivery,
+        email || undefined,
+        format,
+        !!msg.includeAudio,
+        feedUrls.length ? feedUrls : currentFeeds().map(feed => feed.url)
+      );
+      ws.send(JSON.stringify(briefing));
+      return;
+    }
+
     if (msg.type === 'set_feed_summary') {
       const feedUrl = String(msg.feedUrl || '').trim();
       const enabled = !!msg.enabled;
@@ -2899,6 +3532,12 @@ wss.on('connection', (ws: WebSocket) => {
 
       feedSettings.get(feedUrl)!.budget = budget;
 
+      recent.forEach(it => {
+        if (!eligibleForFeed(it, feedUrl)) return;
+        refreshDerivedDataForItem(it);
+        broadcastNewsUpdate(it);
+      });
+
       if (budget === 'high' && aiEnabled && aiAvailable && activeModel('summary') !== 'none') {
         const MAX = 260;
         const list = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
@@ -2943,6 +3582,11 @@ wss.on('connection', (ws: WebSocket) => {
           done++;
         }
       }
+
+      recent.forEach(it => {
+        refreshDerivedDataForItem(it);
+        broadcastNewsUpdate(it);
+      });
 
       broadcastConfig();
       markDirty();

@@ -45,7 +45,18 @@ export function useFeedColumnItems({
     if (!normalizedQuery) return typeFiltered;
 
     return typeFiltered.filter(it => {
-      const hay = `${it.title}\n${it.summary || ''}\n${it.research || ''}`.toLowerCase();
+      const hay = [
+        it.title,
+        it.summary || '',
+        it.research || '',
+        it.topicHits?.join('\n') || '',
+        it.insights?.bias?.summary || '',
+        it.insights?.sensationalism?.summary || '',
+        it.insights?.impact?.summary || '',
+        it.insights?.historical?.explanation || '',
+        it.insights?.future?.outlook || '',
+        it.insights?.localImpact?.summary || ''
+      ].join('\n').toLowerCase();
       return hay.includes(normalizedQuery);
     });
   }, [items, moodFilter, performanceMode, searchQuery, typeFilter]);

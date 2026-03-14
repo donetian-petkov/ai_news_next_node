@@ -20,6 +20,9 @@ type Args = {
     hideAllSummaries: boolean;
     aiEnabled: boolean;
     aiAvailable: boolean;
+    insightFeatures: FeedColumnViewModel['insightFeatures'];
+    localImpactRegion: string;
+    trackedTopics: string[];
     keywords: string[];
   };
   labels: Record<string, string>;
@@ -97,7 +100,17 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     thinking: labels.thinking,
     send: labels.send,
     showOriginalTitle: labels.showOriginalTitle || 'Show original title',
-    showTranslatedTitle: labels.showTranslatedTitle || 'Show translated title'
+    showTranslatedTitle: labels.showTranslatedTitle || 'Show translated title',
+    biasDetected: labels.biasDetected || 'Bias detected',
+    sensationalismDetected: labels.sensationalismDetected || 'Headline risk',
+    factHighlights: labels.factHighlights || 'Fact highlights',
+    storyImpact: labels.storyImpact || 'Story impact',
+    perspective: labels.perspective || 'Perspective',
+    historicalComparison: labels.historicalComparison || 'Historical comparison',
+    futureScenario: labels.futureScenario || 'Future scenario',
+    localImpact: labels.localImpact || 'Local impact',
+    topicTracking: labels.topicTracking || 'Tracked topics',
+    emergingStory: labels.emergingStory || 'Emerging story'
   }), [labels]);
 
   const connectionStatus: FeedColumnViewModel['connectionStatus'] = connected
@@ -114,6 +127,9 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     hideAllSummaries: ui.hideAllSummaries,
     aiEnabled: ui.aiEnabled,
     aiAvailable: ui.aiAvailable,
+    insightFeatures: ui.insightFeatures,
+    localImpactRegion: ui.localImpactRegion,
+    trackedTopics: ui.trackedTopics,
     keywords: ui.keywords,
     buttonMode: ui.buttonMode,
     titleDisplayLanguage: ui.titleDisplayLanguage,
@@ -125,7 +141,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     labels,
     cardLabels,
     vibeIcons
-  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.keywords, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.titleDisplayLanguage, ui.typeFilter, vibeIcons]);
+  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
 
   return viewModel;
 }

@@ -1,5 +1,8 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import {
+  type AiInsightFeatureSettings,
+  type BriefingDelivery,
+  type BriefingFormat,
   type MoodFilter,
   NewsMoodFilterValue,
   type TypeFilter,
@@ -33,6 +36,20 @@ type AiProvider = 'openai' | 'claude' | 'openrouter';
 type AiModelKind = 'summary' | 'research' | 'ask';
 type AiProviderModelOptions = Record<AiModelKind, string[]>;
 type AiModelsByProvider = Record<AiProvider, AiProviderModelOptions>;
+
+const DEFAULT_AI_INSIGHT_FEATURES: AiInsightFeatureSettings = {
+  biasDetection: false,
+  sensationalismDetection: false,
+  factHighlights: false,
+  storyImpact: false,
+  dailyBriefing: false,
+  topicTracking: false,
+  perspectiveSimulator: false,
+  emergingStoryDetector: false,
+  historicalComparison: false,
+  futureScenarioGenerator: false,
+  localImpactDetector: false
+};
 
 const DEFAULT_AI_MODELS: AiModelsByProvider = {
   openai: {
@@ -80,6 +97,41 @@ function dedupeKeywords(values: unknown): string[] {
   return out;
 }
 
+function dedupeTrimmedList(values: unknown, max = 80): string[] {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const value = typeof raw === 'string' ? raw.trim() : '';
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function normalizeInsightFeatures(
+  value: Partial<AiInsightFeatureSettings> | undefined,
+  fallback: AiInsightFeatureSettings
+): AiInsightFeatureSettings {
+  return {
+    biasDetection: typeof value?.biasDetection === 'boolean' ? value.biasDetection : fallback.biasDetection,
+    sensationalismDetection: typeof value?.sensationalismDetection === 'boolean' ? value.sensationalismDetection : fallback.sensationalismDetection,
+    factHighlights: typeof value?.factHighlights === 'boolean' ? value.factHighlights : fallback.factHighlights,
+    storyImpact: typeof value?.storyImpact === 'boolean' ? value.storyImpact : fallback.storyImpact,
+    dailyBriefing: typeof value?.dailyBriefing === 'boolean' ? value.dailyBriefing : fallback.dailyBriefing,
+    topicTracking: typeof value?.topicTracking === 'boolean' ? value.topicTracking : fallback.topicTracking,
+    perspectiveSimulator: typeof value?.perspectiveSimulator === 'boolean' ? value.perspectiveSimulator : fallback.perspectiveSimulator,
+    emergingStoryDetector: typeof value?.emergingStoryDetector === 'boolean' ? value.emergingStoryDetector : fallback.emergingStoryDetector,
+    historicalComparison: typeof value?.historicalComparison === 'boolean' ? value.historicalComparison : fallback.historicalComparison,
+    futureScenarioGenerator: typeof value?.futureScenarioGenerator === 'boolean' ? value.futureScenarioGenerator : fallback.futureScenarioGenerator,
+    localImpactDetector: typeof value?.localImpactDetector === 'boolean' ? value.localImpactDetector : fallback.localImpactDetector
+  };
+}
+
 type UiState = {
   language: 'en' | 'bg';
   colorMode: 'system' | 'dark' | 'light';
@@ -106,11 +158,19 @@ type UiState = {
   summaryLang: 'bilingual' | 'bg' | 'en';
   researchLang: 'bg' | 'en';
   titleDisplayLanguage: 'original' | 'bg' | 'en';
+  insightFeatures: AiInsightFeatureSettings;
+  localImpactRegion: string;
+  trackedTopics: string[];
   summaryModel: string;
   researchModel: string;
   askModel: string;
   availableModels: AiModelsByProvider;
   allBudget: 'mixed' | 'low' | 'standard' | 'high';
+  dailyBriefingDelivery: BriefingDelivery;
+  dailyBriefingEmail: string;
+  dailyBriefingFormat: BriefingFormat;
+  dailyBriefingAudio: boolean;
+  dailyBriefingFeedUrls: string[];
   font: 'system' | 'manrope' | 'grotesk' | 'sora' | 'plex' | 'serif' | 'mono';
   fontSize: 'sm' | 'md' | 'lg' | 'xl';
   scheme: 'classic' | 'vivid' | 'sunset' | 'neon' | 'ocean' | 'forest';
@@ -152,11 +212,19 @@ const initialState: UiState = {
   summaryLang: 'bilingual',
   researchLang: 'bg',
   titleDisplayLanguage: 'original',
+  insightFeatures: { ...DEFAULT_AI_INSIGHT_FEATURES },
+  localImpactRegion: 'United States',
+  trackedTopics: [],
   summaryModel: DEFAULT_AI_MODELS.openai.summary[0],
   researchModel: DEFAULT_AI_MODELS.openai.research[0],
   askModel: DEFAULT_AI_MODELS.openai.ask[0],
   availableModels: DEFAULT_AI_MODELS,
   allBudget: 'standard',
+  dailyBriefingDelivery: 'site',
+  dailyBriefingEmail: '',
+  dailyBriefingFormat: 'executive',
+  dailyBriefingAudio: false,
+  dailyBriefingFeedUrls: [],
   font: 'system',
   fontSize: 'md',
   scheme: 'classic',
@@ -221,7 +289,7 @@ const uiSlice = createSlice({
         state.notifyMode = next.notifyMode;
       }
     },
-    setAiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'aiAvailable' | 'aiEnabled' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'summaryModel' | 'researchModel' | 'askModel' | 'availableModels' | 'allBudget'>>>) {
+    setAiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'aiAvailable' | 'aiEnabled' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'availableModels' | 'allBudget' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls'>>>) {
       const next = action.payload;
       if (typeof next.aiAvailable === 'boolean') state.aiAvailable = next.aiAvailable;
       if (typeof next.aiEnabled === 'boolean') state.aiEnabled = next.aiEnabled;
@@ -230,6 +298,16 @@ const uiSlice = createSlice({
       if (next.researchLang === 'bg' || next.researchLang === 'en') state.researchLang = next.researchLang;
       if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
         state.titleDisplayLanguage = next.titleDisplayLanguage;
+      }
+      if (next.insightFeatures && typeof next.insightFeatures === 'object') {
+        state.insightFeatures = normalizeInsightFeatures(next.insightFeatures, state.insightFeatures);
+      }
+      if (typeof next.localImpactRegion === 'string') {
+        const region = next.localImpactRegion.trim();
+        if (region) state.localImpactRegion = region.slice(0, 120);
+      }
+      if (Array.isArray(next.trackedTopics)) {
+        state.trackedTopics = dedupeTrimmedList(next.trackedTopics, 80);
       }
       if (typeof next.summaryModel === 'string' && next.summaryModel.trim()) state.summaryModel = next.summaryModel.trim();
       if (typeof next.researchModel === 'string' && next.researchModel.trim()) state.researchModel = next.researchModel.trim();
@@ -263,6 +341,21 @@ const uiSlice = createSlice({
         };
       }
       if (next.allBudget === 'mixed' || next.allBudget === 'low' || next.allBudget === 'standard' || next.allBudget === 'high') state.allBudget = next.allBudget;
+      if (next.dailyBriefingDelivery === 'site' || next.dailyBriefingDelivery === 'email') {
+        state.dailyBriefingDelivery = next.dailyBriefingDelivery;
+      }
+      if (typeof next.dailyBriefingEmail === 'string') {
+        state.dailyBriefingEmail = next.dailyBriefingEmail.trim().slice(0, 200);
+      }
+      if (next.dailyBriefingFormat === 'executive' || next.dailyBriefingFormat === 'bullets' || next.dailyBriefingFormat === 'narrative') {
+        state.dailyBriefingFormat = next.dailyBriefingFormat;
+      }
+      if (typeof next.dailyBriefingAudio === 'boolean') {
+        state.dailyBriefingAudio = next.dailyBriefingAudio;
+      }
+      if (Array.isArray(next.dailyBriefingFeedUrls)) {
+        state.dailyBriefingFeedUrls = dedupeTrimmedList(next.dailyBriefingFeedUrls, 80);
+      }
     },
     setTitleDisplayLanguage(state, action: PayloadAction<UiState['titleDisplayLanguage']>) {
       const next = action.payload;
@@ -351,7 +444,7 @@ const uiSlice = createSlice({
         state.soundEnabled = false;
       }
     },
-    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'titleDisplayLanguage' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
+    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
       const next = action.payload;
       if (next.language === 'en' || next.language === 'bg') state.language = next.language;
       if (next.colorMode === 'system' || next.colorMode === 'dark' || next.colorMode === 'light') state.colorMode = next.colorMode;
@@ -368,6 +461,30 @@ const uiSlice = createSlice({
       if (isTypeFilter(next.typeFilter)) state.typeFilter = next.typeFilter;
       if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
         state.titleDisplayLanguage = next.titleDisplayLanguage;
+      }
+      if (next.insightFeatures && typeof next.insightFeatures === 'object') {
+        state.insightFeatures = normalizeInsightFeatures(next.insightFeatures, state.insightFeatures);
+      }
+      if (typeof next.localImpactRegion === 'string' && next.localImpactRegion.trim()) {
+        state.localImpactRegion = next.localImpactRegion.trim().slice(0, 120);
+      }
+      if (Array.isArray(next.trackedTopics)) {
+        state.trackedTopics = dedupeTrimmedList(next.trackedTopics, 80);
+      }
+      if (next.dailyBriefingDelivery === 'site' || next.dailyBriefingDelivery === 'email') {
+        state.dailyBriefingDelivery = next.dailyBriefingDelivery;
+      }
+      if (typeof next.dailyBriefingEmail === 'string') {
+        state.dailyBriefingEmail = next.dailyBriefingEmail.trim().slice(0, 200);
+      }
+      if (next.dailyBriefingFormat === 'executive' || next.dailyBriefingFormat === 'bullets' || next.dailyBriefingFormat === 'narrative') {
+        state.dailyBriefingFormat = next.dailyBriefingFormat;
+      }
+      if (typeof next.dailyBriefingAudio === 'boolean') {
+        state.dailyBriefingAudio = next.dailyBriefingAudio;
+      }
+      if (Array.isArray(next.dailyBriefingFeedUrls)) {
+        state.dailyBriefingFeedUrls = dedupeTrimmedList(next.dailyBriefingFeedUrls, 80);
       }
       if (next.font === 'system' || next.font === 'manrope' || next.font === 'grotesk' || next.font === 'sora' || next.font === 'plex' || next.font === 'serif' || next.font === 'mono') state.font = next.font;
       if (next.fontSize === 'sm' || next.fontSize === 'md' || next.fontSize === 'lg' || next.fontSize === 'xl') state.fontSize = next.fontSize;

@@ -1,7 +1,16 @@
 'use client';
 
 import type { AppDispatch } from './store';
-import type { BudgetMode, FeedInfo, NewsItem, SortMode } from './types';
+import type {
+  AiInsightFeatureSettings,
+  BudgetMode,
+  DailyBriefingResult,
+  EmergingStorySignal,
+  FeedInfo,
+  NewsInsights,
+  NewsItem,
+  SortMode
+} from './types';
 import { FILTERED_FEED_URL } from './constants';
 import {
   AiProviderValue,
@@ -29,6 +38,7 @@ import { setFeeds } from './slices/feedsSlice';
 import { receiveAskReply, setHiddenIds, upsertNewsBatch } from './slices/newsSlice';
 import { setUsage } from './slices/aiUsageSlice';
 import { enqueueToast, setAiSettings, setKeywords } from './slices/uiSlice';
+import { failBriefing, receiveBriefing } from './slices/briefingSlice';
 
 let ws: WebSocket | null = null;
 let wsUrlCurrent = '';
@@ -44,6 +54,19 @@ const NEWS_FLUSH_MAX_BATCH = 80;
 const WS_RECONNECT_BASE_DELAY_MS = 500;
 const WS_RECONNECT_MAX_DELAY_MS = 10_000;
 const WS_RECONNECT_JITTER_MS = 350;
+const DEFAULT_AI_FEATURES: AiInsightFeatureSettings = {
+  biasDetection: false,
+  sensationalismDetection: false,
+  factHighlights: false,
+  storyImpact: false,
+  dailyBriefing: false,
+  topicTracking: false,
+  perspectiveSimulator: false,
+  emergingStoryDetector: false,
+  historicalComparison: false,
+  futureScenarioGenerator: false,
+  localImpactDetector: false
+};
 
 type FeedSettingsWire = {
   summaryEnabled?: unknown;
@@ -99,6 +122,142 @@ function parseKeywordList(raw: unknown): string[] {
     out.push(value);
   }
   return out;
+}
+
+function parseTrimmedList(raw: unknown, max = 80): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!isString(item)) continue;
+    const value = item.trim();
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function parseAiFeatureSettings(raw: unknown): AiInsightFeatureSettings | undefined {
+  if (!isRecord(raw)) return undefined;
+  const src = raw as Record<string, unknown>;
+  return {
+    biasDetection: isBoolean(src.biasDetection) ? src.biasDetection : DEFAULT_AI_FEATURES.biasDetection,
+    sensationalismDetection: isBoolean(src.sensationalismDetection) ? src.sensationalismDetection : DEFAULT_AI_FEATURES.sensationalismDetection,
+    factHighlights: isBoolean(src.factHighlights) ? src.factHighlights : DEFAULT_AI_FEATURES.factHighlights,
+    storyImpact: isBoolean(src.storyImpact) ? src.storyImpact : DEFAULT_AI_FEATURES.storyImpact,
+    dailyBriefing: isBoolean(src.dailyBriefing) ? src.dailyBriefing : DEFAULT_AI_FEATURES.dailyBriefing,
+    topicTracking: isBoolean(src.topicTracking) ? src.topicTracking : DEFAULT_AI_FEATURES.topicTracking,
+    perspectiveSimulator: isBoolean(src.perspectiveSimulator) ? src.perspectiveSimulator : DEFAULT_AI_FEATURES.perspectiveSimulator,
+    emergingStoryDetector: isBoolean(src.emergingStoryDetector) ? src.emergingStoryDetector : DEFAULT_AI_FEATURES.emergingStoryDetector,
+    historicalComparison: isBoolean(src.historicalComparison) ? src.historicalComparison : DEFAULT_AI_FEATURES.historicalComparison,
+    futureScenarioGenerator: isBoolean(src.futureScenarioGenerator) ? src.futureScenarioGenerator : DEFAULT_AI_FEATURES.futureScenarioGenerator,
+    localImpactDetector: isBoolean(src.localImpactDetector) ? src.localImpactDetector : DEFAULT_AI_FEATURES.localImpactDetector
+  };
+}
+
+function parseInsights(raw: unknown): NewsInsights | undefined {
+  if (!isRecord(raw)) return undefined;
+  const src = raw as Record<string, unknown>;
+  const insights: NewsInsights = {};
+
+  if (isRecord(src.bias)) {
+    const bias = src.bias as Record<string, unknown>;
+    insights.bias = {
+      detected: !!bias.detected,
+      leaning: isString(bias.leaning) ? bias.leaning : '',
+      emotionalTone: isString(bias.emotionalTone) ? bias.emotionalTone : '',
+      framing: isString(bias.framing) ? bias.framing : '',
+      confidence: bias.confidence === 'low' || bias.confidence === 'medium' || bias.confidence === 'high' ? bias.confidence : 'medium',
+      severity: bias.severity === 'low' || bias.severity === 'medium' || bias.severity === 'high' ? bias.severity : 'medium',
+      summary: isString(bias.summary) ? bias.summary : ''
+    };
+  }
+
+  if (isRecord(src.sensationalism)) {
+    const sensationalism = src.sensationalism as Record<string, unknown>;
+    insights.sensationalism = {
+      detected: !!sensationalism.detected,
+      level: sensationalism.level === 'low' || sensationalism.level === 'medium' || sensationalism.level === 'high' ? sensationalism.level : 'medium',
+      reasons: parseTrimmedList(sensationalism.reasons, 12),
+      alternativeHeadline: isString(sensationalism.alternativeHeadline) ? sensationalism.alternativeHeadline : undefined,
+      summary: isString(sensationalism.summary) ? sensationalism.summary : ''
+    };
+  }
+
+  if (isRecord(src.facts)) {
+    const facts = src.facts as Record<string, unknown>;
+    insights.facts = {
+      people: parseTrimmedList(facts.people, 12),
+      locations: parseTrimmedList(facts.locations, 12),
+      dates: parseTrimmedList(facts.dates, 12),
+      numbers: parseTrimmedList(facts.numbers, 12),
+      quotes: parseTrimmedList(facts.quotes, 12)
+    };
+  }
+
+  if (isRecord(src.impact)) {
+    const impact = src.impact as Record<string, unknown>;
+    insights.impact = {
+      score: impact.score === 'low' || impact.score === 'medium' || impact.score === 'high' ? impact.score : 'medium',
+      economic: isString(impact.economic) ? impact.economic : '',
+      political: isString(impact.political) ? impact.political : '',
+      tech: isString(impact.tech) ? impact.tech : '',
+      industries: parseTrimmedList(impact.industries, 12),
+      summary: isString(impact.summary) ? impact.summary : ''
+    };
+  }
+
+  if (isRecord(src.perspectives)) {
+    const perspectivesSource = src.perspectives as Record<string, unknown>;
+    const perspectives: NewsInsights['perspectives'] = {};
+    if (isString(perspectivesSource.investor)) perspectives.investor = perspectivesSource.investor;
+    if (isString(perspectivesSource.government)) perspectives.government = perspectivesSource.government;
+    if (isString(perspectivesSource.consumer)) perspectives.consumer = perspectivesSource.consumer;
+    if (isString(perspectivesSource.tech)) perspectives.tech = perspectivesSource.tech;
+    if (Object.keys(perspectives).length) insights.perspectives = perspectives;
+  }
+
+  if (isRecord(src.historical)) {
+    const historical = src.historical as Record<string, unknown>;
+    insights.historical = {
+      comparisons: parseTrimmedList(historical.comparisons, 10),
+      explanation: isString(historical.explanation) ? historical.explanation : ''
+    };
+  }
+
+  if (isRecord(src.future)) {
+    const future = src.future as Record<string, unknown>;
+    insights.future = {
+      disclaimer: isString(future.disclaimer) ? future.disclaimer : '',
+      scenarios: parseTrimmedList(future.scenarios, 10),
+      outlook: isString(future.outlook) ? future.outlook : ''
+    };
+  }
+
+  if (isRecord(src.localImpact)) {
+    const localImpact = src.localImpact as Record<string, unknown>;
+    insights.localImpact = {
+      region: isString(localImpact.region) ? localImpact.region : '',
+      summary: isString(localImpact.summary) ? localImpact.summary : ''
+    };
+  }
+
+  return Object.keys(insights).length ? insights : undefined;
+}
+
+function parseEmergingSignal(raw: unknown): EmergingStorySignal | undefined {
+  if (!isRecord(raw)) return undefined;
+  const src = raw as Record<string, unknown>;
+  return {
+    clusterSize: isNumber(src.clusterSize) ? Math.max(0, Math.floor(src.clusterSize)) : 0,
+    sources: parseTrimmedList(src.sources, 12),
+    velocity: src.velocity === 'watch' || src.velocity === 'rising' || src.velocity === 'viral' ? src.velocity : 'watch',
+    reason: isString(src.reason) ? src.reason : ''
+  };
 }
 
 function parseAvailableModels(raw: unknown): AiModelsByProvider | undefined {
@@ -244,6 +403,9 @@ function parseNews(v: unknown): NewsItem | null {
     summary: isString(m.summary) ? m.summary : '',
     summaryPending: isBoolean(m.summaryPending) ? m.summaryPending : undefined,
     research: isString(m.research) ? m.research : '',
+    insights: parseInsights(m.insights),
+    topicHits: parseTrimmedList(m.topicHits, 20),
+    emergingSignal: parseEmergingSignal(m.emergingSignal),
     mood,
     newsType,
     filteredOk: isBoolean(m.filteredOk) ? m.filteredOk : true
@@ -381,7 +543,10 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
         researchModel: isString(msg.researchModel) ? msg.researchModel : undefined,
         askModel: isString(msg.askModel) ? msg.askModel : undefined,
         availableModels: parsedModels,
-        allBudget: deriveAllBudget(parsedFeeds)
+        allBudget: deriveAllBudget(parsedFeeds),
+        insightFeatures: parseAiFeatureSettings(msg.aiFeatures),
+        localImpactRegion: isString(msg.localRegion) ? msg.localRegion : undefined,
+        trackedTopics: parseTrimmedList(msg.trackedTopics, 80)
       }));
 
       const hidden: string[] = [];
@@ -426,10 +591,30 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
       return;
     }
 
+    if (msg.type === WsMessageType.DailyBriefing) {
+      const briefing: DailyBriefingResult = {
+        title: isString(msg.title) ? msg.title : 'Daily briefing',
+        body: isString(msg.body) ? msg.body : '',
+        audioScript: isString(msg.audioScript) ? msg.audioScript : '',
+        generatedAtMs: isNumber(msg.generatedAtMs) ? msg.generatedAtMs : Date.now(),
+        itemCount: isNumber(msg.itemCount) ? msg.itemCount : 0,
+        delivery: msg.delivery === 'email' ? 'email' : 'site',
+        email: isString(msg.email) ? msg.email : undefined,
+        format: msg.format === 'bullets' || msg.format === 'narrative' ? msg.format : 'executive',
+        feedUrls: parseTrimmedList(msg.feedUrls, 80)
+      };
+      dispatch(receiveBriefing(briefing));
+      return;
+    }
+
     if (msg.type === WsMessageType.Error) {
+      const message = isString(msg.message) ? msg.message : 'Server error';
+      if (message.toLocaleLowerCase().includes('briefing')) {
+        dispatch(failBriefing(message));
+      }
       dispatch(enqueueToast({
         kind: 'error',
-        message: isString(msg.message) ? msg.message : 'Server error'
+        message
       }));
       return;
     }

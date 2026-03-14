@@ -10,13 +10,17 @@ type Args = {
   notifyEnabled: boolean;
   notifyMode: NotifyMode;
   pinnedByUrl: Record<string, boolean>;
+  topicTrackingEnabled: boolean;
+  trackedTopics: string[];
 };
 
 export function useDesktopNewsNotifications({
   itemsByFeed,
   notifyEnabled,
   notifyMode,
-  pinnedByUrl
+  pinnedByUrl,
+  topicTrackingEnabled,
+  trackedTopics
 }: Args) {
   const seenNewsIdsRef = useRef<Set<string>>(new Set());
   const notificationsPrimedRef = useRef(false);
@@ -51,6 +55,11 @@ export function useDesktopNewsNotifications({
       && Notification.permission === 'granted';
 
     const shouldNotify = (feedUrl: string, it: NewsItem): boolean => {
+      if (topicTrackingEnabled && trackedTopics.length) {
+        const majorTrackedUpdate = !!it.topicHits?.length
+          && ((it.emergingSignal?.clusterSize || 0) >= 3 || it.insights?.impact?.score === 'high');
+        if (!majorTrackedUpdate) return false;
+      }
       if (notifyMode === 'all') return true;
       if (notifyMode === 'pinned') return !!pinnedByUrl[feedUrl];
       if (notifyMode === 'matched_pinned') return !!it.isMatch && !!pinnedByUrl[feedUrl];
@@ -69,5 +78,5 @@ export function useDesktopNewsNotifications({
       });
       n.onclick = () => window.open(item.link, '_blank', 'noopener,noreferrer');
     }
-  }, [itemsByFeed, notifyEnabled, notifyMode, pinnedByUrl]);
+  }, [itemsByFeed, notifyEnabled, notifyMode, pinnedByUrl, topicTrackingEnabled, trackedTopics]);
 }

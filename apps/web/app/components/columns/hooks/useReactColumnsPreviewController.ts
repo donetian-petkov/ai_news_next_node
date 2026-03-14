@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch } from '../../../store/hooks';
-import { FILTERED_FEED_URL } from '../../../store/constants';
+import { EMERGING_FEED_URL, FILTERED_FEED_URL } from '../../../store/constants';
 import type { NewsItem } from '../../../store/types';
 import { startWsConnection, stopWsConnection } from '../../../store/wsClient';
 import {
@@ -215,7 +215,9 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     itemsByFeed,
     notifyEnabled: ui.notifyEnabled,
     notifyMode: ui.notifyMode,
-    pinnedByUrl
+    pinnedByUrl,
+    topicTrackingEnabled: ui.insightFeatures.topicTracking,
+    trackedTopics: ui.trackedTopics
   });
 
   useAllColumnControlsSync({
@@ -223,34 +225,6 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     allColumnControlsHidden: ui.allColumnControlsHidden,
     feedsCount: feeds.length
   });
-
-  const renderedFeeds = useMemo(() => {
-    if (feeds.length) {
-      const list = [...feeds];
-      const orderIndex = new Map(orderByUrl.map((url, idx) => [url, idx]));
-      list.sort((a, b) => {
-        const aFiltered = a.url === FILTERED_FEED_URL;
-        const bFiltered = b.url === FILTERED_FEED_URL;
-        if (aFiltered !== bFiltered) return aFiltered ? -1 : 1;
-        const ai = orderIndex.get(a.url) ?? Number.MAX_SAFE_INTEGER;
-        const bi = orderIndex.get(b.url) ?? Number.MAX_SAFE_INTEGER;
-        return ai - bi;
-      });
-      return list;
-    }
-
-    return Object.keys(itemsByFeed).map(url => ({
-      url,
-      label: url,
-      kind: 'rss' as const,
-      intervalSec: 120,
-      summaryEnabled: false,
-      researchEnabled: false,
-      budget: 'standard' as const,
-      sortMode: 'newest' as const,
-      filters: { onlyMatches: false, onlyResearched: false, onlySummaries: false }
-    }));
-  }, [feeds, itemsByFeed, orderByUrl]);
 
   const summariesLoadCandidates = useMemo(() => {
     if (!ui.aiEnabled || !ui.aiAvailable) {
@@ -261,7 +235,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       };
     }
 
-    const feedLabelByUrl = new Map(renderedFeeds.map(feed => [feed.url, feed.label]));
+    const feedLabelByUrl = new Map<string, string>(feeds.map(feed => [feed.url, feed.label]));
     const itemMetaByKey = new Map<string, { title: string; feedUrl: string }>();
     const pendingSet = new Set(Object.keys(summaryPendingById));
 
@@ -283,7 +257,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       itemMetaByKey,
       feedLabelByUrl
     };
-  }, [itemsByFeed, renderedFeeds, summaryPendingById, ui.aiAvailable, ui.aiEnabled]);
+  }, [feeds, itemsByFeed, summaryPendingById, ui.aiAvailable, ui.aiEnabled]);
 
   useEffect(() => {
     const now = Date.now();
@@ -389,6 +363,75 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     };
   }, [itemsByFeed, pinnedNewsById, ui.allBudget, ui.performanceMode]);
 
+  const emergingColumnItems = useMemo(() => {
+    if (!ui.insightFeatures.emergingStoryDetector) return [] as NewsItem[];
+    const all = Object.values(itemsByFeed).flatMap(items => Array.isArray(items) ? items : []);
+    const byId = new Map<string, NewsItem>();
+    all.forEach(item => {
+      if (!item?.emergingSignal || item.emergingSignal.clusterSize < 2) return;
+      const current = byId.get(item.id);
+      if (!current || (current.emergingSignal?.clusterSize || 0) < item.emergingSignal.clusterSize) {
+        byId.set(item.id, { ...item, feedUrl: EMERGING_FEED_URL });
+      }
+    });
+    return Array.from(byId.values())
+      .sort((a, b) => {
+        const diff = (b.emergingSignal?.clusterSize || 0) - (a.emergingSignal?.clusterSize || 0);
+        if (diff) return diff;
+        return b.publishedMs - a.publishedMs;
+      })
+      .slice(0, 30);
+  }, [itemsByFeed, ui.insightFeatures.emergingStoryDetector]);
+
+  const itemsByFeedForPresentation = useMemo(
+    () => (emergingColumnItems.length ? { ...itemsByFeed, [EMERGING_FEED_URL]: emergingColumnItems } : itemsByFeed),
+    [emergingColumnItems, itemsByFeed]
+  );
+
+  const renderedFeeds = useMemo(() => {
+    if (feeds.length) {
+      const list = [...feeds];
+      if (ui.insightFeatures.emergingStoryDetector && emergingColumnItems.length) {
+        list.unshift({
+          url: EMERGING_FEED_URL,
+          label: labels.emergingStory || 'Emerging',
+          kind: 'rss',
+          intervalSec: 0,
+          summaryEnabled: false,
+          researchEnabled: false,
+          budget: 'high',
+          sortMode: 'matched',
+          filters: { onlyMatches: true, onlyResearched: false, onlySummaries: false }
+        });
+      }
+      const orderIndex = new Map(orderByUrl.map((url, idx) => [url, idx]));
+      list.sort((a, b) => {
+        const aEmerging = a.url === EMERGING_FEED_URL;
+        const bEmerging = b.url === EMERGING_FEED_URL;
+        if (aEmerging !== bEmerging) return aEmerging ? -1 : 1;
+        const aFiltered = a.url === FILTERED_FEED_URL;
+        const bFiltered = b.url === FILTERED_FEED_URL;
+        if (aFiltered !== bFiltered) return aFiltered ? -1 : 1;
+        const ai = orderIndex.get(a.url) ?? Number.MAX_SAFE_INTEGER;
+        const bi = orderIndex.get(b.url) ?? Number.MAX_SAFE_INTEGER;
+        return ai - bi;
+      });
+      return list;
+    }
+
+    return Object.keys(itemsByFeedForPresentation).map(url => ({
+      url,
+      label: url === EMERGING_FEED_URL ? (labels.emergingStory || 'Emerging') : url,
+      kind: 'rss' as const,
+      intervalSec: 120,
+      summaryEnabled: false,
+      researchEnabled: false,
+      budget: 'standard' as const,
+      sortMode: 'newest' as const,
+      filters: { onlyMatches: false, onlyResearched: false, onlySummaries: false }
+    }));
+  }, [emergingColumnItems.length, feeds, itemsByFeedForPresentation, labels.emergingStory, orderByUrl, ui.insightFeatures.emergingStoryDetector]);
+
   const { onGridDragOver, onGridDrop, buildDragState, columnNodesRef } = useColumnDragDrop({
     dispatch,
     renderedFeeds
@@ -454,6 +497,9 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       hideAllSummaries: ui.hideAllSummaries,
       aiEnabled: ui.aiEnabled,
       aiAvailable: ui.aiAvailable,
+      insightFeatures: ui.insightFeatures,
+      localImpactRegion: ui.localImpactRegion,
+      trackedTopics: ui.trackedTopics,
       keywords: ui.keywords
     },
     labels,
@@ -461,7 +507,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     status,
     filteredColumnItems,
     duplicateMatchById,
-    itemsByFeed,
+    itemsByFeed: itemsByFeedForPresentation,
     visibleByFeed,
     hydratedColumns,
     pinnedByUrl,

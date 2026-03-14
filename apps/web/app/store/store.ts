@@ -4,6 +4,7 @@ import feedsReducer from './slices/feedsSlice';
 import newsReducer from './slices/newsSlice';
 import uiReducer from './slices/uiSlice';
 import aiUsageReducer from './slices/aiUsageSlice';
+import briefingReducer from './slices/briefingSlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,7 +12,8 @@ export const store = configureStore({
     feeds: feedsReducer,
     news: newsReducer,
     ui: uiReducer,
-    aiUsage: aiUsageReducer
+    aiUsage: aiUsageReducer,
+    briefing: briefingReducer
   }
 });
 

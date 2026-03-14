@@ -68,6 +68,9 @@ export type TopMenuControlsModel = {
     summaryLang: TopMenuUiState['summaryLang'];
     researchLang: TopMenuUiState['researchLang'];
     titleDisplayLanguage: TopMenuUiState['titleDisplayLanguage'];
+    insightFeatures: TopMenuUiState['insightFeatures'];
+    localImpactRegion: TopMenuUiState['localImpactRegion'];
+    trackedTopics: TopMenuUiState['trackedTopics'];
     summaryModel: TopMenuUiState['summaryModel'];
     researchModel: TopMenuUiState['researchModel'];
     askModel: TopMenuUiState['askModel'];
@@ -75,6 +78,13 @@ export type TopMenuControlsModel = {
     moodFilter: TopMenuUiState['moodFilter'];
     typeFilter: TopMenuUiState['typeFilter'];
     allBudget: TopMenuUiState['allBudget'];
+    dailyBriefingDelivery: TopMenuUiState['dailyBriefingDelivery'];
+    dailyBriefingEmail: TopMenuUiState['dailyBriefingEmail'];
+    dailyBriefingFormat: TopMenuUiState['dailyBriefingFormat'];
+    dailyBriefingAudio: TopMenuUiState['dailyBriefingAudio'];
+    dailyBriefingFeedUrls: TopMenuUiState['dailyBriefingFeedUrls'];
+    availableFeeds: Array<{ url: string; label: string }>;
+    briefing: RootState['briefing'];
   };
   appearance: {
     font: TopMenuUiState['font'];
@@ -125,12 +135,17 @@ export type TopMenuControlsActions = {
   onSummaryLangChange: (lang: TopMenuUiState['summaryLang']) => void;
   onResearchLangChange: (lang: TopMenuUiState['researchLang']) => void;
   onTitleDisplayLanguageChange: (lang: TopMenuUiState['titleDisplayLanguage']) => void;
+  onSetInsightFeature: (key: keyof TopMenuUiState['insightFeatures'], enabled: boolean) => void;
+  onSetLocalImpactRegion: (region: string) => void;
+  onSetTrackedTopics: (topics: string[]) => void;
   onSummaryModelChange: (model: string) => void;
   onResearchModelChange: (model: string) => void;
   onAskModelChange: (model: string) => void;
   onMoodFilterChange: (value: TopMenuUiState['moodFilter']) => void;
   onTypeFilterChange: (value: TopMenuUiState['typeFilter']) => void;
   onApplyAllBudget: (budget: 'low' | 'standard' | 'high') => void;
+  onSetDailyBriefingPrefs: (patch: Partial<Pick<TopMenuUiState, 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls'>>) => void;
+  onGenerateDailyBriefing: () => void;
   onSetAppearance: (patch: TopMenuAppearancePatch) => void;
   onSetLanguage: (lang: 'en' | 'bg') => void;
   onCycleTheme: () => void;

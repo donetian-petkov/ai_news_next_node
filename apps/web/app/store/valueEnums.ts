@@ -23,6 +23,7 @@ export enum WsMessageType {
   News = 'news',
   Config = 'config',
   AiUsage = 'ai_usage',
+  DailyBriefing = 'daily_briefing',
   AskAgentReply = 'ask_agent_reply',
   Error = 'error',
   Ok = 'ok',

@@ -36,6 +36,7 @@ export function useTopMenuController() {
   const feeds = useAppSelector(s => s.feeds.feeds);
   const orderByUrl = useAppSelector(s => s.feeds.orderByUrl);
   const toasts = useAppSelector(s => s.ui.toasts);
+  const briefing = useAppSelector(s => s.briefing);
 
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
   const isMobile = useMediaQuery('(max-width: 900px)');
@@ -214,13 +215,23 @@ export function useTopMenuController() {
       summaryLang: ui.summaryLang,
       researchLang: ui.researchLang,
       titleDisplayLanguage: ui.titleDisplayLanguage,
+      insightFeatures: ui.insightFeatures,
+      localImpactRegion: ui.localImpactRegion,
+      trackedTopics: ui.trackedTopics,
       summaryModel: ui.summaryModel,
       researchModel: ui.researchModel,
       askModel: ui.askModel,
       availableModels: ui.availableModels,
       moodFilter: ui.moodFilter,
       typeFilter: ui.typeFilter,
-      allBudget: ui.allBudget
+      allBudget: ui.allBudget,
+      dailyBriefingDelivery: ui.dailyBriefingDelivery,
+      dailyBriefingEmail: ui.dailyBriefingEmail,
+      dailyBriefingFormat: ui.dailyBriefingFormat,
+      dailyBriefingAudio: ui.dailyBriefingAudio,
+      dailyBriefingFeedUrls: ui.dailyBriefingFeedUrls,
+      availableFeeds: feeds.map(feed => ({ url: feed.url, label: feed.label })),
+      briefing
     },
     appearance: {
       font: ui.font,
@@ -238,7 +249,7 @@ export function useTopMenuController() {
       language: ui.language,
       colorMode: ui.colorMode
     }
-  }), [deleteAgeAll, ui.aiAvailable, ui.aiEnabled, ui.aiProvider, ui.allBudget, ui.askModel, ui.availableModels, ui.buttonMode, ui.colorMode, ui.controlsCollapsed, ui.dateFormat, ui.effectIntensity, ui.font, ui.fontSize, ui.keywords, ui.language, ui.menuHintMode, ui.moodFilter, ui.notifyEnabled, ui.notifyMode, ui.performanceMode, ui.researchLang, ui.researchModel, ui.scheme, ui.soundEnabled, ui.soundTheme, ui.summaryLang, ui.summaryModel, ui.timezone, ui.titleDisplayLanguage, ui.typeFilter, ui.vibe]);
+  }), [briefing, deleteAgeAll, feeds, ui.aiAvailable, ui.aiEnabled, ui.aiProvider, ui.allBudget, ui.askModel, ui.availableModels, ui.buttonMode, ui.colorMode, ui.controlsCollapsed, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.dateFormat, ui.effectIntensity, ui.font, ui.fontSize, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.menuHintMode, ui.moodFilter, ui.notifyEnabled, ui.notifyMode, ui.performanceMode, ui.researchLang, ui.researchModel, ui.scheme, ui.soundEnabled, ui.soundTheme, ui.summaryLang, ui.summaryModel, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, ui.vibe]);
 
   const { contextValue } = useTopMenuViewModel({
     labels,

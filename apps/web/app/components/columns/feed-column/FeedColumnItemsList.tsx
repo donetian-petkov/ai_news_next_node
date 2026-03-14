@@ -100,6 +100,9 @@ export function FeedColumnItemsList() {
     buttonMode,
     titleDisplayLanguage: view.titleDisplayLanguage,
     aiAvailable,
+    insightFeatures: view.insightFeatures,
+    localImpactRegion: view.localImpactRegion,
+    trackedTopics: view.trackedTopics,
     performanceMode,
     fontScale,
     connected,
@@ -108,7 +111,7 @@ export function FeedColumnItemsList() {
     accent,
     soft,
     matchAccent: palette.m
-  }), [accent, aiAvailable, buttonMode, cardLabels, compactBtnSx, connected, fontScale, hideAllResearch, hideAllSummaries, palette.m, performanceMode, soft, vibeIcons, view.titleDisplayLanguage]);
+  }), [accent, aiAvailable, buttonMode, cardLabels, compactBtnSx, connected, fontScale, hideAllResearch, hideAllSummaries, palette.m, performanceMode, soft, vibeIcons, view.insightFeatures, view.localImpactRegion, view.titleDisplayLanguage, view.trackedTopics]);
 
   const sharedCardHandlers = useMemo<NewsCardHandlers>(() => ({
     onTogglePinnedNews,

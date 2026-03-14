@@ -6,7 +6,7 @@ import { hydrateUiSettings } from '../../store/slices/uiSlice';
 import type { TopMenuUiState } from './types';
 
 export type PersistedUiPrefs = Parameters<typeof hydrateUiSettings>[0];
-export const UI_PREFS_STORAGE_KEY = 'aiNews.uiPrefs.v2';
+export const UI_PREFS_STORAGE_KEY = 'aiNews.uiPrefs.v3';
 
 function parsePersistedUiPrefs(raw: string): PersistedUiPrefs | null {
   try {
@@ -40,6 +40,14 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     moodFilter: ui.moodFilter,
     typeFilter: ui.typeFilter,
     titleDisplayLanguage: ui.titleDisplayLanguage,
+    insightFeatures: ui.insightFeatures,
+    localImpactRegion: ui.localImpactRegion,
+    trackedTopics: ui.trackedTopics,
+    dailyBriefingDelivery: ui.dailyBriefingDelivery,
+    dailyBriefingEmail: ui.dailyBriefingEmail,
+    dailyBriefingFormat: ui.dailyBriefingFormat,
+    dailyBriefingAudio: ui.dailyBriefingAudio,
+    dailyBriefingFeedUrls: ui.dailyBriefingFeedUrls,
     font: ui.font,
     fontSize: ui.fontSize,
     scheme: ui.scheme,
@@ -65,18 +73,26 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     ui.dateFormat,
     ui.hideAllResearch,
     ui.hideAllSummaries,
+    ui.insightFeatures,
     ui.language,
+    ui.localImpactRegion,
     ui.menuCollapsed,
     ui.menuHintMode,
     ui.moodFilter,
     ui.notifyEnabled,
     ui.notifyMode,
+    ui.dailyBriefingAudio,
+    ui.dailyBriefingDelivery,
+    ui.dailyBriefingEmail,
+    ui.dailyBriefingFeedUrls,
+    ui.dailyBriefingFormat,
     ui.titleDisplayLanguage,
     ui.performanceMode,
     ui.scheme,
     ui.searchVisible,
     ui.soundEnabled,
     ui.soundTheme,
+    ui.trackedTopics,
     ui.typeFilter,
     ui.vibe
   ]);

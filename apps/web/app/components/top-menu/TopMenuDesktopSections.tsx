@@ -1,20 +1,12 @@
 'use client';
 
-import { AddStreamSection } from './AddStreamSection';
-import { SearchSection } from './SearchSection';
-import { TopMenuControlsPanel } from './TopMenuControlsPanel';
+import { TopMenuDesktopOverlay } from './TopMenuDesktopOverlay';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
 export function TopMenuDesktopSections() {
-  const { showDesktopBody, searchVisible, addStreamVisible } = useTopMenuContext();
+  const { showDesktopBody, isMobile } = useTopMenuContext();
 
-  if (!showDesktopBody) return null;
+  if (isMobile || !showDesktopBody) return null;
 
-  return (
-    <>
-      {searchVisible ? <SearchSection /> : null}
-      {addStreamVisible ? <AddStreamSection /> : null}
-      <TopMenuControlsPanel />
-    </>
-  );
+  return <TopMenuDesktopOverlay />;
 }

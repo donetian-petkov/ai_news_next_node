@@ -13,6 +13,13 @@ import type { NewsCardProps } from './news-card/newsCard.types';
 export const NewsCard = memo(function NewsCard({ view, state, handlers }: NewsCardProps) {
   const { item, summaryMode, researchMode } = state;
   const { hideAllResearch, hideAllSummaries, performanceMode, accent, soft, matchAccent } = view;
+  const biasDetected = !!item.insights?.bias?.detected;
+  const sensationalismDetected = !!item.insights?.sensationalism?.detected;
+  const insightTint = sensationalismDetected
+    ? 'linear-gradient(160deg, rgba(255,176,121,0.16), rgba(255,220,181,0.08))'
+    : biasDetected
+      ? 'linear-gradient(160deg, rgba(125,182,255,0.15), rgba(201,227,255,0.08))'
+      : '';
 
   const hasSummaryBlock = !!item.summary && !hideAllSummaries;
   const hasResearchBlock = !!item.research && !hideAllResearch;
@@ -95,7 +102,7 @@ export const NewsCard = memo(function NewsCard({ view, state, handlers }: NewsCa
           overflow: 'hidden',
           background: performanceMode
             ? NEWS_CARD_COLOR_TOKENS.perfBackground
-            : `linear-gradient(155deg, ${NEWS_CARD_COLOR_TOKENS.gradientStart}, ${NEWS_CARD_COLOR_TOKENS.gradientEnd}), radial-gradient(550px 180px at 0% 0%, ${soft}, transparent 72%), var(--news-card-overlay)`,
+            : `${insightTint ? `${insightTint}, ` : ''}linear-gradient(155deg, ${NEWS_CARD_COLOR_TOKENS.gradientStart}, ${NEWS_CARD_COLOR_TOKENS.gradientEnd}), radial-gradient(550px 180px at 0% 0%, ${soft}, transparent 72%), var(--news-card-overlay)`,
           borderColor: item.isMatch ? matchAccent : `${accent}88`,
           color: NEWS_CARD_COLOR_TOKENS.textMain,
           contentVisibility: 'auto',

@@ -1,5 +1,5 @@
 import type { SxProps, Theme } from '@mui/material';
-import type { NewsItem } from '../../../store/types';
+import type { AiInsightFeatureSettings, NewsItem } from '../../../store/types';
 import type { BodyMode, CardLabels, FeedAskState, VibeIcons } from '../reactColumns.types';
 
 export type NewsCardViewModel = {
@@ -9,6 +9,9 @@ export type NewsCardViewModel = {
   buttonMode: 'icons' | 'text';
   titleDisplayLanguage: 'original' | 'bg' | 'en';
   aiAvailable: boolean;
+  insightFeatures: AiInsightFeatureSettings;
+  localImpactRegion: string;
+  trackedTopics: string[];
   performanceMode: boolean;
   fontScale: number;
   connected: boolean;

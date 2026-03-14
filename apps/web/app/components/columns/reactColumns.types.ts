@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import type { BudgetMode, FeedInfo, MoodFilter, NewsItem, SortMode, TypeFilter } from '../../store/types';
+import type { AiInsightFeatureSettings, BudgetMode, FeedInfo, MoodFilter, NewsItem, SortMode, TypeFilter } from '../../store/types';
 
 export type BodyMode = 'collapsed' | 'expanded' | 'hidden';
 export type VibeValue = 'default' | 'anime' | 'arcade' | 'cinema' | 'newspaper' | 'cyberwitch' | 'fantasy' | 'scifi';
@@ -68,6 +68,16 @@ export type CardLabels = {
   send: string;
   showOriginalTitle: string;
   showTranslatedTitle: string;
+  biasDetected: string;
+  sensationalismDetected: string;
+  factHighlights: string;
+  storyImpact: string;
+  perspective: string;
+  historicalComparison: string;
+  futureScenario: string;
+  localImpact: string;
+  topicTracking: string;
+  emergingStory: string;
 };
 
 export type VibeIcons = {
@@ -99,6 +109,9 @@ export type FeedColumnViewModel = {
   hideAllSummaries: boolean;
   aiEnabled: boolean;
   aiAvailable: boolean;
+  insightFeatures: AiInsightFeatureSettings;
+  localImpactRegion: string;
+  trackedTopics: string[];
   keywords: string[];
   buttonMode: 'icons' | 'text';
   titleDisplayLanguage: 'original' | 'bg' | 'en';

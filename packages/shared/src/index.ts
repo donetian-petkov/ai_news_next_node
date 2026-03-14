@@ -7,6 +7,21 @@ export const budgetModeSchema = z.union([z.literal('low'), z.literal('standard')
 export const sortModeSchema = z.union([z.literal('newest'), z.literal('oldest'), z.literal('matched')]);
 export const aiProviderSchema = z.union([z.literal('openai'), z.literal('claude'), z.literal('openrouter')]);
 export const aiModelIdSchema = z.string().trim().min(1);
+export const briefingDeliverySchema = z.union([z.literal('site'), z.literal('email')]);
+export const briefingFormatSchema = z.union([z.literal('executive'), z.literal('bullets'), z.literal('narrative')]);
+export const aiFeatureSettingsSchema = z.object({
+  biasDetection: z.boolean().optional(),
+  sensationalismDetection: z.boolean().optional(),
+  factHighlights: z.boolean().optional(),
+  storyImpact: z.boolean().optional(),
+  dailyBriefing: z.boolean().optional(),
+  topicTracking: z.boolean().optional(),
+  perspectiveSimulator: z.boolean().optional(),
+  emergingStoryDetector: z.boolean().optional(),
+  historicalComparison: z.boolean().optional(),
+  futureScenarioGenerator: z.boolean().optional(),
+  localImpactDetector: z.boolean().optional()
+});
 
 export const columnFiltersSchema = z.object({
   onlyMatches: z.boolean(),
@@ -32,6 +47,12 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
       z.array(z.string())
     ])
   }),
+  z.object({
+    type: z.literal('set_ai_features'),
+    features: aiFeatureSettingsSchema.optional(),
+    localRegion: z.string().trim().min(1).max(120).optional(),
+    trackedTopics: z.array(z.string().trim().min(1).max(120)).max(80).optional()
+  }),
   z.object({ type: z.literal('add_feed'), url: z.string(), label: z.string().optional(), kind: feedKindSchema.optional(), intervalSec: z.number().optional() }),
   z.object({ type: z.literal('remove_feed'), feedUrl: z.string() }),
   z.object({ type: z.literal('set_feed_summary'), feedUrl: z.string(), enabled: z.boolean() }),
@@ -44,6 +65,14 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('unhide_item'), id: z.string() }),
   z.object({ type: z.literal('run_research_item'), id: z.string(), feedUrl: z.string() }),
   z.object({ type: z.literal('run_summary_item'), id: z.string(), feedUrl: z.string() }),
+  z.object({
+    type: z.literal('generate_daily_briefing'),
+    delivery: briefingDeliverySchema.optional(),
+    email: z.string().trim().max(200).optional(),
+    format: briefingFormatSchema.optional(),
+    includeAudio: z.boolean().optional(),
+    feedUrls: z.array(z.string()).max(80).optional()
+  }),
   z.object({ type: z.literal('ask_agent_item'), id: z.string(), feedUrl: z.string(), question: z.string(), researchMode: z.union([z.literal('auto'), z.literal('force'), z.literal('reuse')]).optional() }),
 ]);
 

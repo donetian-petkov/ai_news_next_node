@@ -22,6 +22,9 @@ type Args = {
     hideAllSummaries: boolean;
     aiEnabled: boolean;
     aiAvailable: boolean;
+    insightFeatures: FeedColumnViewModel['insightFeatures'];
+    localImpactRegion: string;
+    trackedTopics: string[];
     keywords: string[];
   };
   labels: Record<string, string>;
