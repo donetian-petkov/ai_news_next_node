@@ -164,6 +164,8 @@ export type EmergingStorySignal = {
   reason: string;
 };
 
+export type InsightStatus = 'pending' | 'ready' | 'empty';
+
 export type DailyBriefingResult = {
   title: string;
   body: string;
@@ -201,6 +203,7 @@ export type NewsItem = {
   summary?: string;
   summaryPending?: boolean;
   research?: string;
+  insightStatus?: InsightStatus;
   insights?: NewsInsights;
   topicHits?: string[];
   emergingSignal?: EmergingStorySignal;

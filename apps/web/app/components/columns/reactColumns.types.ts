@@ -85,6 +85,10 @@ export type CardLabels = {
   showAiAnalysis: string;
   hideAiAnalysis: string;
   aiInsightsHint: string;
+  aiAnalyzing: string;
+  aiNoSignal: string;
+  aiWaitingHint: string;
+  aiNoSignalHint: string;
   headlineRiskSection: string;
   biasSection: string;
   impactSection: string;

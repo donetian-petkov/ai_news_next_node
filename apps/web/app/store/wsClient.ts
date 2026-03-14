@@ -403,6 +403,7 @@ function parseNews(v: unknown): NewsItem | null {
     summary: isString(m.summary) ? m.summary : '',
     summaryPending: isBoolean(m.summaryPending) ? m.summaryPending : undefined,
     research: isString(m.research) ? m.research : '',
+    insightStatus: m.insightStatus === 'pending' || m.insightStatus === 'ready' || m.insightStatus === 'empty' ? m.insightStatus : undefined,
     insights: parseInsights(m.insights),
     topicHits: parseTrimmedList(m.topicHits, 20),
     emergingSignal: parseEmergingSignal(m.emergingSignal),

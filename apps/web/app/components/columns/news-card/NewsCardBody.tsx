@@ -44,6 +44,7 @@ export function NewsCardBody() {
   const { onSetSummaryMode, onSetResearchMode } = handlers;
   const { hasSummaryBlock, hasResearchBlock, summaryVisible, researchVisible } = ui;
   const insights = item.insights;
+  const insightStatus = item.insightStatus;
   const showSummaryBlock = hasSummaryBlock;
   const showResearchBlock = hasResearchBlock;
   const perspectives = insights?.perspectives;
@@ -459,7 +460,7 @@ export function NewsCardBody() {
         </Box>
       ) : null}
 
-      {insightPanels.length ? (
+      {(insightPanels.length || insightStatus) ? (
         <Box sx={{ mt: 1.3, pt: 1.05, borderTop: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerStrong}` }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap">
             <Box>
@@ -471,18 +472,44 @@ export function NewsCardBody() {
               </Typography>
             </Box>
             <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
-              <Chip size="small" color="success" variant="outlined" label={`${labels.aiReady} · ${insightPanels.length}`} />
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => setShowAiInsights(current => !current)}
-                endIcon={<ExpandMoreIcon sx={{ transform: showAiInsights ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 160ms ease' }} />}
-                sx={{ color: accent, textTransform: 'none', fontWeight: 700 }}
-              >
-                {showAiInsights ? labels.hideAiAnalysis : labels.showAiAnalysis}
-              </Button>
+              {insightStatus === 'ready' ? (
+                <Chip size="small" color="success" variant="outlined" label={`${labels.aiReady} · ${insightPanels.length}`} />
+              ) : null}
+              {insightStatus === 'pending' ? (
+                <Chip
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                  icon={<CircularProgress size={11} color="inherit" />}
+                  label={labels.aiAnalyzing}
+                />
+              ) : null}
+              {insightStatus === 'empty' ? (
+                <Chip size="small" color="default" variant="outlined" label={labels.aiNoSignal} />
+              ) : null}
+              {insightPanels.length ? (
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => setShowAiInsights(current => !current)}
+                  endIcon={<ExpandMoreIcon sx={{ transform: showAiInsights ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 160ms ease' }} />}
+                  sx={{ color: accent, textTransform: 'none', fontWeight: 700 }}
+                >
+                  {showAiInsights ? labels.hideAiAnalysis : labels.showAiAnalysis}
+                </Button>
+              ) : null}
             </Stack>
           </Stack>
+          {!insightPanels.length && insightStatus === 'pending' ? (
+            <Typography variant="caption" sx={{ color: NEWS_CARD_COLOR_TOKENS.confidenceText, display: 'block', mt: 0.8 }}>
+              {labels.aiWaitingHint}
+            </Typography>
+          ) : null}
+          {!insightPanels.length && insightStatus === 'empty' ? (
+            <Typography variant="caption" sx={{ color: NEWS_CARD_COLOR_TOKENS.confidenceText, display: 'block', mt: 0.8 }}>
+              {labels.aiNoSignalHint}
+            </Typography>
+          ) : null}
           <Collapse in={showAiInsights} timeout="auto" unmountOnExit>
             <Box sx={aiInsightGroupSx}>
               <Stack spacing={0.9}>
