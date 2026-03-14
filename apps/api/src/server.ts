@@ -1782,6 +1782,13 @@ function refreshDerivedDataForItem(item: NewsInternal) {
   item.emergingSignal = emergingSignalForItem(item);
 }
 
+function reprocessCachedItems(broadcast = false) {
+  recent.forEach(item => {
+    refreshDerivedDataForItem(item);
+    if (broadcast) broadcastNewsUpdate(item);
+  });
+}
+
 function canGenerateDailyBriefing(feedUrls: string[]): { ok: true; items: NewsInternal[] } | { ok: false; reason: string } {
   if (!aiEnabled || !aiAvailable) {
     return { ok: false, reason: 'AI must be enabled and configured before a briefing can be created.' };
@@ -3369,7 +3376,7 @@ function applyLoadedState(st: PersistedState | null) {
     });
   }
 
-  recent.forEach(item => refreshDerivedDataForItem(item));
+  reprocessCachedItems(false);
 }
 
 async function loadState() {
@@ -3434,6 +3441,8 @@ wss.on('connection', (ws: WebSocket) => {
     aiUsageOutputTokens,
     aiUsageTotalTokens
   } satisfies Config));
+
+  reprocessCachedItems(false);
 
   // Send snapshot (newest first)
   const snapshot = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
@@ -3651,6 +3660,7 @@ wss.on('connection', (ws: WebSocket) => {
       const lang = msg.lang;
       if (lang === 'bg' || lang === 'en') {
         researchLang = lang;
+        reprocessCachedItems(true);
         broadcastConfig();
         markDirty();
       }
@@ -3687,10 +3697,7 @@ wss.on('connection', (ws: WebSocket) => {
       if (Array.isArray(msg.trackedTopics)) {
         trackedTopics = normalizeTrimmedList(msg.trackedTopics, 80);
       }
-      recent.forEach(item => {
-        refreshDerivedDataForItem(item);
-        broadcastNewsUpdate(item);
-      });
+      reprocessCachedItems(true);
       broadcastConfig();
       markDirty();
       return;
