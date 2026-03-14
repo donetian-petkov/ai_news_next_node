@@ -35,9 +35,14 @@ export function useTopMenuVisibilityActions({
   }, [dispatch, isMobile, scheduleFocus, setMobileDrawerOpen, ui.addStreamVisible]);
 
   const toggleControls = useCallback(() => {
-    if (isMobile) setMobileDrawerOpen(true);
-    dispatch(setTopUiState({ menuCollapsed: false, controlsCollapsed: !ui.controlsCollapsed }));
-  }, [dispatch, isMobile, setMobileDrawerOpen, ui.controlsCollapsed]);
+    if (isMobile) {
+      setMobileDrawerOpen(true);
+      dispatch(setTopUiState({ menuCollapsed: false, controlsCollapsed: false }));
+      return;
+    }
+
+    dispatch(setTopUiState({ menuCollapsed: false, controlsCollapsed: false }));
+  }, [dispatch, isMobile, setMobileDrawerOpen]);
 
   const toggleMenu = useCallback(() => {
     if (isMobile) {

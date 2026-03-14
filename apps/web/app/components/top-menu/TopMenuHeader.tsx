@@ -8,7 +8,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 import OpenWithIcon from '@mui/icons-material/OpenWith';
 import SearchIcon from '@mui/icons-material/Search';
 import SummarizeIcon from '@mui/icons-material/Summarize';
-import TuneIcon from '@mui/icons-material/Tune';
 import { DateTimePill } from './DateTimePill';
 import { StatusPills } from './StatusPills';
 import { QuickVibeSelect } from './QuickVibeSelect';
@@ -22,7 +21,6 @@ export function TopMenuHeader() {
     isMobile,
     searchLabel,
     addStreamLabel,
-    controlsLabel,
     allColumnLabel,
     menuLabel,
     hideAllResearchLabel,
@@ -32,7 +30,6 @@ export function TopMenuHeader() {
     onToggleMenu,
     onToggleSearch,
     onToggleAddStream,
-    onToggleControls,
     onToggleAllColumnControls,
     onToggleHideAllResearch,
     onToggleHideAllSummaries
@@ -96,7 +93,6 @@ export function TopMenuHeader() {
           <QuickVibeSelect />
           <TopMenuActionButton id="quickSearchBtn" label={searchLabel} icon={<SearchIcon fontSize="small" />} onClick={onToggleSearch} />
           <TopMenuActionButton id="quickAddStreamBtn" label={addStreamLabel} icon={<AddIcon fontSize="small" />} onClick={onToggleAddStream} />
-          <TopMenuActionButton id="controlsToggle" label={controlsLabel} icon={<TuneIcon fontSize="small" />} onClick={onToggleControls} />
           <TopMenuActionButton id="allColControlsToggle" label={allColumnLabel} icon={<GridViewIcon fontSize="small" />} onClick={onToggleAllColumnControls} />
           <TopMenuActionButton id="hideAllResearchBtn" label={hideAllResearchLabel} icon={<AutoAwesomeIcon fontSize="small" />} onClick={onToggleHideAllResearch} />
           <TopMenuActionButton id="hideAllSummariesBtn" label={hideAllSummariesLabel} icon={<SummarizeIcon fontSize="small" />} onClick={onToggleHideAllSummaries} />

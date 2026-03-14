@@ -38,6 +38,7 @@ export function NewsCardBody() {
     researchConfidence
   } = state;
   const [perspective, setPerspective] = useState<'investor' | 'government' | 'consumer' | 'tech'>('investor');
+  const [showAllInsights, setShowAllInsights] = useState(false);
 
   const { onSetSummaryMode, onSetResearchMode } = handlers;
   const { hasSummaryBlock, hasResearchBlock, summaryVisible, researchVisible } = ui;
@@ -54,6 +55,289 @@ export function NewsCardBody() {
     ['Numbers', insights.facts.numbers],
     ['Quotes', insights.facts.quotes]
   ] as const : [];
+  const aiInsightGroupSx = {
+    mt: 1.05,
+    px: 1.15,
+    py: 0.95,
+    border: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerStrong}`,
+    borderRadius: '14px',
+    background: `linear-gradient(180deg, ${NEWS_CARD_COLOR_TOKENS.insetHighlight}, rgba(255,255,255,0.02))`
+  } as const;
+  const insightSectionSx = {
+    mt: 0,
+    px: 1,
+    py: 0.82,
+    border: `1px solid ${NEWS_CARD_COLOR_TOKENS.dividerSoft}`,
+    borderRadius: '10px',
+    background: 'rgba(255,255,255,0.018)'
+  } as const;
+  const insightSectionTitleSx = {
+    display: 'block',
+    mb: 0.55,
+    fontSize: `${0.69 * fontScale}rem`,
+    lineHeight: 1.2,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    fontWeight: 800,
+    color: NEWS_CARD_COLOR_TOKENS.confidenceText
+  } as const;
+  const insightBodySx = {
+    fontSize: `${0.91 * fontScale}rem`,
+    lineHeight: 1.5,
+    color: NEWS_CARD_COLOR_TOKENS.summaryText
+  } as const;
+  const insightMetaSx = {
+    display: 'block',
+    mt: 0.45,
+    color: NEWS_CARD_COLOR_TOKENS.confidenceText,
+    lineHeight: 1.45
+  } as const;
+  const insightPanels: Array<{ key: string; element: JSX.Element }> = [];
+
+  if (insights?.sensationalism?.detected) {
+    insightPanels.push({
+      key: 'sensationalism',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Headline risk
+          </Typography>
+          <Chip
+            size="small"
+            color="warning"
+            variant="outlined"
+            label={`${labels.sensationalismDetected}: ${insights.sensationalism.level}`}
+            sx={{ mb: insights.sensationalism.reasons.length || insights.sensationalism.alternativeHeadline ? 0.55 : 0 }}
+          />
+          {insights.sensationalism.reasons.length ? (
+            <Typography variant="caption" sx={insightMetaSx}>
+              {insights.sensationalism.reasons.join(' · ')}
+            </Typography>
+          ) : null}
+          {insights.sensationalism.alternativeHeadline ? (
+            <Typography variant="caption" sx={insightMetaSx}>
+              AI headline: {insights.sensationalism.alternativeHeadline}
+            </Typography>
+          ) : null}
+        </Box>
+      )
+    });
+  }
+
+  if (insights?.bias?.detected) {
+    const biasLabelParts = [
+      `${labels.biasDetected}: ${insights.bias.severity}`,
+      insights.bias.leaning,
+      insights.bias.emotionalTone,
+      insights.bias.framing
+    ].filter(Boolean);
+
+    insightPanels.push({
+      key: 'bias',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Bias
+          </Typography>
+          <Chip
+            size="small"
+            color="info"
+            variant="outlined"
+            label={biasLabelParts.join(' · ')}
+            sx={{
+              height: 'auto',
+              alignItems: 'flex-start',
+              '& .MuiChip-label': {
+                display: 'block',
+                whiteSpace: 'normal',
+                paddingTop: '6px',
+                paddingBottom: '6px',
+                lineHeight: 1.35
+              }
+            }}
+          />
+        </Box>
+      )
+    });
+  }
+
+  if (factSections.length) {
+    insightPanels.push({
+      key: 'facts',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            {labels.factHighlights}
+          </Typography>
+          {factSections.map(([label, values]) => values.length ? (
+            <Typography key={label} variant="body2" sx={{ ...insightBodySx, whiteSpace: 'pre-wrap', fontSize: `${0.89 * fontScale}rem` }}>
+              <strong>{label}:</strong> {values.join(' • ')}
+            </Typography>
+          ) : null)}
+        </Box>
+      )
+    });
+  }
+
+  if (insights?.impact) {
+    insightPanels.push({
+      key: 'impact',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Impact
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
+            {labels.storyImpact}: {insights.impact.score}
+          </Typography>
+          <Typography variant="body2" sx={insightBodySx}>
+            {insights.impact.summary}
+          </Typography>
+          {insights.impact.industries.length ? (
+            <Typography variant="caption" sx={insightMetaSx}>
+              Industries: {insights.impact.industries.join(' • ')}
+            </Typography>
+          ) : null}
+        </Box>
+      )
+    });
+  }
+
+  if (perspectives && Object.keys(perspectives).length) {
+    insightPanels.push({
+      key: 'perspective',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            {labels.perspective}
+          </Typography>
+          <Select
+            size="small"
+            fullWidth
+            value={perspective}
+            onChange={event => setPerspective(event.target.value as typeof perspective)}
+            sx={{ mb: 0.5 }}
+          >
+            <MenuItem value="investor">Investor</MenuItem>
+            <MenuItem value="government">Government</MenuItem>
+            <MenuItem value="consumer">Consumer</MenuItem>
+            <MenuItem value="tech">Tech industry</MenuItem>
+          </Select>
+          {selectedPerspectiveText ? (
+            <Typography variant="body2" sx={insightBodySx}>
+              {selectedPerspectiveText}
+            </Typography>
+          ) : null}
+        </Box>
+      )
+    });
+  }
+
+  if (item.topicHits?.length) {
+    insightPanels.push({
+      key: 'topics',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            {labels.topicTracking}
+          </Typography>
+          <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
+            {item.topicHits.map(topic => (
+              <Chip key={topic} size="small" variant="outlined" label={topic} />
+            ))}
+          </Stack>
+        </Box>
+      )
+    });
+  }
+
+  if (item.emergingSignal) {
+    insightPanels.push({
+      key: 'emerging',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Emerging
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
+            {labels.emergingStory}: {item.emergingSignal.velocity}
+          </Typography>
+          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.2 }}>
+            {item.emergingSignal.reason} · {item.emergingSignal.clusterSize} related stories · {item.emergingSignal.sources.join(', ')}
+          </Typography>
+        </Box>
+      )
+    });
+  }
+
+  if (insights?.historical) {
+    insightPanels.push({
+      key: 'historical',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Comparison
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
+            {labels.historicalComparison}
+          </Typography>
+          <Typography variant="body2" sx={insightBodySx}>
+            {insights.historical.explanation}
+          </Typography>
+          <Typography variant="caption" sx={insightMetaSx}>
+            {insights.historical.comparisons.join(' • ')}
+          </Typography>
+        </Box>
+      )
+    });
+  }
+
+  if (insights?.future) {
+    insightPanels.push({
+      key: 'future',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Outlook
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
+            {labels.futureScenario}
+          </Typography>
+          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0, mb: 0.35 }}>
+            {insights.future.disclaimer}
+          </Typography>
+          <Typography variant="body2" sx={insightBodySx}>
+            {insights.future.scenarios.join(' • ')}
+          </Typography>
+          <Typography variant="caption" sx={insightMetaSx}>
+            {insights.future.outlook}
+          </Typography>
+        </Box>
+      )
+    });
+  }
+
+  if (insights?.localImpact) {
+    insightPanels.push({
+      key: 'local',
+      element: (
+        <Box sx={insightSectionSx}>
+          <Typography variant="overline" sx={insightSectionTitleSx}>
+            Local
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
+            {labels.localImpact}: {insights.localImpact.region || localImpactRegion}
+          </Typography>
+          <Typography variant="body2" sx={insightBodySx}>
+            {insights.localImpact.summary}
+          </Typography>
+        </Box>
+      )
+    });
+  }
+
+  const visibleInsightPanels = showAllInsights ? insightPanels : insightPanels.slice(0, 2);
+  const hiddenInsightCount = Math.max(0, insightPanels.length - visibleInsightPanels.length);
 
   return (
     <>
@@ -162,171 +446,29 @@ export function NewsCardBody() {
         </Box>
       ) : null}
 
-      {insights?.sensationalism?.detected ? (
-        <Box sx={{ mt: 1 }}>
-          <Chip
-            size="small"
-            color="warning"
-            variant="outlined"
-            label={`${labels.sensationalismDetected}: ${insights.sensationalism.level}`}
-            sx={{ mb: 0.6 }}
-          />
-          <Typography variant="body2" sx={{ fontSize: `${0.93 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {insights.sensationalism.summary}
-          </Typography>
-          {insights.sensationalism.reasons.length ? (
-            <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 0.6 }}>
-              {insights.sensationalism.reasons.map(reason => (
-                <Chip key={reason} size="small" variant="outlined" label={reason} />
-              ))}
-            </Stack>
-          ) : null}
-          {insights.sensationalism.alternativeHeadline ? (
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.6, color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-              AI headline: {insights.sensationalism.alternativeHeadline}
+      {insightPanels.length ? (
+        <Box sx={aiInsightGroupSx}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 0.85 }}>
+            <Typography variant="overline" sx={{ ...insightSectionTitleSx, mb: 0 }}>
+              AI insights
             </Typography>
-          ) : null}
-        </Box>
-      ) : null}
-
-      {insights?.bias?.detected ? (
-        <Box sx={{ mt: 1 }}>
-          <Chip
-            size="small"
-            color="info"
-            variant="outlined"
-            label={`${labels.biasDetected}: ${insights.bias.severity}`}
-            sx={{ mb: 0.6 }}
-          />
-          <Typography variant="body2" sx={{ fontSize: `${0.93 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {insights.bias.summary}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', mt: 0.4, color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-            {insights.bias.leaning} · {insights.bias.emotionalTone}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-            {insights.bias.framing}
-          </Typography>
-        </Box>
-      ) : null}
-
-      {factSections.length ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ mb: 0.4, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.factHighlights}
-          </Typography>
-          {factSections.map(([label, values]) => values.length ? (
-            <Typography key={label} variant="body2" sx={{ fontSize: `${0.9 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText, whiteSpace: 'pre-wrap' }}>
-              <strong>{label}:</strong> {values.join(' • ')}
-            </Typography>
-          ) : null)}
-        </Box>
-      ) : null}
-
-      {insights?.impact ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.storyImpact}: {insights.impact.score}
-          </Typography>
-          <Typography variant="body2" sx={{ fontSize: `${0.92 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {insights.impact.summary}
-          </Typography>
-          {insights.impact.industries.length ? (
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.4, color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-              Industries: {insights.impact.industries.join(' • ')}
-            </Typography>
-          ) : null}
-        </Box>
-      ) : null}
-
-      {perspectives && Object.keys(perspectives).length ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ mb: 0.4, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.perspective}
-          </Typography>
-          <Select
-            size="small"
-            fullWidth
-            value={perspective}
-            onChange={event => setPerspective(event.target.value as typeof perspective)}
-            sx={{ mb: 0.5 }}
-          >
-            <MenuItem value="investor">Investor</MenuItem>
-            <MenuItem value="government">Government</MenuItem>
-            <MenuItem value="consumer">Consumer</MenuItem>
-            <MenuItem value="tech">Tech industry</MenuItem>
-          </Select>
-          {selectedPerspectiveText ? (
-            <Typography variant="body2" sx={{ fontSize: `${0.92 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-              {selectedPerspectiveText}
-            </Typography>
-          ) : null}
-        </Box>
-      ) : null}
-
-      {item.topicHits?.length ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ mb: 0.35, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.topicTracking}
-          </Typography>
-          <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
-            {item.topicHits.map(topic => (
-              <Chip key={topic} size="small" variant="outlined" label={topic} />
+            <Chip size="small" color="success" variant="outlined" label={`Ready · ${insightPanels.length}`} />
+          </Stack>
+          <Stack spacing={0.9}>
+            {visibleInsightPanels.map(panel => (
+              <Box key={panel.key}>{panel.element}</Box>
             ))}
           </Stack>
-        </Box>
-      ) : null}
-
-      {item.emergingSignal ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.emergingStory}: {item.emergingSignal.velocity}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-            {item.emergingSignal.reason} · {item.emergingSignal.clusterSize} related stories · {item.emergingSignal.sources.join(', ')}
-          </Typography>
-        </Box>
-      ) : null}
-
-      {insights?.historical ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.historicalComparison}
-          </Typography>
-          <Typography variant="body2" sx={{ fontSize: `${0.92 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {insights.historical.explanation}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', mt: 0.4, color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-            {insights.historical.comparisons.join(' • ')}
-          </Typography>
-        </Box>
-      ) : null}
-
-      {insights?.future ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.futureScenario}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', mb: 0.35, color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-            {insights.future.disclaimer}
-          </Typography>
-          <Typography variant="body2" sx={{ fontSize: `${0.92 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {insights.future.scenarios.join(' • ')}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', mt: 0.35, color: NEWS_CARD_COLOR_TOKENS.confidenceText }}>
-            {insights.future.outlook}
-          </Typography>
-        </Box>
-      ) : null}
-
-      {insights?.localImpact ? (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {labels.localImpact}: {insights.localImpact.region || localImpactRegion}
-          </Typography>
-          <Typography variant="body2" sx={{ fontSize: `${0.92 * fontScale}rem`, color: NEWS_CARD_COLOR_TOKENS.summaryText }}>
-            {insights.localImpact.summary}
-          </Typography>
+          {hiddenInsightCount > 0 ? (
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setShowAllInsights(current => !current)}
+              sx={{ mt: 0.55, color: accent, textTransform: 'none', fontWeight: 700 }}
+            >
+              {showAllInsights ? 'Show fewer AI insights' : `Show ${hiddenInsightCount} more AI insight${hiddenInsightCount === 1 ? '' : 's'}`}
+            </Button>
+          ) : null}
         </Box>
       ) : null}
 

@@ -113,6 +113,38 @@ function tokenOverlapSimilarity(a: Set<string>, b: Set<string>): number {
   return intersection / smaller.size;
 }
 
+function dedupeNewsItemsBySignature(items: NewsItem[]): NewsItem[] {
+  const keptSignatures: TextSignature[] = [];
+  const uniqueItems: NewsItem[] = [];
+
+  for (const item of items) {
+    const signature: TextSignature = {
+      vector: toVector(item),
+      tokens: toTokenSet(item),
+      publishedMs: Number(item.publishedMs || 0)
+    };
+    const isDuplicate = keptSignatures.some(kept => {
+      const cosine = cosineSimilarity(signature.vector, kept.vector);
+      if (cosine >= DUPLICATE_MATCH_SIMILARITY_THRESHOLD) return true;
+
+      const overlap = tokenOverlapSimilarity(signature.tokens, kept.tokens);
+      const fuzzyOverlap = fuzzyTokenOverlapSimilarity(signature.tokens, kept.tokens);
+      const maxOverlap = Math.max(overlap, fuzzyOverlap);
+      if (maxOverlap < DUPLICATE_MATCH_SIMILARITY_THRESHOLD) return false;
+
+      if (!signature.publishedMs || !kept.publishedMs) return true;
+      const timeDeltaMs = Math.abs(signature.publishedMs - kept.publishedMs);
+      return timeDeltaMs <= 12 * 60 * 60 * 1000;
+    });
+
+    if (isDuplicate) continue;
+    uniqueItems.push(item);
+    keptSignatures.push(signature);
+  }
+
+  return uniqueItems;
+}
+
 function oneEditApart(a: string, b: string): boolean {
   const lenA = a.length;
   const lenB = b.length;
@@ -327,35 +359,12 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       };
     }
 
+    const uniqueMatched = dedupeNewsItemsBySignature(sortedMatched);
+    const uniqueIds = new Set(uniqueMatched.map(item => item.id));
     const duplicateMap: Record<string, true> = {};
-    const keptSignatures: TextSignature[] = [];
-    const uniqueMatched: NewsItem[] = [];
-    for (const item of sortedMatched) {
-      const signature: TextSignature = {
-        vector: toVector(item),
-        tokens: toTokenSet(item),
-        publishedMs: Number(item.publishedMs || 0)
-      };
-      const isDuplicate = keptSignatures.some(kept => {
-        const cosine = cosineSimilarity(signature.vector, kept.vector);
-        if (cosine >= DUPLICATE_MATCH_SIMILARITY_THRESHOLD) return true;
-
-        const overlap = tokenOverlapSimilarity(signature.tokens, kept.tokens);
-        const fuzzyOverlap = fuzzyTokenOverlapSimilarity(signature.tokens, kept.tokens);
-        const maxOverlap = Math.max(overlap, fuzzyOverlap);
-        if (maxOverlap < DUPLICATE_MATCH_SIMILARITY_THRESHOLD) return false;
-
-        if (!signature.publishedMs || !kept.publishedMs) return true;
-        const timeDeltaMs = Math.abs(signature.publishedMs - kept.publishedMs);
-        return timeDeltaMs <= 12 * 60 * 60 * 1000;
-      });
-      if (isDuplicate) {
-        duplicateMap[item.id] = true;
-      } else {
-        uniqueMatched.push(item);
-        keptSignatures.push(signature);
-      }
-    }
+    sortedMatched.forEach(item => {
+      if (!uniqueIds.has(item.id)) duplicateMap[item.id] = true;
+    });
 
     return {
       filteredColumnItems: uniqueMatched,
@@ -371,16 +380,17 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       if (!item?.emergingSignal || item.emergingSignal.clusterSize < 2) return;
       const current = byId.get(item.id);
       if (!current || (current.emergingSignal?.clusterSize || 0) < item.emergingSignal.clusterSize) {
-        byId.set(item.id, { ...item, feedUrl: EMERGING_FEED_URL });
+        byId.set(item.id, { ...item, feedUrl: EMERGING_FEED_URL, isMatch: false });
       }
     });
-    return Array.from(byId.values())
+    return dedupeNewsItemsBySignature(
+      Array.from(byId.values())
       .sort((a, b) => {
         const diff = (b.emergingSignal?.clusterSize || 0) - (a.emergingSignal?.clusterSize || 0);
         if (diff) return diff;
         return b.publishedMs - a.publishedMs;
       })
-      .slice(0, 30);
+    ).slice(0, 30);
   }, [itemsByFeed, ui.insightFeatures.emergingStoryDetector]);
 
   const itemsByFeedForPresentation = useMemo(

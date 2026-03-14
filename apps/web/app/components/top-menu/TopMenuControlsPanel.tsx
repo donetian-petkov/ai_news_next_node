@@ -7,13 +7,10 @@ import { TopMenuAppearanceSection } from './TopMenuAppearanceSection';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
 export function TopMenuControlsPanel() {
-  const {
-    labels,
-    controls: { model }
-  } = useTopMenuContext();
+  const { labels } = useTopMenuContext();
 
   return (
-    <div className={`controls${model.collapsed ? ' controlsHidden' : ''}`}>
+    <div className="controls">
       <TopMenuControlsQuickRow />
 
       <div className="controlsHint" id="controlsHint">

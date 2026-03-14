@@ -1242,24 +1242,179 @@ function capitalizeWords(values: string[], max = 6): string[] {
   return out;
 }
 
+const FACT_HIGHLIGHT_ENTITY_STOPWORDS = new Set([
+  'agency',
+  'bank',
+  'board',
+  'capital',
+  'city',
+  'cloud',
+  'commission',
+  'committee',
+  'company',
+  'computer',
+  'conference',
+  'council',
+  'court',
+  'defense',
+  'department',
+  'directorate',
+  'eu',
+  'european',
+  'federal',
+  'foundation',
+  'fund',
+  'government',
+  'group',
+  'hospital',
+  'industry',
+  'institute',
+  'international',
+  'ministry',
+  'nato',
+  'nuclear',
+  'office',
+  'organization',
+  'parliament',
+  'party',
+  'plant',
+  'police',
+  'power',
+  'president',
+  'reactor',
+  'republic',
+  'school',
+  'service',
+  'state',
+  'system',
+  'technology',
+  'the',
+  'tribunal',
+  'union',
+  'university',
+  'war'
+]);
+
+const FACT_HIGHLIGHT_HEADLINE_STOPWORDS = new Set([
+  'after',
+  'against',
+  'amid',
+  'before',
+  'during',
+  'for',
+  'from',
+  'inside',
+  'keep',
+  'near',
+  'new',
+  'only',
+  'over',
+  'pays',
+  'speak',
+  'silent',
+  'tribute',
+  'under',
+  'when',
+  'with',
+  'you'
+]);
+
+function factHighlightSourceText(item: NewsInternal): string {
+  return [
+    item.summary,
+    item.research,
+    item.__ctx,
+    item.__linkText
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join('\n');
+}
+
+function collectRegexMatches(text: string, regex: RegExp): string[] {
+  return Array.from(text.matchAll(regex), match => String(match[1] || match[0] || ''));
+}
+
+function factCandidateTokens(value: string): string[] {
+  return compactSentence(value, 120)
+    .replace(/["“”„'`.,:;!?()[\]{}]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function hasFactStopword(tokens: string[], stopwords: Set<string>): boolean {
+  return tokens.some(token => stopwords.has(token.toLocaleLowerCase()));
+}
+
+function isLikelyPersonFact(value: string): boolean {
+  const tokens = factCandidateTokens(value);
+  if (tokens.length < 2 || tokens.length > 3) return false;
+  if (tokens.filter(token => token.length >= 3).length < 2) return false;
+  if (hasFactStopword(tokens, FACT_HIGHLIGHT_ENTITY_STOPWORDS)) return false;
+  if (hasFactStopword(tokens, FACT_HIGHLIGHT_HEADLINE_STOPWORDS)) return false;
+  return true;
+}
+
+function isLikelyLocationFact(value: string): boolean {
+  const tokens = factCandidateTokens(value);
+  if (!tokens.length || tokens.length > 4) return false;
+  if (hasFactStopword(tokens, FACT_HIGHLIGHT_HEADLINE_STOPWORDS)) return false;
+  if (tokens.length > 1 && hasFactStopword(tokens, FACT_HIGHLIGHT_ENTITY_STOPWORDS)) return false;
+  return true;
+}
+
+function isLikelyDateFact(value: string): boolean {
+  const candidate = compactSentence(value, 40);
+  if (/^\d{4}$/.test(candidate)) {
+    const year = Number(candidate);
+    return year >= 1900 && year <= 2100;
+  }
+  return candidate.length >= 4;
+}
+
+function isLikelyNumberFact(value: string): boolean {
+  const candidate = compactSentence(value, 40);
+  if (!candidate) return false;
+  if (/[€$£¥%]/.test(candidate)) return true;
+  if (/\b(?:million|billion|trillion|thousand|percent|usd|eur|gbp|bgn|leva|dollars|euros|pounds)\b/i.test(candidate)) return true;
+  if (/\d{3,}/.test(candidate)) return true;
+  if (/\d+[.,]\d+\s*(?:million|billion|trillion|thousand|percent|usd|eur|gbp|bgn|leva|dollars|euros|pounds)\b/i.test(candidate)) return true;
+  return false;
+}
+
+function isLikelyQuoteFact(value: string): boolean {
+  const candidate = compactSentence(value, 180);
+  if (candidate.length < 18) return false;
+  const words = candidate.split(/\s+/).filter(Boolean);
+  if (words.length < 4) return false;
+  if (/^[\p{L}\s-]+$/u.test(candidate) && words.every(word => /^[\p{Lu}]/u.test(word))) return false;
+  return true;
+}
+
 function extractFactHighlights(item: NewsInternal): FactHighlightsInsight | undefined {
-  const text = combinedInsightText(item);
+  const text = factHighlightSourceText(item) || combinedInsightText(item);
   if (!text) return undefined;
-  const peopleMatches = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g) || [];
-  const locationMatches = text.match(/\b(?:in|from|at|near|across|inside)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/g) || [];
-  const dateMatches = text.match(/\b(?:\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?|\d{4}|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,\s*\d{4})?)\b/gi) || [];
-  const numberMatches = text.match(/\b\d[\d,.%$]*(?:\s?(?:million|billion|trillion|k|m|bn))?\b/gi) || [];
-  const quoteMatches = text.match(/["“][^"”]{8,180}["”]/g) || [];
+  const peopleMatches = collectRegexMatches(text, /([\p{Lu}][\p{Ll}]+(?:[-\s]+[\p{Lu}][\p{Ll}]+){1,2})/gu);
+  const locationMatches = collectRegexMatches(text, /(?:\b(?:in|from|at|near|across|inside|outside|around|within)\s+)([\p{Lu}][\p{Ll}]+(?:[-\s]+[\p{Lu}][\p{Ll}]+){0,2})/gu);
+  const dateMatches = collectRegexMatches(text, /(\b(?:\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?|\d{4}|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:,\s*\d{4})?)\b)/gi);
+  const numberMatches = collectRegexMatches(text, /(\b\d[\d,.%$]*(?:\s?(?:million|billion|trillion|thousand|k|m|bn|usd|eur|gbp|bgn))?\b)/gi);
+  const quoteMatches = collectRegexMatches(text, /["“„]([^"”]{12,220})["”]/g);
 
   const facts: FactHighlightsInsight = {
-    people: capitalizeWords(peopleMatches, 6),
-    locations: capitalizeWords(locationMatches.map(match => match.replace(/^(?:in|from|at|near|across|inside)\s+/i, '')), 6),
-    dates: capitalizeWords(dateMatches, 6),
-    numbers: capitalizeWords(numberMatches, 6),
-    quotes: capitalizeWords(quoteMatches.map(match => match.replace(/^["“]|["”]$/g, '')), 4)
+    people: capitalizeWords(peopleMatches.filter(isLikelyPersonFact), 4),
+    locations: capitalizeWords(locationMatches.filter(isLikelyLocationFact), 4),
+    dates: capitalizeWords(dateMatches.filter(isLikelyDateFact), 4),
+    numbers: capitalizeWords(numberMatches.filter(isLikelyNumberFact), 4),
+    quotes: capitalizeWords(quoteMatches.filter(isLikelyQuoteFact), 2)
   };
 
-  return facts.people.length || facts.locations.length || facts.dates.length || facts.numbers.length || facts.quotes.length
+  const signalScore =
+    (facts.people.length ? 2 : 0) +
+    (facts.locations.length ? 1 : 0) +
+    (facts.dates.length ? 1 : 0) +
+    (facts.numbers.length ? 1 : 0) +
+    (facts.quotes.length ? 2 : 0);
+
+  return signalScore >= 2
     ? facts
     : undefined;
 }

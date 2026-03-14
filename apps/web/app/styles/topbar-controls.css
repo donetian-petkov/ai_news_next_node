@@ -281,12 +281,15 @@
 }
 
 .topMenuFeatureGrid {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .topMenuFeatureCard {
   min-width: 0;
   overflow: hidden;
+  background: color-mix(in srgb, var(--section-bg) 88%, transparent);
+  border-radius: 16px;
 }
 
 .topMenuFeatureCard .MuiFormControlLabel-root {
@@ -304,9 +307,9 @@
   word-break: break-word;
 }
 
-@media (max-width: 980px) {
-  .topMenuFeatureGrid {
-    grid-template-columns: 1fr;
+@media (min-width: 1760px) {
+  .controlsCellAi .topMenuFeatureGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

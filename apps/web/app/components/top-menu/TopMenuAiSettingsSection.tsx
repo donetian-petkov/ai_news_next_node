@@ -364,9 +364,12 @@ export function TopMenuAiSettingsSection() {
           <Typography variant="caption" sx={{ display: 'block', mb: 0.8 }}>
             AI features
           </Typography>
+          <Alert severity="info" sx={{ mb: 1.1, py: 0.2 }}>
+            Feature changes apply to new or refreshed stories. Cards with AI output show an explicit AI insights status.
+          </Alert>
           <div className="topMenuFieldGrid topMenuFeatureGrid">
             {FEATURE_ROWS.map(feature => (
-              <Box key={feature.key} className="topMenuField topMenuFeatureCard" sx={{ border: '1px solid var(--panel-border)', borderRadius: 1.5, px: 1, py: 0.6 }}>
+              <Box key={feature.key} className="topMenuFeatureCard" sx={{ border: '1px solid var(--panel-border)', px: 1.2, py: 0.9 }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -379,7 +382,7 @@ export function TopMenuAiSettingsSection() {
                   label={
                     <Box className="topMenuFeatureCopy">
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>{feature.label}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>{feature.hint}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.2, lineHeight: 1.55 }}>{feature.hint}</Typography>
                     </Box>
                   }
                   sx={{

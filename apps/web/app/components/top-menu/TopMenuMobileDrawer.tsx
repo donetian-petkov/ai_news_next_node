@@ -7,7 +7,6 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
-import TuneIcon from '@mui/icons-material/Tune';
 import { AddStreamSection } from './AddStreamSection';
 import { QuickVibeSelect } from './QuickVibeSelect';
 import { SearchSection } from './SearchSection';
@@ -15,7 +14,7 @@ import { TopMenuControlsPanel } from './TopMenuControlsPanel';
 import { FILTERED_FEED_URL } from '../../store/constants';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
-type MobileAnchorTarget = 'search' | 'add' | 'controls';
+type MobileAnchorTarget = 'search' | 'add';
 
 export function TopMenuMobileDrawer() {
   const {
@@ -23,8 +22,6 @@ export function TopMenuMobileDrawer() {
     labels,
     searchLabel,
     addStreamLabel,
-    controlsLabel,
-    controls,
     allColumnLabel,
     hideAllResearchLabel,
     hideAllSummariesLabel,
@@ -33,7 +30,6 @@ export function TopMenuMobileDrawer() {
     addStreamVisible,
     onToggleSearch,
     onToggleAddStream,
-    onToggleControls,
     onToggleAllColumnControls,
     onToggleHideAllResearch,
     onToggleHideAllSummaries,
@@ -49,9 +45,7 @@ export function TopMenuMobileDrawer() {
     const targetVisible =
       pendingAnchor === 'search'
         ? searchVisible
-        : pendingAnchor === 'add'
-          ? addStreamVisible
-          : !controls.model.collapsed;
+        : addStreamVisible;
     if (!targetVisible) return;
 
     const timer = window.setTimeout(() => {
@@ -60,7 +54,7 @@ export function TopMenuMobileDrawer() {
       setPendingAnchor(null);
     }, 40);
     return () => window.clearTimeout(timer);
-  }, [addStreamVisible, controls.model.collapsed, open, pendingAnchor, searchVisible]);
+  }, [addStreamVisible, open, pendingAnchor, searchVisible]);
 
   if (!isMobile) return null;
 
@@ -97,16 +91,6 @@ export function TopMenuMobileDrawer() {
             startIcon={<AddIcon fontSize="small" />}
           >
             {addStreamLabel}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              if (controls.model.collapsed) setPendingAnchor('controls');
-              onToggleControls();
-            }}
-            startIcon={<TuneIcon fontSize="small" />}
-          >
-            {controlsLabel}
           </Button>
           <Button variant="outlined" onClick={onToggleAllColumnControls}>
             {allColumnLabel}
@@ -181,9 +165,7 @@ export function TopMenuMobileDrawer() {
             <AddStreamSection />
           </Box>
         ) : null}
-        <Box data-mobile-anchor="controls">
-          <TopMenuControlsPanel />
-        </Box>
+        <TopMenuControlsPanel />
       </Box>
     </Drawer>
   );
