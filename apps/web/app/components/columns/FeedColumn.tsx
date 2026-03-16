@@ -19,6 +19,7 @@ type FeedColumnProps = {
 export function FeedColumn({ feed, columnIdx, drag }: FeedColumnProps) {
   const {
     isMatchColumn,
+    isEmergingColumn,
     colTheme,
     accent,
     soft,
@@ -120,6 +121,7 @@ export function FeedColumn({ feed, columnIdx, drag }: FeedColumnProps) {
             value={{
               feed,
               isMatchColumn,
+              isEmergingColumn,
               accent,
               soft,
               fontScale,

@@ -1,6 +1,6 @@
 'use client';
 
-import { FILTERED_FEED_URL } from '../../../../store/constants';
+import { EMERGING_FEED_URL, FILTERED_FEED_URL } from '../../../../store/constants';
 import type { FeedInfo } from '../../../../store/types';
 import { useFeedColumnsContext } from '../../context/useFeedColumnsContext';
 import { useFeedColumnItems } from './useFeedColumnItems';
@@ -16,6 +16,7 @@ export function useFeedColumnModel({ feed, columnIdx }: Args) {
   const { filteredColumnItems, itemsByFeed, visibleByFeed } = state;
 
   const isMatchColumn = feed.url === FILTERED_FEED_URL || String(feed.label || '').toLowerCase().startsWith('filtered');
+  const isEmergingColumn = feed.url === EMERGING_FEED_URL;
   const colTheme: 'a' | 'b' | 'match' = isMatchColumn ? 'match' : (columnIdx % 2 === 0 ? 'a' : 'b');
   const accent = colTheme === 'a' ? palette.a : colTheme === 'b' ? palette.b : palette.m;
   const soft = colTheme === 'a' ? palette.aSoft : colTheme === 'b' ? palette.bSoft : palette.mSoft;
@@ -34,6 +35,7 @@ export function useFeedColumnModel({ feed, columnIdx }: Args) {
 
   return {
     isMatchColumn,
+    isEmergingColumn,
     colTheme,
     accent,
     soft,

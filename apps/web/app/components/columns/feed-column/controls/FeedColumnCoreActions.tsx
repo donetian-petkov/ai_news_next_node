@@ -9,7 +9,7 @@ import { useFeedColumnsContext } from '../../context/useFeedColumnsContext';
 import { useFeedColumnContext } from '../context/useFeedColumnContext';
 
 export function FeedColumnCoreActions() {
-  const { feed, isMatchColumn } = useFeedColumnContext();
+  const { feed, isMatchColumn, isEmergingColumn } = useFeedColumnContext();
   const { view, state, handlers } = useFeedColumnsContext();
   const { connected, compactBtnSx, labels } = view;
   const { pinnedByUrl, controlsOpenByUrl } = state;
@@ -19,7 +19,7 @@ export function FeedColumnCoreActions() {
 
   return (
     <Stack direction="row" spacing={1} sx={{ mb: 1.1 }} flexWrap="wrap">
-      {!isMatchColumn ? (
+      {!isMatchColumn && !isEmergingColumn ? (
         <Button
           size="small"
           variant={pinned ? 'contained' : 'outlined'}
@@ -30,7 +30,7 @@ export function FeedColumnCoreActions() {
           {pinned ? labels.pinned : labels.pin}
         </Button>
       ) : null}
-      {!isMatchColumn ? (
+      {!isMatchColumn && !isEmergingColumn ? (
         <Button
           size="small"
           variant="outlined"

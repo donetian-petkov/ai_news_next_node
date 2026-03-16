@@ -6,6 +6,7 @@ import type { FeedInfo, NewsItem } from '../../../../store/types';
 export type FeedColumnContextValue = {
   feed: FeedInfo;
   isMatchColumn: boolean;
+  isEmergingColumn: boolean;
   accent: string;
   soft: string;
   fontScale: number;
