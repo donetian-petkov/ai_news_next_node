@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import { sendWsMessage } from '../../store/wsClient';
 import type { AppDispatch } from '../../store/store';
 import { hydrateUiSettings } from '../../store/slices/uiSlice';
 import type { TopMenuUiState } from './types';
@@ -33,16 +34,26 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     searchVisible: ui.searchVisible,
     addStreamVisible: ui.addStreamVisible,
     allColumnControlsHidden: ui.allColumnControlsHidden,
+    showFilteredColumn: ui.showFilteredColumn,
+    showEmergingColumn: ui.showEmergingColumn,
     hideAllResearch: ui.hideAllResearch,
     hideAllSummaries: ui.hideAllSummaries,
     notifyEnabled: ui.notifyEnabled,
     notifyMode: ui.notifyMode,
     moodFilter: ui.moodFilter,
     typeFilter: ui.typeFilter,
+    aiProvider: ui.aiProvider,
+    summaryLang: ui.summaryLang,
+    researchLang: ui.researchLang,
     titleDisplayLanguage: ui.titleDisplayLanguage,
     insightFeatures: ui.insightFeatures,
     localImpactRegion: ui.localImpactRegion,
     trackedTopics: ui.trackedTopics,
+    summaryModel: ui.summaryModel,
+    researchModel: ui.researchModel,
+    askModel: ui.askModel,
+    allBudget: ui.allBudget,
+    keywords: ui.keywords,
     dailyBriefingDelivery: ui.dailyBriefingDelivery,
     dailyBriefingEmail: ui.dailyBriefingEmail,
     dailyBriefingFormat: ui.dailyBriefingFormat,
@@ -63,6 +74,8 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
   }), [
     ui.addStreamVisible,
     ui.allColumnControlsHidden,
+    ui.showFilteredColumn,
+    ui.showEmergingColumn,
     ui.buttonMode,
     ui.colorMode,
     ui.controlsCollapsed,
@@ -86,6 +99,14 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     ui.dailyBriefingEmail,
     ui.dailyBriefingFeedUrls,
     ui.dailyBriefingFormat,
+    ui.aiProvider,
+    ui.summaryLang,
+    ui.researchLang,
+    ui.summaryModel,
+    ui.researchModel,
+    ui.askModel,
+    ui.allBudget,
+    ui.keywords,
     ui.titleDisplayLanguage,
     ui.performanceMode,
     ui.scheme,
@@ -102,7 +123,51 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     const raw = window.localStorage.getItem(UI_PREFS_STORAGE_KEY);
     if (!raw) return;
     const parsed = parsePersistedUiPrefs(raw);
-    if (parsed) dispatch(hydrateUiSettings(parsed));
+    if (!parsed) return;
+    dispatch(hydrateUiSettings(parsed));
+
+    const replayPersistedServerPrefs = (attempt = 0) => {
+      const sent: boolean[] = [];
+      if (parsed.summaryLang === 'bg' || parsed.summaryLang === 'en' || parsed.summaryLang === 'bilingual') {
+        sent.push(sendWsMessage({ type: 'set_summary_lang', lang: parsed.summaryLang }));
+      }
+      if (parsed.researchLang === 'bg' || parsed.researchLang === 'en') {
+        sent.push(sendWsMessage({ type: 'set_research_lang', lang: parsed.researchLang }));
+      }
+      if (typeof parsed.titleDisplayLanguage === 'string' && parsed.titleDisplayLanguage !== 'original') {
+        sent.push(sendWsMessage({ type: 'run_title_translate_backfill', max: 700 }));
+      }
+      if (parsed.aiProvider === 'openai' || parsed.aiProvider === 'claude' || parsed.aiProvider === 'openrouter') {
+        sent.push(sendWsMessage({ type: 'set_ai_provider', provider: parsed.aiProvider }));
+      }
+      if (parsed.summaryModel || parsed.researchModel || parsed.askModel) {
+        sent.push(sendWsMessage({
+          type: 'set_ai_models',
+          ...(typeof parsed.summaryModel === 'string' && parsed.summaryModel.trim() ? { summaryModel: parsed.summaryModel.trim() } : {}),
+          ...(typeof parsed.researchModel === 'string' && parsed.researchModel.trim() ? { researchModel: parsed.researchModel.trim() } : {}),
+          ...(typeof parsed.askModel === 'string' && parsed.askModel.trim() ? { askModel: parsed.askModel.trim() } : {})
+        }));
+      }
+      if (Array.isArray(parsed.keywords)) {
+        sent.push(sendWsMessage({ type: 'set_keywords', keywords: parsed.keywords }));
+      }
+      if (parsed.allBudget === 'low' || parsed.allBudget === 'standard' || parsed.allBudget === 'high') {
+        sent.push(sendWsMessage({ type: 'set_all_budget', budget: parsed.allBudget }));
+      }
+      if (parsed.insightFeatures || typeof parsed.localImpactRegion === 'string' || Array.isArray(parsed.trackedTopics)) {
+        sent.push(sendWsMessage({
+          type: 'set_ai_features',
+          ...(parsed.insightFeatures ? { features: parsed.insightFeatures } : {}),
+          ...(typeof parsed.localImpactRegion === 'string' ? { localRegion: parsed.localImpactRegion } : {}),
+          ...(Array.isArray(parsed.trackedTopics) ? { trackedTopics: parsed.trackedTopics } : {})
+        }));
+      }
+      if (sent.length && sent.some(Boolean)) return;
+      if (attempt >= 12) return;
+      window.setTimeout(() => replayPersistedServerPrefs(attempt + 1), 500);
+    };
+
+    replayPersistedServerPrefs();
   }, [dispatch]);
 
   useEffect(() => {

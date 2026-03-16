@@ -14,6 +14,8 @@ describe('uiSlice', () => {
       searchVisible: true,
       addStreamVisible: false,
       allColumnControlsHidden: false,
+      showFilteredColumn: true,
+      showEmergingColumn: true,
       hideAllResearchSeq: 0,
       hideAllResearch: false,
       hideAllSummaries: false,
@@ -105,6 +107,8 @@ describe('uiSlice', () => {
         searchVisible: false,
         addStreamVisible: true,
         allColumnControlsHidden: true,
+        showFilteredColumn: false,
+        showEmergingColumn: false,
         vibe: 'anime'
       })
     );
@@ -114,6 +118,8 @@ describe('uiSlice', () => {
     expect(state.searchVisible).toBe(false);
     expect(state.addStreamVisible).toBe(true);
     expect(state.allColumnControlsHidden).toBe(true);
+    expect(state.showFilteredColumn).toBe(false);
+    expect(state.showEmergingColumn).toBe(false);
     expect(state.vibe).toBe('anime');
 
     state = uiReducer(state, setTopUiState({ vibe: 'not-a-vibe' as never }));
@@ -231,6 +237,8 @@ describe('uiSlice', () => {
       controlsCollapsed: true,
       searchVisible: false,
       addStreamVisible: true,
+      showFilteredColumn: false,
+      showEmergingColumn: false,
       hideAllResearch: true,
       hideAllSummaries: true,
       performanceMode: true,
@@ -244,6 +252,8 @@ describe('uiSlice', () => {
     expect(state.controlsCollapsed).toBe(true);
     expect(state.searchVisible).toBe(false);
     expect(state.addStreamVisible).toBe(true);
+    expect(state.showFilteredColumn).toBe(false);
+    expect(state.showEmergingColumn).toBe(false);
     expect(state.hideAllResearch).toBe(true);
     expect(state.hideAllSummaries).toBe(true);
     expect(state.performanceMode).toBe(true);

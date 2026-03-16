@@ -68,6 +68,8 @@ export type TopMenuControlsModel = {
     summaryLang: TopMenuUiState['summaryLang'];
     researchLang: TopMenuUiState['researchLang'];
     titleDisplayLanguage: TopMenuUiState['titleDisplayLanguage'];
+    showFilteredColumn: TopMenuUiState['showFilteredColumn'];
+    showEmergingColumn: TopMenuUiState['showEmergingColumn'];
     insightFeatures: TopMenuUiState['insightFeatures'];
     localImpactRegion: TopMenuUiState['localImpactRegion'];
     trackedTopics: TopMenuUiState['trackedTopics'];
@@ -135,6 +137,7 @@ export type TopMenuControlsActions = {
   onSummaryLangChange: (lang: TopMenuUiState['summaryLang']) => void;
   onResearchLangChange: (lang: TopMenuUiState['researchLang']) => void;
   onTitleDisplayLanguageChange: (lang: TopMenuUiState['titleDisplayLanguage']) => void;
+  onToggleSpecialColumn: (column: 'filtered' | 'emerging', enabled: boolean) => void;
   onSetInsightFeature: (key: keyof TopMenuUiState['insightFeatures'], enabled: boolean) => void;
   onSetLocalImpactRegion: (region: string) => void;
   onSetTrackedTopics: (topics: string[]) => void;

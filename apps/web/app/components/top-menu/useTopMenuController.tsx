@@ -215,6 +215,8 @@ export function useTopMenuController() {
       summaryLang: ui.summaryLang,
       researchLang: ui.researchLang,
       titleDisplayLanguage: ui.titleDisplayLanguage,
+      showFilteredColumn: ui.showFilteredColumn,
+      showEmergingColumn: ui.showEmergingColumn,
       insightFeatures: ui.insightFeatures,
       localImpactRegion: ui.localImpactRegion,
       trackedTopics: ui.trackedTopics,

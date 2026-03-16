@@ -27,6 +27,8 @@ type Args = {
 };
 
 const DUPLICATE_MATCH_SIMILARITY_THRESHOLD = 0.9;
+const DUPLICATE_MATCH_TIME_WINDOW_MS = 12 * 60 * 60 * 1000;
+const EMERGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SUMMARY_STALL_THRESHOLD_MS = 90_000;
 const SUMMARY_STATUS_REFRESH_MS = 15_000;
 const BULGARIAN_NOISE_STEMS = new Set<string>([
@@ -113,7 +115,7 @@ function tokenOverlapSimilarity(a: Set<string>, b: Set<string>): number {
   return intersection / smaller.size;
 }
 
-function dedupeNewsItemsBySignature(items: NewsItem[]): NewsItem[] {
+function dedupeNewsItemsBySignature(items: NewsItem[], maxTimeDeltaMs = DUPLICATE_MATCH_TIME_WINDOW_MS): NewsItem[] {
   const keptSignatures: TextSignature[] = [];
   const uniqueItems: NewsItem[] = [];
 
@@ -134,7 +136,7 @@ function dedupeNewsItemsBySignature(items: NewsItem[]): NewsItem[] {
 
       if (!signature.publishedMs || !kept.publishedMs) return true;
       const timeDeltaMs = Math.abs(signature.publishedMs - kept.publishedMs);
-      return timeDeltaMs <= 12 * 60 * 60 * 1000;
+      return timeDeltaMs <= maxTimeDeltaMs;
     });
 
     if (isDuplicate) continue;
@@ -373,35 +375,39 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   }, [itemsByFeed, pinnedNewsById, ui.allBudget, ui.performanceMode]);
 
   const emergingColumnItems = useMemo(() => {
-    if (!ui.insightFeatures.emergingStoryDetector) return [] as NewsItem[];
-    const all = Object.values(itemsByFeed).flatMap(items => Array.isArray(items) ? items : []);
-    const byId = new Map<string, NewsItem>();
-    all.forEach(item => {
-      if (!item?.emergingSignal || item.emergingSignal.clusterSize < 2) return;
-      const current = byId.get(item.id);
-      if (!current || (current.emergingSignal?.clusterSize || 0) < item.emergingSignal.clusterSize) {
-        byId.set(item.id, { ...item, feedUrl: EMERGING_FEED_URL, isMatch: false });
-      }
-    });
+    if (!ui.insightFeatures.emergingStoryDetector || !ui.showEmergingColumn) return [] as NewsItem[];
+    const freshnessCutoffMs = Date.now() - EMERGING_MAX_AGE_MS;
+    const velocityRank = (item: NewsItem) => {
+      if (item.emergingSignal?.velocity === 'viral') return 3;
+      if (item.emergingSignal?.velocity === 'rising') return 2;
+      if (item.emergingSignal?.velocity === 'watch') return 1;
+      return 0;
+    };
     return dedupeNewsItemsBySignature(
-      Array.from(byId.values())
-      .sort((a, b) => {
-        const diff = (b.emergingSignal?.clusterSize || 0) - (a.emergingSignal?.clusterSize || 0);
-        if (diff) return diff;
-        return b.publishedMs - a.publishedMs;
-      })
+      filteredColumnItems
+        .filter(item => !!item?.emergingSignal && (item.emergingSignal?.clusterSize || 0) >= 2)
+        .filter(item => Number(item.publishedMs || 0) >= freshnessCutoffMs)
+        .sort((a, b) => {
+          const recencyDiff = Number(b.publishedMs || 0) - Number(a.publishedMs || 0);
+          if (recencyDiff) return recencyDiff;
+          const velocityDiff = velocityRank(b) - velocityRank(a);
+          if (velocityDiff) return velocityDiff;
+          return (b.emergingSignal?.clusterSize || 0) - (a.emergingSignal?.clusterSize || 0);
+        })
+        .map(item => ({ ...item, feedUrl: EMERGING_FEED_URL, isMatch: false })),
+      EMERGING_MAX_AGE_MS
     ).slice(0, 30);
-  }, [itemsByFeed, ui.insightFeatures.emergingStoryDetector]);
+  }, [filteredColumnItems, ui.insightFeatures.emergingStoryDetector, ui.showEmergingColumn]);
 
   const itemsByFeedForPresentation = useMemo(
-    () => (emergingColumnItems.length ? { ...itemsByFeed, [EMERGING_FEED_URL]: emergingColumnItems } : itemsByFeed),
-    [emergingColumnItems, itemsByFeed]
+    () => (ui.showEmergingColumn && emergingColumnItems.length ? { ...itemsByFeed, [EMERGING_FEED_URL]: emergingColumnItems } : itemsByFeed),
+    [emergingColumnItems, itemsByFeed, ui.showEmergingColumn]
   );
 
   const renderedFeeds = useMemo(() => {
     if (feeds.length) {
-      const list = [...feeds];
-      if (ui.insightFeatures.emergingStoryDetector && emergingColumnItems.length) {
+      const list = feeds.filter(feed => (feed.url === FILTERED_FEED_URL ? ui.showFilteredColumn : true));
+      if (ui.insightFeatures.emergingStoryDetector && ui.showEmergingColumn && emergingColumnItems.length) {
         list.unshift({
           url: EMERGING_FEED_URL,
           label: labels.emergingStory || 'Emerging',
@@ -429,18 +435,21 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       return list;
     }
 
-    return Object.keys(itemsByFeedForPresentation).map(url => ({
-      url,
-      label: url === EMERGING_FEED_URL ? (labels.emergingStory || 'Emerging') : url,
-      kind: 'rss' as const,
-      intervalSec: 120,
-      summaryEnabled: false,
-      researchEnabled: false,
-      budget: 'standard' as const,
-      sortMode: 'newest' as const,
-      filters: { onlyMatches: false, onlyResearched: false, onlySummaries: false }
-    }));
-  }, [emergingColumnItems.length, feeds, itemsByFeedForPresentation, labels.emergingStory, orderByUrl, ui.insightFeatures.emergingStoryDetector]);
+    return Object.keys(itemsByFeedForPresentation)
+      .filter(url => (url === FILTERED_FEED_URL ? ui.showFilteredColumn : true))
+      .filter(url => (url === EMERGING_FEED_URL ? ui.showEmergingColumn : true))
+      .map(url => ({
+        url,
+        label: url === EMERGING_FEED_URL ? (labels.emergingStory || 'Emerging') : url,
+        kind: 'rss' as const,
+        intervalSec: 120,
+        summaryEnabled: false,
+        researchEnabled: false,
+        budget: 'standard' as const,
+        sortMode: 'newest' as const,
+        filters: { onlyMatches: false, onlyResearched: false, onlySummaries: false }
+      }));
+  }, [emergingColumnItems.length, feeds, itemsByFeedForPresentation, labels.emergingStory, orderByUrl, ui.insightFeatures.emergingStoryDetector, ui.showEmergingColumn, ui.showFilteredColumn]);
 
   const { onGridDragOver, onGridDrop, buildDragState, columnNodesRef } = useColumnDragDrop({
     dispatch,

@@ -141,6 +141,8 @@ type UiState = {
   searchVisible: boolean;
   addStreamVisible: boolean;
   allColumnControlsHidden: boolean;
+  showFilteredColumn: boolean;
+  showEmergingColumn: boolean;
   hideAllResearchSeq: number;
   hideAllResearch: boolean;
   hideAllSummaries: boolean;
@@ -195,6 +197,8 @@ const initialState: UiState = {
   searchVisible: true,
   addStreamVisible: false,
   allColumnControlsHidden: false,
+  showFilteredColumn: true,
+  showEmergingColumn: true,
   hideAllResearchSeq: 0,
   hideAllResearch: false,
   hideAllSummaries: false,
@@ -253,13 +257,15 @@ const uiSlice = createSlice({
     setSearchQuery(state, action: PayloadAction<string>) {
       state.searchQuery = String(action.payload || '');
     },
-    setTopUiState(state, action: PayloadAction<Partial<Pick<UiState, 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'vibe'>>>) {
+    setTopUiState(state, action: PayloadAction<Partial<Pick<UiState, 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'vibe'>>>) {
       const next = action.payload;
       if (typeof next.menuCollapsed === 'boolean') state.menuCollapsed = next.menuCollapsed;
       if (typeof next.controlsCollapsed === 'boolean') state.controlsCollapsed = next.controlsCollapsed;
       if (typeof next.searchVisible === 'boolean') state.searchVisible = next.searchVisible;
       if (typeof next.addStreamVisible === 'boolean') state.addStreamVisible = next.addStreamVisible;
       if (typeof next.allColumnControlsHidden === 'boolean') state.allColumnControlsHidden = next.allColumnControlsHidden;
+      if (typeof next.showFilteredColumn === 'boolean') state.showFilteredColumn = next.showFilteredColumn;
+      if (typeof next.showEmergingColumn === 'boolean') state.showEmergingColumn = next.showEmergingColumn;
       if (typeof next.vibe === 'string' && isVibe(next.vibe)) state.vibe = next.vibe;
     },
     triggerHideAllResearch(state) {
@@ -443,7 +449,7 @@ const uiSlice = createSlice({
         state.soundEnabled = false;
       }
     },
-    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
+    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
       const next = action.payload;
       if (next.language === 'en' || next.language === 'bg') state.language = next.language;
       if (next.colorMode === 'system' || next.colorMode === 'dark' || next.colorMode === 'light') state.colorMode = next.colorMode;
@@ -452,12 +458,17 @@ const uiSlice = createSlice({
       if (typeof next.searchVisible === 'boolean') state.searchVisible = next.searchVisible;
       if (typeof next.addStreamVisible === 'boolean') state.addStreamVisible = next.addStreamVisible;
       if (typeof next.allColumnControlsHidden === 'boolean') state.allColumnControlsHidden = next.allColumnControlsHidden;
+      if (typeof next.showFilteredColumn === 'boolean') state.showFilteredColumn = next.showFilteredColumn;
+      if (typeof next.showEmergingColumn === 'boolean') state.showEmergingColumn = next.showEmergingColumn;
       if (typeof next.hideAllResearch === 'boolean') state.hideAllResearch = next.hideAllResearch;
       if (typeof next.hideAllSummaries === 'boolean') state.hideAllSummaries = next.hideAllSummaries;
       if (typeof next.notifyEnabled === 'boolean') state.notifyEnabled = next.notifyEnabled;
       if (next.notifyMode === 'matched' || next.notifyMode === 'matched_pinned' || next.notifyMode === 'pinned' || next.notifyMode === 'all') state.notifyMode = next.notifyMode;
       if (isMoodFilter(next.moodFilter)) state.moodFilter = next.moodFilter;
       if (isTypeFilter(next.typeFilter)) state.typeFilter = next.typeFilter;
+      if (next.aiProvider === 'openai' || next.aiProvider === 'claude' || next.aiProvider === 'openrouter') state.aiProvider = next.aiProvider;
+      if (next.summaryLang === 'bg' || next.summaryLang === 'en' || next.summaryLang === 'bilingual') state.summaryLang = next.summaryLang;
+      if (next.researchLang === 'bg' || next.researchLang === 'en') state.researchLang = next.researchLang;
       if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
         state.titleDisplayLanguage = next.titleDisplayLanguage;
       }
@@ -469,6 +480,15 @@ const uiSlice = createSlice({
       }
       if (Array.isArray(next.trackedTopics)) {
         state.trackedTopics = dedupeTrimmedList(next.trackedTopics, 80);
+      }
+      if (typeof next.summaryModel === 'string' && next.summaryModel.trim()) state.summaryModel = next.summaryModel.trim().slice(0, 120);
+      if (typeof next.researchModel === 'string' && next.researchModel.trim()) state.researchModel = next.researchModel.trim().slice(0, 120);
+      if (typeof next.askModel === 'string' && next.askModel.trim()) state.askModel = next.askModel.trim().slice(0, 120);
+      if (next.allBudget === 'mixed' || next.allBudget === 'low' || next.allBudget === 'standard' || next.allBudget === 'high') {
+        state.allBudget = next.allBudget;
+      }
+      if (Array.isArray(next.keywords)) {
+        state.keywords = dedupeKeywords(next.keywords);
       }
       if (next.dailyBriefingDelivery === 'site' || next.dailyBriefingDelivery === 'email') {
         state.dailyBriefingDelivery = next.dailyBriefingDelivery;

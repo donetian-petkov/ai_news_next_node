@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { sendWsMessage } from '../../store/wsClient';
-import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTitleDisplayLanguage, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
+import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTitleDisplayLanguage, setTopUiState, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
 import { failBriefing, requestBriefing } from '../../store/slices/briefingSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 import type { TopMenuControlsActions } from './types';
@@ -73,6 +73,12 @@ export function useTopMenuControlPanelHandlers({
       if (lang !== 'original') {
         sendWsMessage({ type: 'run_title_translate_backfill', max: 700 });
       }
+    },
+    onToggleSpecialColumn: (column: 'filtered' | 'emerging', enabled: boolean) => {
+      dispatch(setTopUiState({
+        ...(column === 'filtered' ? { showFilteredColumn: enabled } : {}),
+        ...(column === 'emerging' ? { showEmergingColumn: enabled } : {})
+      }));
     },
     onSetInsightFeature: (key: keyof RootState['ui']['insightFeatures'], enabled: boolean) => {
       const features = { ...ui.insightFeatures, [key]: enabled };

@@ -367,6 +367,22 @@ export function TopMenuAiSettingsSection() {
           <Alert severity="info" sx={{ mb: 1.1, py: 0.2 }}>
             Feature changes apply to new or refreshed stories. Cards with AI output show an explicit AI insights status.
           </Alert>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1.1 }}>
+            <Box className="topMenuFeatureCard" sx={{ border: '1px solid var(--panel-border)', px: 1.2, py: 0.9, flex: 1 }}>
+              <FormControlLabel
+                control={<Switch size="small" checked={aiSettings.showFilteredColumn} onChange={event => actions.onToggleSpecialColumn('filtered', event.target.checked)} sx={{ ml: 0.25, mr: 0.75 }} />}
+                label={<Box className="topMenuFeatureCopy"><Typography variant="body2" sx={{ fontWeight: 700 }}>Show filtered column</Typography><Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.2, lineHeight: 1.55 }}>Keeps the matched-news column visible.</Typography></Box>}
+                sx={{ alignItems: 'flex-start', m: 0, width: '100%', '.MuiFormControlLabel-label': { minWidth: 0, flex: 1 } }}
+              />
+            </Box>
+            <Box className="topMenuFeatureCard" sx={{ border: '1px solid var(--panel-border)', px: 1.2, py: 0.9, flex: 1 }}>
+              <FormControlLabel
+                control={<Switch size="small" checked={aiSettings.showEmergingColumn} onChange={event => actions.onToggleSpecialColumn('emerging', event.target.checked)} sx={{ ml: 0.25, mr: 0.75 }} />}
+                label={<Box className="topMenuFeatureCopy"><Typography variant="body2" sx={{ fontWeight: 700 }}>Show emerging column</Typography><Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.2, lineHeight: 1.55 }}>Shows the separate emerging-stories column when signals exist.</Typography></Box>}
+                sx={{ alignItems: 'flex-start', m: 0, width: '100%', '.MuiFormControlLabel-label': { minWidth: 0, flex: 1 } }}
+              />
+            </Box>
+          </Stack>
           <div className="topMenuFieldGrid topMenuFeatureGrid">
             {FEATURE_ROWS.map(feature => (
               <Box key={feature.key} className="topMenuFeatureCard" sx={{ border: '1px solid var(--panel-border)', px: 1.2, py: 0.9 }}>
