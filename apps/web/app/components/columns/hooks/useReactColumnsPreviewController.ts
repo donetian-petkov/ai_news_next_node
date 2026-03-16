@@ -27,6 +27,8 @@ type Args = {
 };
 
 const DUPLICATE_MATCH_SIMILARITY_THRESHOLD = 0.9;
+const DUPLICATE_MATCH_TOKEN_OVERLAP_THRESHOLD = 0.6;
+const DUPLICATE_MATCH_MIN_SHARED_TOKENS = 3;
 const DUPLICATE_MATCH_TIME_WINDOW_MS = 12 * 60 * 60 * 1000;
 const EMERGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SUMMARY_STALL_THRESHOLD_MS = 90_000;
@@ -115,6 +117,16 @@ function tokenOverlapSimilarity(a: Set<string>, b: Set<string>): number {
   return intersection / smaller.size;
 }
 
+function sharedTokenCount(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0;
+  const [smaller, larger] = a.size <= b.size ? [a, b] : [b, a];
+  let intersection = 0;
+  smaller.forEach(token => {
+    if (larger.has(token)) intersection += 1;
+  });
+  return intersection;
+}
+
 function dedupeNewsItemsBySignature(items: NewsItem[], maxTimeDeltaMs = DUPLICATE_MATCH_TIME_WINDOW_MS): NewsItem[] {
   const keptSignatures: TextSignature[] = [];
   const uniqueItems: NewsItem[] = [];
@@ -132,7 +144,13 @@ function dedupeNewsItemsBySignature(items: NewsItem[], maxTimeDeltaMs = DUPLICAT
       const overlap = tokenOverlapSimilarity(signature.tokens, kept.tokens);
       const fuzzyOverlap = fuzzyTokenOverlapSimilarity(signature.tokens, kept.tokens);
       const maxOverlap = Math.max(overlap, fuzzyOverlap);
-      if (maxOverlap < DUPLICATE_MATCH_SIMILARITY_THRESHOLD) return false;
+      const sharedTokens = sharedTokenCount(signature.tokens, kept.tokens);
+      if (
+        maxOverlap < DUPLICATE_MATCH_SIMILARITY_THRESHOLD
+        && !(maxOverlap >= DUPLICATE_MATCH_TOKEN_OVERLAP_THRESHOLD && sharedTokens >= DUPLICATE_MATCH_MIN_SHARED_TOKENS)
+      ) {
+        return false;
+      }
 
       if (!signature.publishedMs || !kept.publishedMs) return true;
       const timeDeltaMs = Math.abs(signature.publishedMs - kept.publishedMs);
