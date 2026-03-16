@@ -280,6 +280,57 @@
   width: 100%;
 }
 
+.topMenuPanelStack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topMenuSubnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding-bottom: 2px;
+}
+
+.topMenuSubnavButton.MuiButton-root {
+  border-radius: 999px !important;
+  text-transform: none !important;
+  font-weight: 700 !important;
+  min-width: 0 !important;
+  padding-inline: 14px !important;
+}
+
+.topMenuSubsection {
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--section-bg) 92%, transparent), color-mix(in srgb, var(--field-bg) 82%, transparent));
+}
+
+.topMenuSubsectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.topMenuSubsectionTitle {
+  font-size: calc(0.98rem * var(--ui-font-scale)) !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+.topMenuSubsectionHint {
+  color: var(--text-muted);
+  font-size: calc(0.8rem * var(--ui-font-scale)) !important;
+  line-height: 1.45 !important;
+}
+
 .topMenuFeatureGrid {
   grid-template-columns: 1fr;
   gap: 12px;
