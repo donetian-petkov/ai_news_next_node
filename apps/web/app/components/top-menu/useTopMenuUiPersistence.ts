@@ -6,10 +6,12 @@ import type { AppDispatch } from '../../store/store';
 import { hydrateUiSettings } from '../../store/slices/uiSlice';
 import type { TopMenuUiState } from './types';
 
-export type PersistedUiPrefs = Parameters<typeof hydrateUiSettings>[0];
+export type PersistedUiPrefs = Parameters<typeof hydrateUiSettings>[0] & {
+  persistedAtMs?: number;
+};
 export const UI_PREFS_STORAGE_KEY = 'aiNews.uiPrefs.v3';
 
-function parsePersistedUiPrefs(raw: string): PersistedUiPrefs | null {
+export function parsePersistedUiPrefs(raw: string): PersistedUiPrefs | null {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
@@ -190,7 +192,10 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage.setItem(UI_PREFS_STORAGE_KEY, JSON.stringify(persistedUiPrefs));
+      window.localStorage.setItem(UI_PREFS_STORAGE_KEY, JSON.stringify({
+        ...persistedUiPrefs,
+        persistedAtMs: Date.now()
+      }));
     } catch {}
   }, [persistedUiPrefs]);
 }
