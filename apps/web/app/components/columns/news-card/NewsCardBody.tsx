@@ -414,6 +414,15 @@ export function NewsCardBody() {
         />
       ) : null}
 
+      {!summaryPending && !showAutoSummarizing && !item.summary && item.summaryEligible === false ? (
+        <Chip
+          size="small"
+          label={labels.summaryYesterdayOnly}
+          variant="outlined"
+          sx={{ mb: 0.8, color: NEWS_CARD_COLOR_TOKENS.summaryPendingText, borderColor: NEWS_CARD_COLOR_TOKENS.summaryPendingBorder }}
+        />
+      ) : null}
+
       {researchPending ? (
         <Chip
           size="small"

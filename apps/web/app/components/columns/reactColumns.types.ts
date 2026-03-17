@@ -49,6 +49,7 @@ export type CardLabels = {
   hideNews: string;
   generatingSummary: string;
   autoSummarizing: string;
+  summaryYesterdayOnly: string;
   summary: string;
   researching: string;
   research: string;

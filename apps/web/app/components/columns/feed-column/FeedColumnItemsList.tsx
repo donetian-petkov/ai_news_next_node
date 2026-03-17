@@ -173,7 +173,13 @@ export function FeedColumnItemsList() {
           summaryPending: !!summaryPendingById[pendingLookupKey],
           researchPending: !!researchPendingById[pendingLookupKey],
           isPinnedNews: !!pinnedNewsById[it.id],
-          showAutoSummarizing: aiAvailable && feed.summaryEnabled && aiEnabled && !it.summary && !summaryPendingById[pendingLookupKey] && !hideAllSummaries,
+          showAutoSummarizing: aiAvailable
+            && feed.summaryEnabled
+            && aiEnabled
+            && it.summaryEligible !== false
+            && !it.summary
+            && !summaryPendingById[pendingLookupKey]
+            && !hideAllSummaries,
           showAutoResearching: aiAvailable && feed.researchEnabled && aiEnabled && !it.research && !researchPendingById[pendingLookupKey] && !hideAllResearch,
           summaryMode,
           summaryLong,

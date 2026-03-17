@@ -82,6 +82,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     hideNews: labels.hideNews,
     generatingSummary: labels.generatingSummary,
     autoSummarizing: labels.autoSummarizing,
+    summaryYesterdayOnly: labels.summaryYesterdayOnly || 'Summaries run only for yesterday news',
     summary: labels.summary,
     researching: labels.researching,
     research: labels.research,

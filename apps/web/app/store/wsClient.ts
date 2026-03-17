@@ -401,6 +401,7 @@ function parseNews(v: unknown): NewsItem | null {
     publishedMs: isNumber(m.publishedMs) ? m.publishedMs : Date.now(),
     isMatch: !!m.isMatch,
     summary: isString(m.summary) ? m.summary : '',
+    summaryEligible: isBoolean(m.summaryEligible) ? m.summaryEligible : undefined,
     summaryPending: isBoolean(m.summaryPending) ? m.summaryPending : undefined,
     research: isString(m.research) ? m.research : '',
     insightStatus: m.insightStatus === 'pending' || m.insightStatus === 'ready' || m.insightStatus === 'empty' ? m.insightStatus : undefined,
