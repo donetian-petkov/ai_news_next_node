@@ -178,8 +178,7 @@ export function FeedColumnItemsList() {
             && aiEnabled
             && it.summaryEligible !== false
             && !it.summary
-            && !summaryPendingById[pendingLookupKey]
-            && !hideAllSummaries,
+            && !summaryPendingById[pendingLookupKey],
           showAutoResearching: aiAvailable && feed.researchEnabled && aiEnabled && !it.research && !researchPendingById[pendingLookupKey] && !hideAllResearch,
           summaryMode,
           summaryLong,

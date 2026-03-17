@@ -51,6 +51,7 @@ export type CardLabels = {
   autoSummarizing: string;
   summaryYesterdayOnly: string;
   summaryOnRequest: string;
+  summaryHiddenGlobally: string;
   generateSummary: string;
   summary: string;
   researching: string;

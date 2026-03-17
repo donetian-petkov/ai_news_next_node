@@ -441,6 +441,8 @@ export function NewsCardBody() {
             </Typography>
             {summaryRedundantWithTitle ? (
               <Chip size="small" variant="outlined" label={labels.summaryRepeatsTitle} />
+            ) : hideAllSummaries ? (
+              <Chip size="small" variant="outlined" label={labels.summaryHiddenGlobally} />
             ) : null}
           </Stack>
           {summaryVisible && !hideAllSummaries && !summaryRedundantWithTitle ? (

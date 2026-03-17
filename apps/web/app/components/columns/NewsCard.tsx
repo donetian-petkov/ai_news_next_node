@@ -23,7 +23,7 @@ export const NewsCard = memo(function NewsCard({ view, state, handlers }: NewsCa
       ? 'linear-gradient(160deg, rgba(125,182,255,0.15), rgba(201,227,255,0.08))'
       : '';
 
-  const hasSummaryBlock = !!item.summary && !hideAllSummaries;
+  const hasSummaryBlock = !!item.summary;
   const hasResearchBlock = !!item.research && !hideAllResearch;
   const hasBodyBlock = hasSummaryBlock || hasResearchBlock;
   const researchVisible = researchMode !== 'hidden';
