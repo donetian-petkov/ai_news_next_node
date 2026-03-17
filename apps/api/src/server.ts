@@ -4006,7 +4006,6 @@ wss.on('connection', (ws: WebSocket) => {
 
       const it = recent.find(x => x.id === id);
       if (it) {
-        it.summary = '';
         it.research = '';
         broadcastNewsUpdate(it);
         markDirty();
@@ -4024,7 +4023,6 @@ wss.on('connection', (ws: WebSocket) => {
       const it = recent.find(x => x.id === id);
       if (it) {
         it.summary = '';
-        it.research = '';
       }
       enqueueJob({ kind: 'summary', id, feedUrl: String(msg.feedUrl || ''), manual: true });
       if (it) {
