@@ -289,7 +289,6 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
 
     const feedLabelByUrl = new Map<string, string>(feeds.map(feed => [feed.url, feed.label]));
     const itemMetaByKey = new Map<string, { title: string; feedUrl: string }>();
-    const pendingSet = new Set(Object.keys(summaryPendingById));
 
     Object.entries(itemsByFeed).forEach(([feedUrl, feedItems]) => {
       if (!Array.isArray(feedItems)) return;
@@ -303,6 +302,10 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
         });
       });
     });
+
+    const pendingSet = new Set(
+      Object.keys(summaryPendingById).filter(key => itemMetaByKey.has(key))
+    );
 
     return {
       pendingKeys: Array.from(pendingSet),
