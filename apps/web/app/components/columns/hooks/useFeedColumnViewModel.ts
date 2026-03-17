@@ -83,6 +83,8 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     generatingSummary: labels.generatingSummary,
     autoSummarizing: labels.autoSummarizing,
     summaryYesterdayOnly: labels.summaryYesterdayOnly || 'Summaries run only for yesterday news',
+    summaryOnRequest: labels.summaryOnRequest || 'Summary available on request',
+    generateSummary: labels.generateSummary || 'Generate summary',
     summary: labels.summary,
     researching: labels.researching,
     research: labels.research,

@@ -21,12 +21,15 @@ export function NewsCardActions() {
   const SummaryIconComp = vibeIcons.summary;
   const ResearchIconComp = vibeIcons.research;
   const AskIconComp = vibeIcons.ask;
+  const summaryActionLabel = summaryPending
+    ? labels.generatingSummary
+    : (!item.summary ? labels.generateSummary : labels.summary);
 
   return (
     <Stack direction="row" spacing={0.8} sx={{ mt: 0.55, px: 0.8, pb: 0.8 }} flexWrap="wrap">
       {aiAvailable ? (
         <>
-          <Tooltip title={summaryPending ? labels.generatingSummary : labels.summary}>
+          <Tooltip title={summaryActionLabel}>
             <Button
               size="small"
               variant={summaryPending ? 'contained' : 'outlined'}
@@ -39,7 +42,7 @@ export function NewsCardActions() {
                 ? (summaryPending
                   ? <AutoFixHighIcon sx={{ fontSize: 15 }} className="spinAnim" aria-hidden />
                   : <SummaryIconComp sx={{ fontSize: 15 }} aria-hidden />)
-                : (summaryPending ? labels.generatingSummary : labels.summary)}
+                : summaryActionLabel}
             </Button>
           </Tooltip>
           <Tooltip title={researchPending ? labels.researching : (researchToggleActive ? labels.hideResearch : labels.research)}>

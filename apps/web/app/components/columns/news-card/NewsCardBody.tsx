@@ -417,7 +417,7 @@ export function NewsCardBody() {
       {!summaryPending && !showAutoSummarizing && !item.summary && item.summaryEligible === false ? (
         <Chip
           size="small"
-          label={labels.summaryYesterdayOnly}
+          label={labels.summaryOnRequest}
           variant="outlined"
           sx={{ mb: 0.8, color: NEWS_CARD_COLOR_TOKENS.summaryPendingText, borderColor: NEWS_CARD_COLOR_TOKENS.summaryPendingBorder }}
         />

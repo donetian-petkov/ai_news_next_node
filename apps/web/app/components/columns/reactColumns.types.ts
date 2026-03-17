@@ -50,6 +50,8 @@ export type CardLabels = {
   generatingSummary: string;
   autoSummarizing: string;
   summaryYesterdayOnly: string;
+  summaryOnRequest: string;
+  generateSummary: string;
   summary: string;
   researching: string;
   research: string;
