@@ -1252,6 +1252,24 @@ function capitalizeWords(values: string[], max = 6): string[] {
   return out;
 }
 
+function sentenceQuoteHighlights(values: string[], max = 2): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of values) {
+    const normalized = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) continue;
+    const sentenceMatch = normalized.match(/^(.+?[.!?…])(?:\s|$)/u);
+    const value = compactSentence(sentenceMatch ? sentenceMatch[1] : '', 220);
+    if (!value) continue;
+    const key = value.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 const FACT_HIGHLIGHT_ENTITY_STOPWORDS = new Set([
   'agency',
   'bank',
@@ -1414,7 +1432,7 @@ function extractFactHighlights(item: NewsInternal): FactHighlightsInsight | unde
     locations: capitalizeWords(locationMatches.filter(isLikelyLocationFact), 4),
     dates: capitalizeWords(dateMatches.filter(isLikelyDateFact), 4),
     numbers: capitalizeWords(numberMatches.filter(isLikelyNumberFact), 4),
-    quotes: capitalizeWords(quoteMatches.filter(isLikelyQuoteFact), 2)
+    quotes: sentenceQuoteHighlights(quoteMatches.filter(isLikelyQuoteFact), 2)
   };
 
   const normalizedDates = new Set(facts.dates.map(value => normalizeText(value)));
