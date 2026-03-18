@@ -1649,13 +1649,17 @@ function buildHistoricalComparison(item: NewsInternal): HistoricalComparisonInsi
 function buildFutureScenarios(item: NewsInternal): FutureScenarioInsight | undefined {
   const locale = insightLocale(item);
   const impact = buildStoryImpact(item);
-  const industryKeys = industryKeysForItem(item);
   const text = combinedInsightText(item).toLocaleLowerCase();
   const scenarios: string[] = [];
-  if (/(regulator|government|parliament|law)/i.test(text)) scenarios.push(insightText(locale, 'Regulators or lawmakers intervene', 'Регулатори или законодатели се намесват'));
-  if (industryKeys.includes('technology') || /(ai|software|cloud|chip)/i.test(text)) scenarios.push(insightText(locale, 'Companies adjust products, hiring, or infrastructure plans', 'Компаниите коригират продукти, наемане или инфраструктурни планове'));
-  if (/(lawsuit|investigation|complaint|probe|alleged)/i.test(text)) scenarios.push(insightText(locale, 'Legal or enforcement action expands', 'Разширяват се правни или контролни действия'));
-  if (industryKeys.includes('finance')) scenarios.push(insightText(locale, 'Markets reprice risk across exposed companies', 'Пазарите преоценяват риска при засегнатите компании'));
+  const hasRegulatoryActor = /\b(regulator|regulators|government|parliament|lawmakers?|ministry|commission|authority|cabinet|policy|regulation|regulations|закон|закона|закони|правителств|парламент|министерств|комисия|регулатор)\b/i.test(text);
+  const hasBusinessActor = /\b(company|companies|firm|firms|startup|startups|manufacturer|manufacturers|producer|producers|operator|operators|platform|platforms|bank|banks|business|businesses|corporate|corporation|meta|google|apple|amazon|microsoft|tesla|компания|компании|фирма|фирми|производител|производители|оператор|оператори|банка|банки|бизнес)\b/i.test(text);
+  const hasLegalActor = /\b(lawsuit|lawsuits|investigation|investigations|complaint|complaints|probe|probes|alleged|court|courts|prosecutor|prosecutors|regulator|authority|дело|дела|разследване|разследвания|жалба|жалби|съд|съда|прокуратур)\b/i.test(text);
+  const hasMarketActor = /\b(market|markets|investor|investors|share|shares|stock|stocks|bond|bonds|bank|banks|fund|funds|fx|валут|пазар|пазара|пазари|инвеститор|инвеститори|акци|облигаци|банка|банки|фонд|фондове)\b/i.test(text);
+
+  if (hasRegulatoryActor) scenarios.push(insightText(locale, 'Regulators or lawmakers may intervene next', 'Възможна е следваща намеса на регулатори или законодатели'));
+  if (hasBusinessActor) scenarios.push(insightText(locale, 'Companies involved may adjust products, hiring, or investment plans', 'Замесените компании може да коригират продукти, наемане или инвестиционни планове'));
+  if (hasLegalActor) scenarios.push(insightText(locale, 'Legal or enforcement action may widen', 'Възможно е разширяване на правни или контролни действия'));
+  if (hasMarketActor) scenarios.push(insightText(locale, 'Markets may reprice risk for the exposed names', 'Пазарите може да преоценят риска за засегнатите компании или активи'));
   if (!scenarios.length) return undefined;
   return {
     disclaimer: insightText(locale, 'Speculative', 'Спекулативно'),
