@@ -186,7 +186,7 @@
   min-width: 0;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1560px) {
   .controlsGrid {
     grid-template-columns: minmax(250px, 0.78fr) minmax(520px, 1.45fr) minmax(420px, 1.1fr);
     grid-template-areas: 'notifications ai appearance';
@@ -198,6 +198,27 @@
 
   .controlsCellAi {
     grid-area: ai;
+  }
+
+  .controlsCellAppearance {
+    grid-area: appearance;
+  }
+}
+
+@media (min-width: 1100px) and (max-width: 1559px) {
+  .controlsGrid {
+    grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.28fr);
+    grid-template-areas:
+      'notifications appearance'
+      'ai ai';
+  }
+
+  .controlsCellAi {
+    grid-area: ai;
+  }
+
+  .controlsCellNotifications {
+    grid-area: notifications;
   }
 
   .controlsCellAppearance {
@@ -262,7 +283,7 @@
 .topMenuFieldGrid {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 10px;
 }
 
