@@ -21,6 +21,7 @@ import { useNewsItemActions } from './useNewsItemActions';
 import { useNewsBodyModes } from './useNewsBodyModes';
 import { useColumnDragDrop } from './useColumnDragDrop';
 import { useColumnsPresentation } from './useColumnsPresentation';
+import { cutoffFromAge } from '../../top-menu/topMenu.services';
 
 type Args = {
   wsUrl: string;
@@ -358,9 +359,12 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const { filteredColumnItems, duplicateMatchById } = useMemo(() => {
     const all = Object.values(itemsByFeed).flatMap(items => Array.isArray(items) ? items : []);
     const map = new Map<string, (typeof all)[number]>();
+    const filteredDeleteAge = deleteAgeByUrl[FILTERED_FEED_URL] || 'week';
+    const filteredCutoffMs = cutoffFromAge(filteredDeleteAge);
 
     all.forEach(it => {
       if (!it || !it.id || !it.isMatch || it.filteredOk === false) return;
+      if (Number.isFinite(it.publishedMs) && Number(it.publishedMs) < filteredCutoffMs) return;
       const prev = map.get(it.id);
       if (!prev || Number(it.publishedMs || 0) > Number(prev.publishedMs || 0)) {
         map.set(it.id, { ...it, feedUrl: FILTERED_FEED_URL });
@@ -393,7 +397,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       filteredColumnItems: uniqueMatched,
       duplicateMatchById: duplicateMap
     };
-  }, [itemsByFeed, pinnedNewsById, ui.allBudget, ui.performanceMode]);
+  }, [deleteAgeByUrl, itemsByFeed, pinnedNewsById, ui.allBudget, ui.performanceMode]);
 
   const emergingColumnItems = useMemo(() => {
     if (!ui.insightFeatures.emergingStoryDetector || !ui.showEmergingColumn) return [] as NewsItem[];
