@@ -1227,7 +1227,14 @@ function combinedInsightText(item: NewsInternal): string {
 }
 
 function compactSentence(value: string, max = 220): string {
-  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  if (normalized.length <= max) return normalized;
+  const candidate = normalized.slice(0, max + 1);
+  const lastSpace = candidate.lastIndexOf(' ');
+  if (lastSpace >= Math.max(24, Math.floor(max * 0.6))) {
+    return candidate.slice(0, lastSpace).trim();
+  }
+  return normalized.slice(0, max).trim();
 }
 
 function capitalizeWords(values: string[], max = 6): string[] {
