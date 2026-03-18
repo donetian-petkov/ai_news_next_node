@@ -1662,12 +1662,14 @@ function buildPerspectives(item: NewsInternal): PerspectiveInsight[] | undefined
   const health = /(hospital|doctor|medical|health|patient|clinic|лекар|болниц|медицин|пациент|здрав)/i.test(text);
   const legal = /(prosecutor|court|police|investigat|lawsuit|trial|charge|arrest|прокурат|съд|полици|разслед|дело|арест|обвин)/i.test(text);
   const war = /(war|military|missile|drone|strike|defen|iran|ukraine|russia|nato|войн|удар|армия|ракет|дрон|отбра)/i.test(text);
-  const politics = /(election|parliament|government|minister|party|vote|cabinet|policy|избор|парламент|правител|минист|партия|вот|полит)/i.test(text);
+  const politics = /\b(election|parliament|government|minister|party|vote|cabinet|policy|campaign|coalition|cabinet)\b|избор|парламент|правителств|министр|партия|вот|политическ|политик/i.test(text);
   const markets = /(bank|stock|market|company|business|econom|deal|invest|tariff|price|inflation|финанс|банка|иконом|компан|пазар|сделк|цена|инвест)/i.test(text);
   const tech = /(ai|chip|software|cyber|platform|cloud|data|privacy|app|технолог|софтуер|данни|кибер|платформ|изкуствен интелект)/i.test(text);
   const environment = /(climate|weather|storm|flood|drought|fire|energy|pollution|еколог|климат|навод|пожар|суша|замърся|енерг)/i.test(text);
   const sports = /(match|football|soccer|uefa|fifa|basketball|tennis|coach|спорт|мач|футбол|треньор|отбор|тенис|баскет)/i.test(text);
   const entertainment = /(film|movie|music|festival|celebrity|oscar|tv|concert|кино|филм|музик|фестивал|оскар|концерт|телевиз)/i.test(text);
+  const culture = /(zoo|gallery|museum|theatre|theater|concert|exhibition|festival|event|creative|art|artist|workshop|cultural|community|local event|зоопарк|галери|музей|теат|концерт|изложб|фестивал|събитие|творческ|култур|артист|работилниц)/i.test(text);
+  const localCommunity = /(municipality|mayor|city hall|community|local|citizens|residents|town|city|общин|кмет|местн|жител|граждан)/i.test(text);
 
   if (health) {
     add('patient-safety', 'Patient safety', 'Безопасност на пациентите',
@@ -1706,6 +1708,21 @@ function buildPerspectives(item: NewsInternal): PerspectiveInsight[] | undefined
       add('markets', 'Markets and operators', 'Пазари и оператори',
         `Markets will focus on price shocks, supply disruption, and operating risk across ${industries}.`,
         `Пазарите ще следят ценови шокове, смущения в доставките и оперативен риск за ${industries}.`);
+    }
+  } else if (culture) {
+    add('audience', 'Visitors and audience', 'Посетители и публика',
+      'The main question for visitors is whether the event feels accessible, worthwhile, and relevant to families or the local audience.',
+      'Основният въпрос за посетителите е дали събитието е достъпно, стойностно и подходящо за семейства или местната публика.');
+    add('organizers', 'Organizers', 'Организатори',
+      'Organizers will care about turnout, logistics, public interest, and whether the program reaches the intended audience.',
+      'Организаторите ще гледат посещаемостта, логистиката, обществения интерес и дали програмата достига до търсената публика.');
+    add('institutions', 'Cultural institutions', 'Културни институции',
+      'The institutions involved will care whether the event strengthens local visibility, partnerships, and public engagement.',
+      'Замесените институции ще се интересуват дали събитието засилва местната видимост, партньорствата и ангажираността на публиката.');
+    if (localCommunity) {
+      add('community', 'Local community', 'Местна общност',
+        'For the local community, the value is whether the event adds something useful, attractive, or educational to city life.',
+        'За местната общност е важно дали събитието носи нещо полезно, привлекателно или образователно за живота в града.');
     }
   } else if (politics) {
     add('voters', 'Voters', 'Избиратели',
