@@ -1862,14 +1862,50 @@ function buildFutureScenarios(item: NewsInternal): FutureScenarioInsight | undef
 
 function buildLocalImpact(item: NewsInternal, region: string): LocalImpactInsight | undefined {
   const locale = insightLocale(item);
+  const text = combinedInsightText(item).toLocaleLowerCase();
   const impact = buildStoryImpact(item);
   if (!impact) return undefined;
   const safeRegion = compactSentence(region || insightText(locale, 'United States', 'България'), 120) || insightText(locale, 'United States', 'България');
+  const war = /(war|military|missile|drone|strike|iran|israel|ukraine|russia|nato|attack|attacks|security|airspace|shipping|oil|войн|удар|атака|дрон|ракет|сигурност|въздушно пространство|доставк|петрол)/i.test(text);
+  const finance = /(bank|market|stock|invest|trade|tariff|inflation|currency|econom|финанс|банка|пазар|инвест|търгов|инфлац|валут|иконом)/i.test(text);
+  const tech = /(ai|chip|software|cyber|cloud|data|privacy|platform|технолог|софтуер|кибер|данни|платформ|изкуствен интелект)/i.test(text);
+  const health = /(hospital|doctor|medical|health|patient|clinic|лекар|болниц|медицин|пациент|здрав)/i.test(text);
+  const climate = /(climate|weather|storm|flood|drought|fire|energy|pollution|еколог|климат|буря|навод|суша|пожар|енерг|замърся)/i.test(text);
+  const tourism = /(travel|tourism|airport|flight|airline|hotel|visitor|tourist|festival|event|пътуван|туриз|летищ|полет|авиокомпан|хотел|посетител|турист|събитие)/i.test(text);
+
+  let summary: string;
+  if (war) {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} по-вероятният ефект е през пътуванията, сигурността, горивата и цените на енергията, ако напрежението се разшири.`
+      : `For ${safeRegion}, the more plausible effect is through travel, security, fuel costs, and energy prices if the tension spreads.`;
+  } else if (finance) {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} следете дали темата ще повлияе на пазарните нагласи, цената на кредитирането, валутите или бизнес доверието.`
+      : `For ${safeRegion}, watch whether the story affects market sentiment, borrowing costs, currencies, or business confidence.`;
+  } else if (tech) {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} темата има значение най-вече ако доведе до нови правила, разходи за съответствие или промени в цифровите услуги.`
+      : `For ${safeRegion}, the story matters mainly if it leads to new rules, compliance costs, or changes in digital services.`;
+  } else if (health) {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} темата е важна, ако предизвика проверки, промени в болничните стандарти или нов обществен натиск за по-добър контрол.`
+      : `For ${safeRegion}, the story matters if it triggers inspections, changes in hospital standards, or stronger public pressure for oversight.`;
+  } else if (climate) {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} следете дали ще има ефект върху енергийните разходи, транспорта, инфраструктурата или местните мерки за реакция.`
+      : `For ${safeRegion}, watch for effects on energy costs, transport, infrastructure, or local response measures.`;
+  } else if (tourism) {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} темата има значение най-вече ако промени туристическия поток, полетите, сигурността на събитията или местния интерес към пътувания и посещения.`
+      : `For ${safeRegion}, the story matters mainly if it changes tourist flows, flights, event security, or local demand for travel and visits.`;
+  } else {
+    summary = locale === 'bg'
+      ? `За ${safeRegion} темата е най-важна за ${impact.industries.length ? joinInsightList(locale, impact.industries.slice(0, 3)) : 'местния бизнес и публичните политики'}. Следете дали ще има регулации, ценови промени или ефект върху доставки и услуги.`
+      : `For ${safeRegion}, the story matters most for ${impact.industries.length ? joinInsightList(locale, impact.industries.slice(0, 3)) : 'local business and public policy'}. Watch for regulation, price changes, or effects on supply and services.`;
+  }
   return {
     region: safeRegion,
-    summary: locale === 'bg'
-      ? `За ${safeRegion} темата е най-важна за ${impact.industries.length ? joinInsightList(locale, impact.industries.slice(0, 3)) : 'местния бизнес и публичните политики'}. Следете дали ще има регулации, ценови промени или ефект върху доставки и услуги.`
-      : `For ${safeRegion}, the story matters most for ${impact.industries.length ? joinInsightList(locale, impact.industries.slice(0, 3)) : 'local business and public policy'}. Watch for regulation, price changes, or effects on supply and services.`
+    summary
   };
 }
 
