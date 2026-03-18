@@ -460,8 +460,6 @@ const uiSlice = createSlice({
       if (typeof next.allColumnControlsHidden === 'boolean') state.allColumnControlsHidden = next.allColumnControlsHidden;
       if (typeof next.showFilteredColumn === 'boolean') state.showFilteredColumn = next.showFilteredColumn;
       if (typeof next.showEmergingColumn === 'boolean') state.showEmergingColumn = next.showEmergingColumn;
-      if (typeof next.hideAllResearch === 'boolean') state.hideAllResearch = next.hideAllResearch;
-      if (typeof next.hideAllSummaries === 'boolean') state.hideAllSummaries = next.hideAllSummaries;
       if (typeof next.notifyEnabled === 'boolean') state.notifyEnabled = next.notifyEnabled;
       if (next.notifyMode === 'matched' || next.notifyMode === 'matched_pinned' || next.notifyMode === 'pinned' || next.notifyMode === 'all') state.notifyMode = next.notifyMode;
       if (isMoodFilter(next.moodFilter)) state.moodFilter = next.moodFilter;

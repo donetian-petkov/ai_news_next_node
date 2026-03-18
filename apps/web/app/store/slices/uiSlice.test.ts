@@ -239,8 +239,6 @@ describe('uiSlice', () => {
       addStreamVisible: true,
       showFilteredColumn: false,
       showEmergingColumn: false,
-      hideAllResearch: true,
-      hideAllSummaries: true,
       performanceMode: true,
       menuHintMode: 'buttons',
       effectIntensity: 'low',
@@ -254,8 +252,8 @@ describe('uiSlice', () => {
     expect(state.addStreamVisible).toBe(true);
     expect(state.showFilteredColumn).toBe(false);
     expect(state.showEmergingColumn).toBe(false);
-    expect(state.hideAllResearch).toBe(true);
-    expect(state.hideAllSummaries).toBe(true);
+    expect(state.hideAllResearch).toBe(false);
+    expect(state.hideAllSummaries).toBe(false);
     expect(state.performanceMode).toBe(true);
     expect(state.menuHintMode).toBe('buttons');
     expect(state.effectIntensity).toBe('low');
