@@ -95,7 +95,6 @@ type BudgetMode = 'low' | 'standard' | 'high';
 type InsightConfidence = 'low' | 'medium' | 'high';
 type InsightSeverity = 'low' | 'medium' | 'high';
 type ImpactLevel = 'low' | 'medium' | 'high';
-type PerspectiveKey = 'investor' | 'government' | 'consumer' | 'tech';
 type BriefingDelivery = 'site' | 'email';
 type BriefingFormat = 'executive' | 'bullets' | 'narrative';
 type InsightStatus = 'pending' | 'ready' | 'empty';
@@ -149,6 +148,12 @@ type StoryImpactInsight = {
   summary: string;
 };
 
+type PerspectiveInsight = {
+  id: string;
+  label: string;
+  text: string;
+};
+
 type HistoricalComparisonInsight = {
   comparisons: string[];
   explanation: string;
@@ -177,7 +182,7 @@ type NewsInsights = {
   sensationalism?: SensationalismInsight;
   facts?: FactHighlightsInsight;
   impact?: StoryImpactInsight;
-  perspectives?: Partial<Record<PerspectiveKey, string>>;
+  perspectives?: PerspectiveInsight[];
   historical?: HistoricalComparisonInsight;
   future?: FutureScenarioInsight;
   localImpact?: LocalImpactInsight;
@@ -1637,21 +1642,152 @@ function buildStoryImpact(item: NewsInternal): StoryImpactInsight | undefined {
   };
 }
 
-function buildPerspectives(item: NewsInternal): Partial<Record<PerspectiveKey, string>> | undefined {
+function buildPerspectives(item: NewsInternal): PerspectiveInsight[] | undefined {
   const locale = insightLocale(item);
+  const text = combinedInsightText(item).toLocaleLowerCase();
   const impact = buildStoryImpact(item);
   const industries = impact?.industries.length ? impact.industries.join(', ') : insightText(locale, 'affected sectors', 'засегнатите сектори');
-  const perspectives: Partial<Record<PerspectiveKey, string>> = {
-    investor: locale === 'bg'
-      ? `За инвеститорите въпросът е дали новината ще промени приходи, разходи или регулаторен риск за ${industries}.`
-      : `For investors, the question is whether the story changes revenue, costs, or regulatory risk for ${industries}.`,
-    government: insightText(locale, 'For governments, the main question is whether regulation, diplomacy, or market-stability measures will be needed.', 'За правителствата основният въпрос е дали ще трябват регулации, дипломатически действия или мерки за стабилност.'),
-    consumer: insightText(locale, 'For consumers, this matters only if it leads to higher prices, weaker service, or supply disruption.', 'За потребителите това има значение само ако доведе до по-високи цени, по-слаба услуга или проблеми с доставките.'),
-    tech: locale === 'bg'
-      ? `За технологичния сектор темата има значение, ако засегне инфраструктура, доставки или правилата за работа в ${industries}.`
-      : `For technology teams, this matters if it affects infrastructure, supply, or operating rules across ${industries}.`
+  const out: PerspectiveInsight[] = [];
+  const seen = new Set<string>();
+  const add = (id: string, enLabel: string, bgLabel: string, enText: string, bgText: string) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push({
+      id,
+      label: locale === 'bg' ? bgLabel : enLabel,
+      text: locale === 'bg' ? bgText : enText
+    });
   };
-  return perspectives;
+
+  const health = /(hospital|doctor|medical|health|patient|clinic|лекар|болниц|медицин|пациент|здрав)/i.test(text);
+  const legal = /(prosecutor|court|police|investigat|lawsuit|trial|charge|arrest|прокурат|съд|полици|разслед|дело|арест|обвин)/i.test(text);
+  const war = /(war|military|missile|drone|strike|defen|iran|ukraine|russia|nato|войн|удар|армия|ракет|дрон|отбра)/i.test(text);
+  const politics = /(election|parliament|government|minister|party|vote|cabinet|policy|избор|парламент|правител|минист|партия|вот|полит)/i.test(text);
+  const markets = /(bank|stock|market|company|business|econom|deal|invest|tariff|price|inflation|финанс|банка|иконом|компан|пазар|сделк|цена|инвест)/i.test(text);
+  const tech = /(ai|chip|software|cyber|platform|cloud|data|privacy|app|технолог|софтуер|данни|кибер|платформ|изкуствен интелект)/i.test(text);
+  const environment = /(climate|weather|storm|flood|drought|fire|energy|pollution|еколог|климат|навод|пожар|суша|замърся|енерг)/i.test(text);
+  const sports = /(match|football|soccer|uefa|fifa|basketball|tennis|coach|спорт|мач|футбол|треньор|отбор|тенис|баскет)/i.test(text);
+  const entertainment = /(film|movie|music|festival|celebrity|oscar|tv|concert|кино|филм|музик|фестивал|оскар|концерт|телевиз)/i.test(text);
+
+  if (health) {
+    add('patient-safety', 'Patient safety', 'Безопасност на пациентите',
+      'The practical question is whether the case points to a broader patient-safety failure, delayed care, or weak hospital controls.',
+      'Практичният въпрос е дали случаят показва по-широк проблем с безопасността на пациентите, забавена грижа или слаби болнични контроли.');
+    add('hospital-management', 'Hospital management', 'Болнично управление',
+      'Hospital managers will look at staffing, procedures, documentation, and whether internal controls were followed.',
+      'Болничното ръководство ще гледа към персонала, процедурите, документацията и дали вътрешните правила са били спазени.');
+    add('investigators', 'Investigators', 'Разследващи органи',
+      'Investigators will focus on evidence, timelines, and whether the incident reflects negligence or a systemic failure.',
+      'Разследващите ще се фокусират върху доказателствата, хронологията и това дали има небрежност или системен проблем.');
+    add('families', 'Families and the public', 'Близки и общество',
+      'Families and the public care about accountability, transparency, and whether similar cases can be prevented.',
+      'Близките и обществото се интересуват от отговорност, прозрачност и дали подобни случаи могат да бъдат предотвратени.');
+  } else if (legal) {
+    add('investigators', 'Investigators', 'Разследващи органи',
+      'Investigators will care about evidence quality, witness credibility, and whether the timeline supports the claims.',
+      'Разследващите органи ще гледат качеството на доказателствата, надеждността на свидетелите и дали хронологията подкрепя твърденията.');
+    add('institutions', 'Institutions under scrutiny', 'Проверявани институции',
+      'The institution under scrutiny will focus on legal exposure, procedure, and reputational damage.',
+      'Проверяваната институция ще се фокусира върху правния риск, процедурите и репутационните щети.');
+    add('public-trust', 'Public trust', 'Обществено доверие',
+      'The wider public will judge whether the process looks fair, transparent, and credible.',
+      'По-широката публика ще прецени дали процесът изглежда справедлив, прозрачен и достоверен.');
+  } else if (war) {
+    add('governments', 'Governments and diplomats', 'Правителства и дипломати',
+      'Governments will watch for escalation risk, alliance pressure, and whether a diplomatic response becomes necessary.',
+      'Правителствата ще следят риска от ескалация, натиска между съюзници и дали ще се наложи дипломатическа реакция.');
+    add('security', 'Security services', 'Служби за сигурност',
+      'Security teams care about deterrence, supply resilience, and whether the event changes threat assumptions.',
+      'Службите за сигурност се интересуват от възпирането, устойчивостта на доставките и дали събитието променя оценката на риска.');
+    add('civilians', 'Civilians and essential services', 'Граждани и жизнени услуги',
+      'Civilians care about direct safety, transport disruption, energy costs, and access to essential services.',
+      'Гражданите се интересуват от пряката безопасност, смущенията в транспорта, цените на енергията и достъпа до важни услуги.');
+    if (markets || impact?.industries.length) {
+      add('markets', 'Markets and operators', 'Пазари и оператори',
+        `Markets will focus on price shocks, supply disruption, and operating risk across ${industries}.`,
+        `Пазарите ще следят ценови шокове, смущения в доставките и оперативен риск за ${industries}.`);
+    }
+  } else if (politics) {
+    add('voters', 'Voters', 'Избиратели',
+      'Voters will mainly care whether this changes trust, turnout, or the perceived competence of the main actors.',
+      'Избирателите ще гледат най-вече дали това променя доверието, активността и възприятието за компетентност на основните участници.');
+    add('institutions', 'Institutions', 'Институции',
+      'Institutions will focus on legality, process stability, and whether rules need to be clarified or enforced.',
+      'Институциите ще се фокусират върху законността, стабилността на процеса и дали правилата трябва да бъдат изяснени или приложени.');
+    add('parties', 'Political actors', 'Политически играчи',
+      'Political actors will look at narrative advantage, coalition pressure, and the risk of backlash.',
+      'Политическите играчи ще мислят за предимството в наратива, коалиционния натиск и риска от обратна реакция.');
+  } else if (markets) {
+    add('companies', 'Companies', 'Компании',
+      `Companies will care whether the story changes costs, demand, or operating conditions across ${industries}.`,
+      `Компаниите ще гледат дали новината променя разходите, търсенето или условията за работа в ${industries}.`);
+    add('investors', 'Investors', 'Инвеститори',
+      `Investors will focus on revenue risk, margins, and whether regulation or sentiment shifts for ${industries}.`,
+      `Инвеститорите ще се фокусират върху риска за приходите, маржовете и това дали регулацията или пазарните нагласи се променят за ${industries}.`);
+    add('customers', 'Customers', 'Клиенти',
+      'Customers will mainly notice the story if it affects price, availability, quality, or trust.',
+      'Клиентите ще усетят темата най-вече ако тя влияе на цената, наличността, качеството или доверието.');
+    add('regulators', 'Regulators', 'Регулатори',
+      'Regulators will ask whether oversight, disclosure, or compliance enforcement needs to change.',
+      'Регулаторите ще питат дали надзорът, разкриването на информация или прилагането на правилата трябва да се променят.');
+  } else if (tech) {
+    add('product-teams', 'Product teams', 'Продуктови екипи',
+      'Product teams will care whether they need to change features, infrastructure, moderation, or compliance.',
+      'Продуктовите екипи ще гледат дали трябва да променят функции, инфраструктура, модерация или съответствие.');
+    add('users', 'Users', 'Потребители',
+      'Users care whether the story changes reliability, privacy, safety, or cost.',
+      'Потребителите се интересуват дали темата променя надеждността, поверителността, безопасността или цената.');
+    add('regulators', 'Regulators', 'Регулатори',
+      'Regulators will focus on data handling, platform power, security, or market conduct.',
+      'Регулаторите ще следят управлението на данни, силата на платформите, сигурността или пазарното поведение.');
+    add('security', 'Security teams', 'Екипи по сигурността',
+      'Security teams will care whether the story changes threat models, patch urgency, or operational exposure.',
+      'Екипите по сигурността ще гледат дали темата променя заплахите, спешността на корекциите или оперативния риск.');
+  } else if (environment) {
+    add('households', 'Households', 'Домакинства',
+      'Households care whether the event changes safety, bills, transport, or day-to-day disruption.',
+      'Домакинствата се интересуват дали събитието влияе на безопасността, сметките, транспорта или ежедневието.');
+    add('local-authorities', 'Local authorities', 'Местни власти',
+      'Local authorities will focus on response capacity, public communication, and mitigation steps.',
+      'Местните власти ще се фокусират върху капацитета за реакция, публичната комуникация и мерките за ограничаване.');
+    add('businesses', 'Businesses', 'Бизнес',
+      'Businesses will watch for supply disruption, higher operating costs, or damage to infrastructure.',
+      'Бизнесът ще следи за смущения в доставките, по-високи разходи или щети по инфраструктурата.');
+  } else if (sports) {
+    add('fans', 'Fans', 'Фенове',
+      'Fans mainly care how the development changes competition, trust, and the experience around the sport.',
+      'Феновете се интересуват основно как развитието променя състезанието, доверието и усещането около спорта.');
+    add('clubs', 'Clubs and organizers', 'Клубове и организатори',
+      'Clubs and organizers will focus on rules, scheduling, reputation, and commercial fallout.',
+      'Клубовете и организаторите ще гледат правилата, графика, репутацията и търговските последици.');
+    add('sponsors', 'Sponsors and broadcasters', 'Спонсори и медии',
+      'Sponsors and broadcasters will care if the story affects audience interest, rights value, or brand safety.',
+      'Спонсорите и медиите ще следят дали темата влияе на интереса на аудиторията, стойността на правата или безопасността за марките.');
+  } else if (entertainment) {
+    add('audience', 'Audience', 'Публика',
+      'The audience cares whether the story changes trust, attention, or willingness to support the people involved.',
+      'Публиката се интересува дали темата променя доверието, вниманието или желанието да подкрепя замесените хора.');
+    add('studios', 'Studios and organizers', 'Студиа и организатори',
+      'Studios and organizers will focus on reputation, contracts, scheduling, and commercial fallout.',
+      'Студията и организаторите ще гледат репутацията, договорите, графика и търговските последици.');
+    add('platforms', 'Platforms and advertisers', 'Платформи и рекламодатели',
+      'Platforms and advertisers care whether the story changes audience demand, moderation pressure, or brand risk.',
+      'Платформите и рекламодателите ще следят дали темата променя търсенето, натиска за модерация или риска за марките.');
+  }
+
+  if (!out.length) {
+    add('public', 'Public impact', 'Обществен ефект',
+      'The main question is who is directly affected, how fast the situation can change, and whether it stays contained.',
+      'Основният въпрос е кой е пряко засегнат, колко бързо може да се промени ситуацията и дали ще остане ограничена.');
+    add('institutions', 'Institutions', 'Институции',
+      'Institutions will look at responsibility, process, and whether a formal response is needed.',
+      'Институциите ще гледат отговорността, процеса и дали е нужна официална реакция.');
+    add('businesses', 'Business effects', 'Ефект за бизнеса',
+      `Businesses will care only if the story changes cost, regulation, or trust for ${industries}.`,
+      `Бизнесът ще се интересува само ако темата променя разходите, регулацията или доверието за ${industries}.`);
+  }
+
+  return out.slice(0, 4);
 }
 
 function buildHistoricalComparison(item: NewsInternal): HistoricalComparisonInsight | undefined {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Button, Chip, CircularProgress, Collapse, MenuItem, Select, Stack, Typography } from '@mui/material';
 import { NEWS_CARD_COLOR_TOKENS } from '../designTokens';
@@ -78,7 +78,7 @@ export function NewsCardBody() {
     researchText,
     researchConfidence
   } = state;
-  const [perspective, setPerspective] = useState<'investor' | 'government' | 'consumer' | 'tech'>('investor');
+  const [perspective, setPerspective] = useState('');
   const [showAiInsights, setShowAiInsights] = useState(false);
 
   const { onSetSummaryMode, onSetResearchMode } = handlers;
@@ -93,7 +93,7 @@ export function NewsCardBody() {
     item.titleEn || ''
   ]);
   const perspectives = insights?.perspectives;
-  const selectedPerspectiveText = perspectives?.[perspective];
+  const selectedPerspective = perspectives?.find(entry => entry.id === perspective) || perspectives?.[0];
   const levelLabels: Record<'high' | 'medium' | 'low', string> = {
     high: labels.levelHigh,
     medium: labels.levelMedium,
@@ -112,6 +112,17 @@ export function NewsCardBody() {
     [labels.quotesLabel, insights.facts.quotes]
   ] as const : [];
   const visibleFactSections = factSections.filter(([, values]) => values.length);
+
+  useEffect(() => {
+    if (!perspectives?.length) {
+      if (perspective) setPerspective('');
+      return;
+    }
+    if (!perspectives.some(entry => entry.id === perspective)) {
+      setPerspective(perspectives[0].id);
+    }
+  }, [perspective, perspectives]);
+
   const sectionShellSx = {
     mt: 1.05
   } as const;
@@ -253,7 +264,7 @@ export function NewsCardBody() {
     });
   }
 
-  if (perspectives && Object.keys(perspectives).length) {
+  if (perspectives?.length) {
     insightPanels.push({
       key: 'perspective',
       element: (
@@ -261,21 +272,26 @@ export function NewsCardBody() {
           <Typography variant="overline" sx={sectionTitleSx}>
             {labels.perspective}
           </Typography>
-          <Select
-            size="small"
-            fullWidth
-            value={perspective}
-            onChange={event => setPerspective(event.target.value as typeof perspective)}
-            sx={{ mb: 0.5 }}
-          >
-            <MenuItem value="investor">{labels.perspectiveInvestor}</MenuItem>
-            <MenuItem value="government">{labels.perspectiveGovernment}</MenuItem>
-            <MenuItem value="consumer">{labels.perspectiveConsumer}</MenuItem>
-            <MenuItem value="tech">{labels.perspectiveTech}</MenuItem>
-          </Select>
-          {selectedPerspectiveText ? (
+          {perspectives.length > 1 ? (
+            <Select
+              size="small"
+              fullWidth
+              value={selectedPerspective?.id || perspectives[0].id}
+              onChange={event => setPerspective(String(event.target.value || ''))}
+              sx={{ mb: 0.5 }}
+            >
+              {perspectives.map(entry => (
+                <MenuItem key={entry.id} value={entry.id}>{entry.label}</MenuItem>
+              ))}
+            </Select>
+          ) : (
+            <Typography variant="subtitle2" sx={{ mb: 0.55, fontWeight: 700 }}>
+              {perspectives[0].label}
+            </Typography>
+          )}
+          {selectedPerspective?.text ? (
             <Typography variant="body2" sx={insightBodySx}>
-              {selectedPerspectiveText}
+              {selectedPerspective.text}
             </Typography>
           ) : null}
         </Box>

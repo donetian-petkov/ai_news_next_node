@@ -93,7 +93,12 @@ export type AiInsightFeatureSettings = {
 export type InsightConfidence = 'low' | 'medium' | 'high';
 export type InsightSeverity = 'low' | 'medium' | 'high';
 export type ImpactLevel = 'low' | 'medium' | 'high';
-export type PerspectiveKey = 'investor' | 'government' | 'consumer' | 'tech';
+
+export type PerspectiveInsight = {
+  id: string;
+  label: string;
+  text: string;
+};
 
 export type BiasInsight = {
   detected: boolean;
@@ -151,7 +156,7 @@ export type NewsInsights = {
   sensationalism?: SensationalismInsight;
   facts?: FactHighlightsInsight;
   impact?: StoryImpactInsight;
-  perspectives?: Partial<Record<PerspectiveKey, string>>;
+  perspectives?: PerspectiveInsight[];
   historical?: HistoricalComparisonInsight;
   future?: FutureScenarioInsight;
   localImpact?: LocalImpactInsight;

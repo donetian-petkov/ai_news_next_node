@@ -211,14 +211,28 @@ function parseInsights(raw: unknown): NewsInsights | undefined {
     };
   }
 
-  if (isRecord(src.perspectives)) {
+  if (Array.isArray(src.perspectives)) {
+    const perspectives = src.perspectives
+      .filter(isRecord)
+      .map(entry => ({
+        id: isString(entry.id) ? entry.id : '',
+        label: isString(entry.label) ? entry.label : '',
+        text: isString(entry.text) ? entry.text : ''
+      }))
+      .filter(entry => entry.id && entry.label && entry.text)
+      .slice(0, 6);
+    if (perspectives.length) insights.perspectives = perspectives;
+  } else if (isRecord(src.perspectives)) {
     const perspectivesSource = src.perspectives as Record<string, unknown>;
-    const perspectives: NewsInsights['perspectives'] = {};
-    if (isString(perspectivesSource.investor)) perspectives.investor = perspectivesSource.investor;
-    if (isString(perspectivesSource.government)) perspectives.government = perspectivesSource.government;
-    if (isString(perspectivesSource.consumer)) perspectives.consumer = perspectivesSource.consumer;
-    if (isString(perspectivesSource.tech)) perspectives.tech = perspectivesSource.tech;
-    if (Object.keys(perspectives).length) insights.perspectives = perspectives;
+    const legacyPerspectives = ([
+      ['investor', 'Investor', perspectivesSource.investor],
+      ['government', 'Government', perspectivesSource.government],
+      ['consumer', 'Consumer', perspectivesSource.consumer],
+      ['tech', 'Tech industry', perspectivesSource.tech]
+    ] as const)
+      .filter(([, , value]) => isString(value))
+      .map(([id, label, value]) => ({ id, label, text: String(value) }));
+    if (legacyPerspectives.length) insights.perspectives = legacyPerspectives;
   }
 
   if (isRecord(src.historical)) {
