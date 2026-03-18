@@ -1822,17 +1822,82 @@ function buildPerspectives(item: NewsInternal): PerspectiveInsight[] | undefined
 function buildHistoricalComparison(item: NewsInternal): HistoricalComparisonInsight | undefined {
   const locale = insightLocale(item);
   const text = combinedInsightText(item).toLocaleLowerCase();
-  const comparisons: string[] = [];
-  if (/(privacy|data|regulation|platform)/i.test(text)) comparisons.push(insightText(locale, 'EU GDPR rollout', 'въвеждането на GDPR в ЕС'));
-  if (/(bank|credit|liquidity|regulation|financial)/i.test(text)) comparisons.push(insightText(locale, '2008 financial crisis regulations', 'регулациите след финансовата криза от 2008 г.'));
-  if (/(supply chain|chip|semiconductor)/i.test(text)) comparisons.push(insightText(locale, '2020-2021 semiconductor shortages', 'недостига на полупроводници през 2020-2021 г.'));
-  if (/(war|sanction|ukraine|russia|energy)/i.test(text)) comparisons.push(insightText(locale, '2022 European energy shock', 'европейския енергиен шок през 2022 г.'));
-  if (!comparisons.length) return undefined;
+  type ComparisonCandidate = { label: string; explanation: string; score: number };
+  const candidates: ComparisonCandidate[] = [];
+  const addCandidate = (score: number, enLabel: string, bgLabel: string, enExplanation: string, bgExplanation: string) => {
+    if (score < 2) return;
+    candidates.push({
+      score,
+      label: locale === 'bg' ? bgLabel : enLabel,
+      explanation: locale === 'bg' ? bgExplanation : enExplanation
+    });
+  };
+
+  const privacySignals = [
+    /\bprivacy\b/i.test(text),
+    /\bdata\b/i.test(text),
+    /\bplatform\b/i.test(text),
+    /\bconsent\b/i.test(text),
+    /\bgdpr\b/i.test(text),
+    /\bрегулац/i.test(text),
+    /\bданн/i.test(text),
+    /\bплатформ/i.test(text)
+  ].filter(Boolean).length;
+  addCandidate(
+    privacySignals,
+    'EU GDPR rollout',
+    'въвеждането на GDPR в ЕС',
+    'The overlap is in data rules, platform obligations, and compliance pressure rather than in the exact event itself.',
+    'Сходството е в правилата за данни, задълженията на платформите и натиска за съответствие, а не в самото събитие.'
+  );
+
+  const financeSignals = [
+    /\bbank|banks|credit|liquidity|financial|bond|fund|market stress|bailout/i.test(text),
+    /\bregulation|oversight|capital requirements|supervision/i.test(text),
+    /\bбанка|банки|кредит|ликвид|финанс|облигац|фонд/i.test(text),
+    /\bрегулац|надзор|капиталов/i.test(text)
+  ].filter(Boolean).length;
+  addCandidate(
+    financeSignals,
+    '2008 financial crisis regulations',
+    'регулациите след финансовата криза от 2008 г.',
+    'The overlap is in financial risk, market stress, and the likelihood of tighter oversight.',
+    'Сходството е във финансовия риск, напрежението на пазарите и вероятността от по-строг надзор.'
+  );
+
+  const semiconductorSignals = [
+    /\bchip|chips|semiconductor|semiconductors|foundry|nvidia|export controls?|supply chain/i.test(text),
+    /\bchina|taiwan|factory|manufactur/i.test(text),
+    /\bчип|чипове|полупровод|доставк|износ|контрол на износа/i.test(text)
+  ].filter(Boolean).length;
+  addCandidate(
+    semiconductorSignals,
+    '2020-2021 semiconductor shortages',
+    'недостига на полупроводници през 2020-2021 г.',
+    'The overlap is in chip supply constraints, export pressure, and exposure across hardware and downstream products.',
+    'Сходството е в ограниченията по веригата за чипове, натиска върху износа и отражението върху хардуера и крайните продукти.'
+  );
+
+  const energySignals = [
+    /\benergy|gas|oil|pipeline|shipping|strait|electricity|fuel/i.test(text),
+    /\bwar|sanction|ukraine|russia|iran|israel|conflict|attack/i.test(text),
+    /\bенерг|газ|петрол|горив|доставк|проток|кораб/i.test(text),
+    /\bвойн|санкц|украйн|руси|иран|израел|конфликт|атака/i.test(text)
+  ].filter(Boolean).length;
+  addCandidate(
+    energySignals,
+    '2022 European energy shock',
+    'европейския енергиен шок през 2022 г.',
+    'The overlap is in conflict-driven energy risk, supply disruption, and spillover into prices and logistics.',
+    'Сходството е в риска за енергията, породен от конфликт, прекъсванията на доставките и отражението върху цените и логистиката.'
+  );
+
+  candidates.sort((a, b) => b.score - a.score);
+  if (!candidates.length) return undefined;
+  const primary = candidates[0];
   return {
-    comparisons: comparisons.slice(0, 3),
-    explanation: locale === 'bg'
-      ? 'Сходството е в това, че темата може да доведе до бърза регулаторна, пазарна или логистична реакция.'
-      : 'The similarity is that the story could force a fast regulatory, market, or supply response.'
+    comparisons: candidates.slice(0, 3).map(candidate => candidate.label),
+    explanation: primary.explanation
   };
 }
 
