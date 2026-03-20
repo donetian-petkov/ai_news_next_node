@@ -29,6 +29,7 @@ import {
 } from './topMenuOptionBuilders';
 import { hasProviderKeyLocal } from './actions/useTopMenuAiActions';
 import { useTopMenuContext } from './context/useTopMenuContext';
+import { useAppSelector } from '../../store/hooks';
 
 const FEATURE_ROWS: Array<{ key: keyof ReturnType<typeof useTopMenuContext>['controls']['model']['aiSettings']['insightFeatures']; label: string; hint: string }> = [
   { key: 'biasDetection', label: 'Bias detector', hint: 'Political leaning, tone, and framing. Budget: standard or high.' },
@@ -128,6 +129,7 @@ function SubsectionHeader({ title, hint }: { title: string; hint: string }) {
 }
 
 export function TopMenuAiSettingsSection() {
+  const aiUsage = useAppSelector(s => s.aiUsage);
   const {
     labels,
     controls: {
@@ -156,6 +158,12 @@ export function TopMenuAiSettingsSection() {
     }
     return new Set(aiSettings.availableFeeds.map(feed => feed.url));
   }, [aiSettings.availableFeeds, aiSettings.dailyBriefingFeedUrls]);
+  const recentUsage = aiUsage.recent.slice(0, 8);
+  const tokenLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
+  const formatTokenCount = (value: number) => value.toLocaleString(tokenLocale);
+  const runtimeStartedLabel = aiUsage.runtimeStartedAt
+    ? new Date(aiUsage.runtimeStartedAt).toLocaleString(tokenLocale)
+    : 'No AI calls yet in this server run.';
 
   useEffect(() => {
     setHasSavedProviderKey(hasProviderKeyLocal(aiSettings.aiProvider));
@@ -311,6 +319,61 @@ export function TopMenuAiSettingsSection() {
                   {labels.providerKeySave || 'Save key'}
                 </Button>
               </Stack>
+            </Box>
+
+            <Box className="topMenuCardBlock topMenuSubsection" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
+              <SubsectionHeader
+                title="Token usage this run"
+                hint="Runtime-only AI usage log. It clears when the API server restarts."
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
+                <Chip size="small" color="primary" variant="outlined" label={`Total: ${formatTokenCount(aiUsage.totalTokens)}`} />
+                <Chip size="small" variant="outlined" label={`Input: ${formatTokenCount(aiUsage.inputTokens)}`} />
+                <Chip size="small" variant="outlined" label={`Output: ${formatTokenCount(aiUsage.outputTokens)}`} />
+              </Stack>
+              <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>
+                Started: {runtimeStartedLabel}
+              </Typography>
+              <div className="topMenuFieldGrid">
+                {([
+                  ['summary', 'Summaries'],
+                  ['research', 'Research'],
+                  ['ask', 'Ask agent']
+                ] as const).map(([kind, label]) => (
+                  <Box key={kind} sx={{ border: '1px solid var(--panel-border)', borderRadius: 1.5, p: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.4, color: 'text.secondary' }}>
+                      Requests: {formatTokenCount(aiUsage.byKind[kind].requests)} · Tokens: {formatTokenCount(aiUsage.byKind[kind].totalTokens)}
+                    </Typography>
+                  </Box>
+                ))}
+              </div>
+              <Typography variant="caption" sx={{ display: 'block', mt: 1, mb: 0.5, color: 'text.secondary' }}>
+                Recent AI calls
+              </Typography>
+              {recentUsage.length ? (
+                <Stack spacing={0.7}>
+                  {recentUsage.map(entry => (
+                    <Box key={entry.id} sx={{ border: '1px solid var(--panel-border)', borderRadius: 1.5, px: 1, py: 0.8, background: 'rgba(255,255,255,0.02)' }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between">
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {entry.kind.toUpperCase()} · {entry.model}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {new Date(entry.createdAt).toLocaleTimeString(tokenLocale)} · {formatTokenCount(entry.totalTokens)} tokens
+                        </Typography>
+                      </Stack>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 0.3, color: 'text.secondary' }}>
+                        {entry.label}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Alert severity="info" sx={{ mt: 0.5, py: 0.2 }}>
+                  No AI calls recorded in this server run yet.
+                </Alert>
+              )}
             </Box>
           </div>
         ) : null}

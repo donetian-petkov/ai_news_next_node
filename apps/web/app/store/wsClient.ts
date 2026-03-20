@@ -93,6 +93,23 @@ type AiModelsByProvider = {
   claude: AiModelOptions;
   openrouter: AiModelOptions;
 };
+type AiUsageKind = 'summary' | 'research' | 'ask';
+type AiUsageKindStats = {
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+type AiUsageRecentEntry = {
+  id: string;
+  kind: AiUsageKind;
+  model: string;
+  label: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  createdAt: number;
+};
 
 function parseModelList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -137,6 +154,61 @@ function parseTrimmedList(raw: unknown, max = 80): string[] {
     seen.add(key);
     out.push(value);
     if (out.length >= max) break;
+  }
+  return out;
+}
+
+function parseAiUsageKind(raw: unknown): AiUsageKind | undefined {
+  return raw === 'summary' || raw === 'research' || raw === 'ask' ? raw : undefined;
+}
+
+function emptyAiUsageByKind(): Record<AiUsageKind, AiUsageKindStats> {
+  return {
+    summary: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    research: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    ask: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+  };
+}
+
+function parseAiUsageKindStats(raw: unknown): AiUsageKindStats {
+  if (!isRecord(raw)) return { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  const src = raw as Record<string, unknown>;
+  return {
+    requests: isNumber(src.requests) ? src.requests : 0,
+    inputTokens: isNumber(src.inputTokens) ? src.inputTokens : 0,
+    outputTokens: isNumber(src.outputTokens) ? src.outputTokens : 0,
+    totalTokens: isNumber(src.totalTokens) ? src.totalTokens : 0
+  };
+}
+
+function parseAiUsageByKind(raw: unknown): Record<AiUsageKind, AiUsageKindStats> {
+  if (!isRecord(raw)) return emptyAiUsageByKind();
+  const src = raw as Record<string, unknown>;
+  return {
+    summary: parseAiUsageKindStats(src.summary),
+    research: parseAiUsageKindStats(src.research),
+    ask: parseAiUsageKindStats(src.ask)
+  };
+}
+
+function parseAiUsageRecent(raw: unknown): AiUsageRecentEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AiUsageRecentEntry[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) continue;
+    const kind = parseAiUsageKind(item.kind);
+    if (!kind) continue;
+    out.push({
+      id: isString(item.id) ? item.id : `${kind}-${out.length}`,
+      kind,
+      model: isString(item.model) ? item.model : 'unknown',
+      label: isString(item.label) ? item.label : `${kind} request`,
+      inputTokens: isNumber(item.inputTokens) ? item.inputTokens : 0,
+      outputTokens: isNumber(item.outputTokens) ? item.outputTokens : 0,
+      totalTokens: isNumber(item.totalTokens) ? item.totalTokens : 0,
+      createdAt: isNumber(item.createdAt) ? item.createdAt : 0
+    });
+    if (out.length >= 80) break;
   }
   return out;
 }
@@ -577,7 +649,10 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
       dispatch(setUsage({
         inputTokens: isNumber(msg.aiUsageInputTokens) ? msg.aiUsageInputTokens : 0,
         outputTokens: isNumber(msg.aiUsageOutputTokens) ? msg.aiUsageOutputTokens : 0,
-        totalTokens: isNumber(msg.aiUsageTotalTokens) ? msg.aiUsageTotalTokens : 0
+        totalTokens: isNumber(msg.aiUsageTotalTokens) ? msg.aiUsageTotalTokens : 0,
+        runtimeStartedAt: isNumber(msg.aiUsageRuntimeStartedAt) ? msg.aiUsageRuntimeStartedAt : 0,
+        byKind: parseAiUsageByKind(msg.aiUsageByKind),
+        recent: parseAiUsageRecent(msg.aiUsageRecent)
       }));
       return;
     }
@@ -586,7 +661,10 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
       dispatch(setUsage({
         inputTokens: isNumber(msg.inputTokens) ? msg.inputTokens : 0,
         outputTokens: isNumber(msg.outputTokens) ? msg.outputTokens : 0,
-        totalTokens: isNumber(msg.totalTokens) ? msg.totalTokens : 0
+        totalTokens: isNumber(msg.totalTokens) ? msg.totalTokens : 0,
+        runtimeStartedAt: isNumber(msg.runtimeStartedAt) ? msg.runtimeStartedAt : 0,
+        byKind: parseAiUsageByKind(msg.byKind),
+        recent: parseAiUsageRecent(msg.recent)
       }));
       return;
     }

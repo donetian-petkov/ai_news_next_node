@@ -142,7 +142,25 @@ describe('wsClient', () => {
       hiddenIds: ['hid-1'],
       aiUsageInputTokens: 10,
       aiUsageOutputTokens: 20,
-      aiUsageTotalTokens: 30
+      aiUsageTotalTokens: 30,
+      aiUsageRuntimeStartedAt: 1234,
+      aiUsageByKind: {
+        summary: { requests: 1, inputTokens: 3, outputTokens: 4, totalTokens: 7 },
+        research: { requests: 2, inputTokens: 5, outputTokens: 6, totalTokens: 11 },
+        ask: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+      },
+      aiUsageRecent: [
+        {
+          id: 'usage-1',
+          kind: 'summary',
+          model: 'claude-3-5-haiku-latest',
+          label: 'Summary: A',
+          inputTokens: 3,
+          outputTokens: 4,
+          totalTokens: 7,
+          createdAt: 555
+        }
+      ]
     });
 
     const setFeedsAction = actions.find(a => a.type === 'feeds/setFeeds');
@@ -185,13 +203,54 @@ describe('wsClient', () => {
     expect(actions.find(a => a.type === 'aiUsage/setUsage')?.payload).toEqual({
       inputTokens: 10,
       outputTokens: 20,
-      totalTokens: 30
+      totalTokens: 30,
+      runtimeStartedAt: 1234,
+      byKind: {
+        summary: { requests: 1, inputTokens: 3, outputTokens: 4, totalTokens: 7 },
+        research: { requests: 2, inputTokens: 5, outputTokens: 6, totalTokens: 11 },
+        ask: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+      },
+      recent: [
+        {
+          id: 'usage-1',
+          kind: 'summary',
+          model: 'claude-3-5-haiku-latest',
+          label: 'Summary: A',
+          inputTokens: 3,
+          outputTokens: 4,
+          totalTokens: 7,
+          createdAt: 555
+        }
+      ]
     });
 
-    sock.emitMessage({ type: 'ai_usage', inputTokens: 1, outputTokens: 2, totalTokens: 3 });
+    sock.emitMessage({
+      type: 'ai_usage',
+      inputTokens: 1,
+      outputTokens: 2,
+      totalTokens: 3,
+      runtimeStartedAt: 999,
+      byKind: {
+        summary: { requests: 1, inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+        research: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+        ask: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+      },
+      recent: []
+    });
     expect(actions.at(-1)).toMatchObject({
       type: 'aiUsage/setUsage',
-      payload: { inputTokens: 1, outputTokens: 2, totalTokens: 3 }
+      payload: {
+        inputTokens: 1,
+        outputTokens: 2,
+        totalTokens: 3,
+        runtimeStartedAt: 999,
+        byKind: {
+          summary: { requests: 1, inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+          research: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+          ask: { requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+        },
+        recent: []
+      }
     });
   });
 
