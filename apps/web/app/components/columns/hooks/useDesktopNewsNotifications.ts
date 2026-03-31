@@ -57,7 +57,7 @@ export function useDesktopNewsNotifications({
     const shouldNotify = (feedUrl: string, it: NewsItem): boolean => {
       if (topicTrackingEnabled && trackedTopics.length) {
         const majorTrackedUpdate = !!it.topicHits?.length
-          && ((it.emergingSignal?.clusterSize || 0) >= 3 || it.insights?.impact?.score === 'high');
+          && (it.emergingSignal?.clusterSize || 0) >= 3;
         if (!majorTrackedUpdate) return false;
       }
       if (notifyMode === 'all') return true;

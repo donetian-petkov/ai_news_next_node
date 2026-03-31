@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Checkbox,
   Chip,
-  Divider,
   FormControlLabel,
   LinearProgress,
   Stack,
@@ -35,57 +33,9 @@ const FEATURE_ROWS: Array<{ key: keyof ReturnType<typeof useTopMenuContext>['con
   { key: 'biasDetection', label: 'Bias detector', hint: 'Political leaning, tone, and framing. Budget: standard or high.' },
   { key: 'sensationalismDetection', label: 'Rage bait detector', hint: 'Flags clickbait headlines and suggests safer alternatives. Budget: standard or high.' },
   { key: 'factHighlights', label: 'Fact highlights', hint: 'People, places, dates, numbers, and quotes under each story. Budget: standard or high.' },
-  { key: 'storyImpact', label: 'Impact prediction', hint: 'Economic, political, and tech implications. Budget: high only.' },
-  { key: 'perspectiveSimulator', label: 'Perspective simulator', hint: 'Investor, government, consumer, and tech views. Budget: high only.' },
-  { key: 'historicalComparison', label: 'Historical comparison', hint: 'Similar past events and patterns. Budget: high only.' },
-  { key: 'futureScenarioGenerator', label: 'Future scenarios', hint: 'Possible next outcomes with a disclaimer. Budget: high only.' },
-  { key: 'localImpactDetector', label: 'Local impact', hint: 'How global stories affect the selected region. Budget: high only.' },
   { key: 'topicTracking', label: 'Topic tracking', hint: 'Follow recurring topics and only surface major updates. Budget: high only.' },
   { key: 'emergingStoryDetector', label: 'Emerging stories', hint: 'Optional column for repeated stories rising fast. Budget: high only.' },
   { key: 'dailyBriefing', label: 'Daily briefing', hint: 'Enables the on-demand briefing generator below. Budget: high only.' }
-];
-
-const LOCAL_IMPACT_REGION_OPTIONS = [
-  'United States',
-  'United Kingdom',
-  'European Union',
-  'Bulgaria',
-  'Germany',
-  'France',
-  'Italy',
-  'Spain',
-  'Netherlands',
-  'Belgium',
-  'Poland',
-  'Romania',
-  'Greece',
-  'Turkey',
-  'Ukraine',
-  'Russia',
-  'Canada',
-  'Mexico',
-  'Brazil',
-  'Argentina',
-  'Chile',
-  'Australia',
-  'New Zealand',
-  'Japan',
-  'South Korea',
-  'China',
-  'Taiwan',
-  'Hong Kong',
-  'India',
-  'Singapore',
-  'Indonesia',
-  'Vietnam',
-  'Thailand',
-  'Philippines',
-  'Middle East',
-  'Saudi Arabia',
-  'United Arab Emirates',
-  'Israel',
-  'Africa',
-  'South Africa'
 ];
 
 type AiMenuSection = 'setup' | 'analysis' | 'targeting' | 'briefing';
@@ -248,7 +198,7 @@ export function TopMenuAiSettingsSection() {
                 title="Language and models"
                 hint="Provider, output languages, model selection, and global AI budget."
               />
-              <div className="topMenuFieldGrid">
+              <div className="topMenuFieldGrid topMenuSetupGrid">
                 <TopMenuSelectField id="aiProviderSelect" label={labels.aiProvider} value={aiSettings.aiProvider} onChange={actions.onChangeAiProvider} options={buildAiProviderOptions(labels)} layout="stacked" wrapperClassName="topMenuField" />
                 <TopMenuSelectField id="summaryLang" label={labels.summaryPrefix} value={aiSettings.summaryLang} disabled={!aiSettings.aiAvailable} onChange={actions.onSummaryLangChange} options={buildSummaryLangOptions()} layout="stacked" wrapperClassName="topMenuField" />
                 <TopMenuSelectField id="researchLang" label={labels.researchPrefix} value={aiSettings.researchLang} disabled={!aiSettings.aiAvailable} onChange={actions.onResearchLangChange} options={buildResearchLangOptions()} layout="stacked" wrapperClassName="topMenuField" />
@@ -443,8 +393,8 @@ export function TopMenuAiSettingsSection() {
 
             <Box className="topMenuCardBlock topMenuSubsection" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
               <SubsectionHeader
-                title="Topic and region tracking"
-                hint="Tracked topics and the target region for local-impact analysis."
+                title="Topic tracking"
+                hint="Topics to watch for recurring coverage and major updates."
               />
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                 <TextField size="small" fullWidth label="Tracked topics" placeholder="Artificial Intelligence, War in Ukraine, Climate Change" value={topicsDraft} onChange={e => setTopicsDraft(e.target.value)} />
@@ -459,19 +409,6 @@ export function TopMenuAiSettingsSection() {
                   ))}
                 </Stack>
               ) : null}
-              <Divider sx={{ my: 1.1 }} />
-              <Autocomplete
-                freeSolo
-                fullWidth
-                options={LOCAL_IMPACT_REGION_OPTIONS}
-                value={aiSettings.localImpactRegion}
-                inputValue={aiSettings.localImpactRegion}
-                onChange={(_, value) => actions.onSetLocalImpactRegion(typeof value === 'string' ? value : '')}
-                onInputChange={(_, value, reason) => {
-                  if (reason === 'input' || reason === 'clear') actions.onSetLocalImpactRegion(value);
-                }}
-                renderInput={params => <TextField {...params} size="small" label="Local impact region" placeholder="Search region" />}
-              />
             </Box>
           </div>
         ) : null}

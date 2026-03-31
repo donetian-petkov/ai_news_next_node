@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Box, Button, Chip, CircularProgress, Collapse, MenuItem, Select, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, Collapse, Stack, Typography } from '@mui/material';
 import { NEWS_CARD_COLOR_TOKENS } from '../designTokens';
 import { useNewsCardContext } from './context/useNewsCardContext';
 
@@ -60,8 +60,7 @@ export function NewsCardBody() {
     accent,
     hideAllSummaries,
     hideAllResearch,
-    performanceMode,
-    localImpactRegion
+    performanceMode
   } = view;
 
   const {
@@ -78,7 +77,6 @@ export function NewsCardBody() {
     researchText,
     researchConfidence
   } = state;
-  const [perspective, setPerspective] = useState('');
   const [showAiInsights, setShowAiInsights] = useState(false);
 
   const { onSetSummaryMode, onSetResearchMode } = handlers;
@@ -92,8 +90,6 @@ export function NewsCardBody() {
     item.titleBg || '',
     item.titleEn || ''
   ]);
-  const perspectives = insights?.perspectives;
-  const selectedPerspective = perspectives?.find(entry => entry.id === perspective) || perspectives?.[0];
   const levelLabels: Record<'high' | 'medium' | 'low', string> = {
     high: labels.levelHigh,
     medium: labels.levelMedium,
@@ -112,16 +108,6 @@ export function NewsCardBody() {
     [labels.quotesLabel, insights.facts.quotes]
   ] as const : [];
   const visibleFactSections = factSections.filter(([, values]) => values.length);
-
-  useEffect(() => {
-    if (!perspectives?.length) {
-      if (perspective) setPerspective('');
-      return;
-    }
-    if (!perspectives.some(entry => entry.id === perspective)) {
-      setPerspective(perspectives[0].id);
-    }
-  }, [perspective, perspectives]);
 
   const sectionShellSx = {
     mt: 1.05
@@ -240,65 +226,6 @@ export function NewsCardBody() {
     });
   }
 
-  if (insights?.impact) {
-    insightPanels.push({
-      key: 'impact',
-      element: (
-        <Box sx={insightSectionSx}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
-            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
-              {labels.impactSection}
-            </Typography>
-            <Chip size="small" color="success" variant="outlined" label={levelLabels[insights.impact.score]} />
-          </Stack>
-          <Typography variant="body2" sx={insightBodySx}>
-            {insights.impact.summary}
-          </Typography>
-          {insights.impact.industries.length ? (
-            <Typography variant="caption" sx={insightMetaSx}>
-              {labels.industriesLabel}: {insights.impact.industries.join(' • ')}
-            </Typography>
-          ) : null}
-        </Box>
-      )
-    });
-  }
-
-  if (perspectives?.length) {
-    insightPanels.push({
-      key: 'perspective',
-      element: (
-        <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={sectionTitleSx}>
-            {labels.perspective}
-          </Typography>
-          {perspectives.length > 1 ? (
-            <Select
-              size="small"
-              fullWidth
-              value={selectedPerspective?.id || perspectives[0].id}
-              onChange={event => setPerspective(String(event.target.value || ''))}
-              sx={{ mb: 0.5 }}
-            >
-              {perspectives.map(entry => (
-                <MenuItem key={entry.id} value={entry.id}>{entry.label}</MenuItem>
-              ))}
-            </Select>
-          ) : (
-            <Typography variant="subtitle2" sx={{ mb: 0.55, fontWeight: 700 }}>
-              {perspectives[0].label}
-            </Typography>
-          )}
-          {selectedPerspective?.text ? (
-            <Typography variant="body2" sx={insightBodySx}>
-              {selectedPerspective.text}
-            </Typography>
-          ) : null}
-        </Box>
-      )
-    });
-  }
-
   if (item.topicHits?.length) {
     insightPanels.push({
       key: 'topics',
@@ -333,75 +260,6 @@ export function NewsCardBody() {
           </Typography>
           <Typography variant="caption" sx={insightMetaSx}>
             {item.emergingSignal.clusterSize} {labels.relatedStories} · {item.emergingSignal.sources.join(', ')}
-          </Typography>
-        </Box>
-      )
-    });
-  }
-
-  if (insights?.historical) {
-    insightPanels.push({
-      key: 'historical',
-      element: (
-        <Box sx={insightSectionSx}>
-          <Typography variant="overline" sx={sectionTitleSx}>
-            {labels.comparisonSection}
-          </Typography>
-          <Typography variant="body2" sx={{ ...insightBodySx, fontWeight: 700 }}>
-            {insights.historical.comparisons[0]}
-          </Typography>
-          <Typography variant="body2" sx={insightBodySx}>
-            {insights.historical.explanation}
-          </Typography>
-          {insights.historical.comparisons.length > 1 ? (
-            <Typography variant="caption" sx={insightMetaSx}>
-              {labels.additionalComparisons}: {insights.historical.comparisons.slice(1).join(' • ')}
-            </Typography>
-          ) : null}
-        </Box>
-      )
-    });
-  }
-
-  if (insights?.future) {
-    insightPanels.push({
-      key: 'future',
-      element: (
-        <Box sx={insightSectionSx}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
-            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
-              {labels.outlookSection}
-            </Typography>
-            <Chip size="small" color="warning" variant="outlined" label={labels.speculativeLabel} />
-          </Stack>
-          <Stack spacing={0.35}>
-            {insights.future.scenarios.map(scenario => (
-              <Typography key={scenario} variant="body2" sx={insightBodySx}>
-                • {scenario}
-              </Typography>
-            ))}
-          </Stack>
-          <Typography variant="caption" sx={{ ...insightMetaSx, mt: 0.55 }}>
-            {insights.future.outlook}
-          </Typography>
-        </Box>
-      )
-    });
-  }
-
-  if (insights?.localImpact) {
-    insightPanels.push({
-      key: 'local',
-      element: (
-        <Box sx={insightSectionSx}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55 }}>
-            <Typography variant="overline" sx={{ ...sectionTitleSx, mb: 0 }}>
-              {labels.localSection}
-            </Typography>
-            <Chip size="small" color="default" variant="outlined" label={insights.localImpact.region || localImpactRegion} />
-          </Stack>
-          <Typography variant="body2" sx={insightBodySx}>
-            {insights.localImpact.summary}
           </Typography>
         </Box>
       )

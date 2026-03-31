@@ -220,14 +220,14 @@ function parseAiFeatureSettings(raw: unknown): AiInsightFeatureSettings | undefi
     biasDetection: isBoolean(src.biasDetection) ? src.biasDetection : DEFAULT_AI_FEATURES.biasDetection,
     sensationalismDetection: isBoolean(src.sensationalismDetection) ? src.sensationalismDetection : DEFAULT_AI_FEATURES.sensationalismDetection,
     factHighlights: isBoolean(src.factHighlights) ? src.factHighlights : DEFAULT_AI_FEATURES.factHighlights,
-    storyImpact: isBoolean(src.storyImpact) ? src.storyImpact : DEFAULT_AI_FEATURES.storyImpact,
+    storyImpact: false,
     dailyBriefing: isBoolean(src.dailyBriefing) ? src.dailyBriefing : DEFAULT_AI_FEATURES.dailyBriefing,
     topicTracking: isBoolean(src.topicTracking) ? src.topicTracking : DEFAULT_AI_FEATURES.topicTracking,
-    perspectiveSimulator: isBoolean(src.perspectiveSimulator) ? src.perspectiveSimulator : DEFAULT_AI_FEATURES.perspectiveSimulator,
+    perspectiveSimulator: false,
     emergingStoryDetector: isBoolean(src.emergingStoryDetector) ? src.emergingStoryDetector : DEFAULT_AI_FEATURES.emergingStoryDetector,
-    historicalComparison: isBoolean(src.historicalComparison) ? src.historicalComparison : DEFAULT_AI_FEATURES.historicalComparison,
-    futureScenarioGenerator: isBoolean(src.futureScenarioGenerator) ? src.futureScenarioGenerator : DEFAULT_AI_FEATURES.futureScenarioGenerator,
-    localImpactDetector: isBoolean(src.localImpactDetector) ? src.localImpactDetector : DEFAULT_AI_FEATURES.localImpactDetector
+    historicalComparison: false,
+    futureScenarioGenerator: false,
+    localImpactDetector: false
   };
 }
 
@@ -268,67 +268,6 @@ function parseInsights(raw: unknown): NewsInsights | undefined {
       dates: parseTrimmedList(facts.dates, 12),
       numbers: parseTrimmedList(facts.numbers, 12),
       quotes: parseTrimmedList(facts.quotes, 12)
-    };
-  }
-
-  if (isRecord(src.impact)) {
-    const impact = src.impact as Record<string, unknown>;
-    insights.impact = {
-      score: impact.score === 'low' || impact.score === 'medium' || impact.score === 'high' ? impact.score : 'medium',
-      economic: isString(impact.economic) ? impact.economic : '',
-      political: isString(impact.political) ? impact.political : '',
-      tech: isString(impact.tech) ? impact.tech : '',
-      industries: parseTrimmedList(impact.industries, 12),
-      summary: isString(impact.summary) ? impact.summary : ''
-    };
-  }
-
-  if (Array.isArray(src.perspectives)) {
-    const perspectives = src.perspectives
-      .filter(isRecord)
-      .map(entry => ({
-        id: isString(entry.id) ? entry.id : '',
-        label: isString(entry.label) ? entry.label : '',
-        text: isString(entry.text) ? entry.text : ''
-      }))
-      .filter(entry => entry.id && entry.label && entry.text)
-      .slice(0, 6);
-    if (perspectives.length) insights.perspectives = perspectives;
-  } else if (isRecord(src.perspectives)) {
-    const perspectivesSource = src.perspectives as Record<string, unknown>;
-    const legacyPerspectives = ([
-      ['investor', 'Investor', perspectivesSource.investor],
-      ['government', 'Government', perspectivesSource.government],
-      ['consumer', 'Consumer', perspectivesSource.consumer],
-      ['tech', 'Tech industry', perspectivesSource.tech]
-    ] as const)
-      .filter(([, , value]) => isString(value))
-      .map(([id, label, value]) => ({ id, label, text: String(value) }));
-    if (legacyPerspectives.length) insights.perspectives = legacyPerspectives;
-  }
-
-  if (isRecord(src.historical)) {
-    const historical = src.historical as Record<string, unknown>;
-    insights.historical = {
-      comparisons: parseTrimmedList(historical.comparisons, 10),
-      explanation: isString(historical.explanation) ? historical.explanation : ''
-    };
-  }
-
-  if (isRecord(src.future)) {
-    const future = src.future as Record<string, unknown>;
-    insights.future = {
-      disclaimer: isString(future.disclaimer) ? future.disclaimer : '',
-      scenarios: parseTrimmedList(future.scenarios, 10),
-      outlook: isString(future.outlook) ? future.outlook : ''
-    };
-  }
-
-  if (isRecord(src.localImpact)) {
-    const localImpact = src.localImpact as Record<string, unknown>;
-    insights.localImpact = {
-      region: isString(localImpact.region) ? localImpact.region : '',
-      summary: isString(localImpact.summary) ? localImpact.summary : ''
     };
   }
 

@@ -2,6 +2,34 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  --topMenu-control-radius: 18px;
+  --topMenu-control-border: color-mix(in srgb, var(--panel-border) 90%, rgba(255, 255, 255, 0.08));
+  --topMenu-control-bg:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--field-bg) 80%, var(--bg-main) 20%),
+      color-mix(in srgb, var(--field-bg) 64%, var(--bg-main) 36%)
+    );
+  --topMenu-control-bg-hover:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--field-bg) 86%, var(--accent-color)),
+      color-mix(in srgb, var(--field-bg) 72%, var(--accent-color))
+    );
+  --topMenu-control-bg-active:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-color) 28%, var(--field-bg)),
+      color-mix(in srgb, var(--accent-color) 38%, var(--bg-main))
+    );
+  --topMenu-control-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  --topMenu-control-shadow-hover:
+    0 14px 28px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
   background: linear-gradient(180deg, var(--topbar-start), var(--topbar-end));
   border-bottom: 1px solid var(--panel-border);
   color: var(--text-main);
@@ -259,6 +287,11 @@
 }
 
 .controlSection {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
   border: 1px solid var(--panel-border);
   border-radius: 12px;
   padding: 8px;
@@ -277,20 +310,61 @@
 
 .controlSectionAi .controlGroupAi,
 .controlSectionAppearance .controlGroupAppearance {
+  width: 100%;
+  min-width: 0;
   align-items: stretch;
 }
 
 .topMenuFieldGrid {
   width: 100%;
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 10px;
+}
+
+.topMenuFieldGrid > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .topMenuFieldGrid .topMenuField,
 .topMenuFieldGrid .topMenuField.checkbox {
   width: 100%;
   min-width: 0;
+}
+
+.checkboxStacked,
+.checkboxStacked .select,
+.checkboxStacked .input,
+.topMenuFieldGrid .select,
+.topMenuFieldGrid .input,
+.topMenuFieldGrid .btn {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.checkboxStacked > span {
+  min-width: 0;
+}
+
+.topMenuFieldGrid .select {
+  display: block;
+}
+
+.topMenuFieldGrid .MuiFormControl-root,
+.topMenuFieldGrid .MuiTextField-root,
+.topMenuFieldGrid .MuiInputBase-root,
+.topMenuFieldGrid .MuiOutlinedInput-root {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.topMenuSetupGrid {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
 .topMenuFieldGridFull {
@@ -317,11 +391,27 @@
 }
 
 .topMenuSubnavButton.MuiButton-root {
-  border-radius: 999px !important;
+  min-height: 44px;
+  border-radius: var(--topMenu-control-radius) !important;
   text-transform: none !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
   min-width: 0 !important;
-  padding-inline: 14px !important;
+  padding-inline: 16px !important;
+  border-color: var(--topMenu-control-border) !important;
+  background: var(--topMenu-control-bg) !important;
+  box-shadow: var(--topMenu-control-shadow) !important;
+}
+
+.topMenuSubnavButton.MuiButton-root:hover {
+  transform: translateY(var(--button-hover-lift));
+  background: var(--topMenu-control-bg-hover) !important;
+  box-shadow: var(--topMenu-control-shadow-hover) !important;
+}
+
+.topMenuSubnavButton.MuiButton-contained.MuiButton-root {
+  background: var(--topMenu-control-bg-active) !important;
+  color: var(--text-main) !important;
 }
 
 .topMenuSubsection {
@@ -409,30 +499,94 @@
   font-size: calc(0.8rem * var(--ui-font-scale));
 }
 
+.topMenuSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px 0 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.topMenuSelectTriggerLabel {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.topMenuSelectTriggerIcon {
+  display: inline-flex;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 78%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
+.topMenuSelectTrigger svg {
+  display: block;
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 1.18rem !important;
+}
+
 .select,
 .input,
 .btn {
   font: inherit;
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  background: var(--field-bg);
+  border: 1px solid var(--topMenu-control-border);
+  border-radius: var(--topMenu-control-radius);
+  background: var(--topMenu-control-bg);
   color: var(--text-main);
-  padding: 7px 10px;
+  padding: 10px 14px;
+  min-height: 50px;
+  box-shadow: var(--topMenu-control-shadow);
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   cursor: pointer;
-  font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .btn.ghost {
-  background: transparent;
+  background: var(--topMenu-control-bg);
 }
 
 .btn.danger {
-  color: #ffb2b2;
+  color: #ffd0d0;
+  border-color: color-mix(in srgb, #ff8894 46%, var(--panel-border));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #ff6f82 16%, var(--field-bg)),
+      color-mix(in srgb, #ff6f82 10%, var(--bg-main))
+    );
+}
+
+.btn:hover,
+.select:hover,
+.input:hover {
+  transform: translateY(var(--button-hover-lift));
+  background: var(--topMenu-control-bg-hover);
+  box-shadow: var(--topMenu-control-shadow-hover);
 }
 
 .statusPill {
@@ -458,16 +612,40 @@
 }
 
 .topbar .MuiButton-root.btn,
-.topbar .MuiButton-root.btn.ghost {
+.topbar .MuiButton-root.btn.ghost,
+.desktopOverlayPaper .MuiButton-root,
+.mobileDrawerPaper .MuiButton-root {
   color: var(--text-main) !important;
-  border-color: var(--panel-border) !important;
-  background: var(--field-bg) !important;
-  border-radius: 12px !important;
+  border-color: var(--topMenu-control-border) !important;
+  background: var(--topMenu-control-bg) !important;
+  border-radius: var(--topMenu-control-radius) !important;
+  box-shadow: var(--topMenu-control-shadow) !important;
+  text-transform: none !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+  min-height: 46px;
 }
 
-.topbar .MuiButton-root.btn:hover {
+.topbar .MuiButton-root.btn:hover,
+.desktopOverlayPaper .MuiButton-root:hover,
+.mobileDrawerPaper .MuiButton-root:hover {
   transform: translateY(var(--button-hover-lift));
-  box-shadow: var(--button-hover-shadow);
+  background: var(--topMenu-control-bg-hover) !important;
+  box-shadow: var(--topMenu-control-shadow-hover) !important;
+}
+
+.desktopOverlayPaper .MuiButton-contained,
+.mobileDrawerPaper .MuiButton-contained,
+.topbar .MuiButton-contained {
+  background: var(--topMenu-control-bg-active) !important;
+  color: var(--text-main) !important;
+}
+
+.desktopOverlayPaper .MuiButton-outlined,
+.mobileDrawerPaper .MuiButton-outlined,
+.topbar .MuiButton-outlined {
+  background: var(--topMenu-control-bg) !important;
+  color: var(--text-main) !important;
 }
 
 .topbar .MuiButton-root.topMenuActionBtnIconOnly {
@@ -477,9 +655,26 @@
 }
 
 .topbar .MuiOutlinedInput-root,
-.topbar .MuiInputBase-root {
-  border-radius: 12px !important;
-  background: var(--field-bg) !important;
+.topbar .MuiInputBase-root,
+.desktopOverlayPaper .MuiOutlinedInput-root,
+.desktopOverlayPaper .MuiInputBase-root,
+.mobileDrawerPaper .MuiOutlinedInput-root,
+.mobileDrawerPaper .MuiInputBase-root {
+  border-radius: var(--topMenu-control-radius) !important;
+  background: var(--topMenu-control-bg) !important;
+  box-shadow: var(--topMenu-control-shadow);
+}
+
+.topbar .MuiOutlinedInput-input,
+.topbar .MuiSelect-select,
+.desktopOverlayPaper .MuiOutlinedInput-input,
+.desktopOverlayPaper .MuiSelect-select,
+.mobileDrawerPaper .MuiOutlinedInput-input,
+.mobileDrawerPaper .MuiSelect-select {
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .mobileTopActionsStack {
@@ -537,7 +732,7 @@
 .topMenuAddStreamBtn {
   white-space: nowrap !important;
   min-width: 124px !important;
-  border-radius: 12px !important;
+  border-radius: var(--topMenu-control-radius) !important;
   align-self: center;
 }
 
@@ -547,6 +742,24 @@
   align-self: stretch;
   padding-top: 8.8px !important;
   padding-bottom: 8.8px !important;
+}
+
+@media (min-width: 900px) {
+  .topMenuSetupGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1240px) {
+  .topMenuSetupGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1640px) {
+  .topMenuSetupGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .topMenuAddStreamStatusAlert {

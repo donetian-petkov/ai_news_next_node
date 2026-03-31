@@ -51,11 +51,7 @@ export function useFeedColumnItems({
         it.research || '',
         it.topicHits?.join('\n') || '',
         it.insights?.bias?.summary || '',
-        it.insights?.sensationalism?.summary || '',
-        it.insights?.impact?.summary || '',
-        it.insights?.historical?.explanation || '',
-        it.insights?.future?.outlook || '',
-        it.insights?.localImpact?.summary || ''
+        it.insights?.sensationalism?.summary || ''
       ].join('\n').toLowerCase();
       return hay.includes(normalizedQuery);
     });

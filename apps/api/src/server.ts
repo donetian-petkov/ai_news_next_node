@@ -501,14 +501,14 @@ function normalizeAiFeatureSettings(
     biasDetection: typeof src.biasDetection === 'boolean' ? src.biasDetection : fallback.biasDetection,
     sensationalismDetection: typeof src.sensationalismDetection === 'boolean' ? src.sensationalismDetection : fallback.sensationalismDetection,
     factHighlights: typeof src.factHighlights === 'boolean' ? src.factHighlights : fallback.factHighlights,
-    storyImpact: typeof src.storyImpact === 'boolean' ? src.storyImpact : fallback.storyImpact,
+    storyImpact: false,
     dailyBriefing: typeof src.dailyBriefing === 'boolean' ? src.dailyBriefing : fallback.dailyBriefing,
     topicTracking: typeof src.topicTracking === 'boolean' ? src.topicTracking : fallback.topicTracking,
-    perspectiveSimulator: typeof src.perspectiveSimulator === 'boolean' ? src.perspectiveSimulator : fallback.perspectiveSimulator,
+    perspectiveSimulator: false,
     emergingStoryDetector: typeof src.emergingStoryDetector === 'boolean' ? src.emergingStoryDetector : fallback.emergingStoryDetector,
-    historicalComparison: typeof src.historicalComparison === 'boolean' ? src.historicalComparison : fallback.historicalComparison,
-    futureScenarioGenerator: typeof src.futureScenarioGenerator === 'boolean' ? src.futureScenarioGenerator : fallback.futureScenarioGenerator,
-    localImpactDetector: typeof src.localImpactDetector === 'boolean' ? src.localImpactDetector : fallback.localImpactDetector
+    historicalComparison: false,
+    futureScenarioGenerator: false,
+    localImpactDetector: false
   };
 }
 
@@ -2072,10 +2072,6 @@ function reviewGeneratedInsights(item: NewsInternal, insights: NewsInsights): Ne
     if (!hasStrongKeywords) delete reviewed.facts;
   }
 
-  if (reviewed.impact && !reviewed.impact.industries.length && reviewed.impact.score === 'medium') {
-    delete reviewed.impact;
-  }
-
   return Object.keys(reviewed).length ? reviewed : undefined;
 }
 
@@ -2084,13 +2080,8 @@ function hasEligibleInsightFeatureForBudget(budget: BudgetMode): boolean {
     (aiFeatures.biasDetection && insightFeatureAllowed('biasDetection', budget)) ||
     (aiFeatures.sensationalismDetection && insightFeatureAllowed('sensationalismDetection', budget)) ||
     (aiFeatures.factHighlights && insightFeatureAllowed('factHighlights', budget)) ||
-    (aiFeatures.storyImpact && insightFeatureAllowed('storyImpact', budget)) ||
-    (aiFeatures.perspectiveSimulator && insightFeatureAllowed('perspectiveSimulator', budget)) ||
     (aiFeatures.topicTracking && insightFeatureAllowed('topicTracking', budget)) ||
-    (aiFeatures.emergingStoryDetector && insightFeatureAllowed('emergingStoryDetector', budget)) ||
-    (aiFeatures.historicalComparison && insightFeatureAllowed('historicalComparison', budget)) ||
-    (aiFeatures.futureScenarioGenerator && insightFeatureAllowed('futureScenarioGenerator', budget)) ||
-    (aiFeatures.localImpactDetector && insightFeatureAllowed('localImpactDetector', budget))
+    (aiFeatures.emergingStoryDetector && insightFeatureAllowed('emergingStoryDetector', budget))
   );
 }
 
@@ -2153,26 +2144,6 @@ function generateInsightsForItem(item: NewsInternal, budget: BudgetMode): NewsIn
   if (aiFeatures.factHighlights && insightFeatureAllowed('factHighlights', budget)) {
     const facts = extractFactHighlights(item);
     if (facts) insights.facts = facts;
-  }
-  if (aiFeatures.storyImpact && insightFeatureAllowed('storyImpact', budget)) {
-    const impact = buildStoryImpact(item);
-    if (impact) insights.impact = impact;
-  }
-  if (aiFeatures.perspectiveSimulator && insightFeatureAllowed('perspectiveSimulator', budget)) {
-    const perspectives = buildPerspectives(item);
-    if (perspectives && Object.keys(perspectives).length) insights.perspectives = perspectives;
-  }
-  if (aiFeatures.historicalComparison && insightFeatureAllowed('historicalComparison', budget)) {
-    const historical = buildHistoricalComparison(item);
-    if (historical) insights.historical = historical;
-  }
-  if (aiFeatures.futureScenarioGenerator && insightFeatureAllowed('futureScenarioGenerator', budget)) {
-    const future = buildFutureScenarios(item);
-    if (future) insights.future = future;
-  }
-  if (aiFeatures.localImpactDetector && insightFeatureAllowed('localImpactDetector', budget)) {
-    const localImpact = buildLocalImpact(item, localRegion);
-    if (localImpact) insights.localImpact = localImpact;
   }
   return reviewGeneratedInsights(item, insights);
 }

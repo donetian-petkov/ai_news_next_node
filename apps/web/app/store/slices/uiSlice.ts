@@ -121,14 +121,14 @@ function normalizeInsightFeatures(
     biasDetection: typeof value?.biasDetection === 'boolean' ? value.biasDetection : fallback.biasDetection,
     sensationalismDetection: typeof value?.sensationalismDetection === 'boolean' ? value.sensationalismDetection : fallback.sensationalismDetection,
     factHighlights: typeof value?.factHighlights === 'boolean' ? value.factHighlights : fallback.factHighlights,
-    storyImpact: typeof value?.storyImpact === 'boolean' ? value.storyImpact : fallback.storyImpact,
+    storyImpact: false,
     dailyBriefing: typeof value?.dailyBriefing === 'boolean' ? value.dailyBriefing : fallback.dailyBriefing,
     topicTracking: typeof value?.topicTracking === 'boolean' ? value.topicTracking : fallback.topicTracking,
-    perspectiveSimulator: typeof value?.perspectiveSimulator === 'boolean' ? value.perspectiveSimulator : fallback.perspectiveSimulator,
+    perspectiveSimulator: false,
     emergingStoryDetector: typeof value?.emergingStoryDetector === 'boolean' ? value.emergingStoryDetector : fallback.emergingStoryDetector,
-    historicalComparison: typeof value?.historicalComparison === 'boolean' ? value.historicalComparison : fallback.historicalComparison,
-    futureScenarioGenerator: typeof value?.futureScenarioGenerator === 'boolean' ? value.futureScenarioGenerator : fallback.futureScenarioGenerator,
-    localImpactDetector: typeof value?.localImpactDetector === 'boolean' ? value.localImpactDetector : fallback.localImpactDetector
+    historicalComparison: false,
+    futureScenarioGenerator: false,
+    localImpactDetector: false
   };
 }
 
