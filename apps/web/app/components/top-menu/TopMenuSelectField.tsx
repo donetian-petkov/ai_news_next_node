@@ -55,6 +55,8 @@ export function TopMenuSelectField<T extends string>({
   const popupItemBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 86%, var(--accent-color) 14%), color-mix(in srgb, var(--bg-main) 78%, black 22%))';
   const popupItemHoverBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 22%, var(--bg-main)), color-mix(in srgb, var(--accent-color) 28%, var(--bg-main)))';
   const popupItemActiveBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 30%, var(--bg-main)), color-mix(in srgb, var(--accent-color) 38%, var(--bg-main)))';
+  const popupShellRadius = '26px';
+  const popupItemRadius = '20px';
   const cls = ['checkbox', layout === 'stacked' ? 'checkboxStacked' : '', wrapperClassName || '']
     .filter(Boolean)
     .join(' ');
@@ -110,7 +112,7 @@ export function TopMenuSelectField<T extends string>({
               backgroundImage: popupSurfaceBackground,
               color: 'var(--text-main)',
               border: '1px solid var(--panel-border)',
-              borderRadius: 4,
+              borderRadius: popupShellRadius,
               boxShadow: '0 26px 54px rgba(0, 0, 0, 0.42), 0 0 0 1px color-mix(in srgb, var(--panel-border) 92%, transparent)',
               backdropFilter: 'none',
               isolation: 'isolate'
@@ -153,7 +155,7 @@ export function TopMenuSelectField<T extends string>({
                       setMobileOpen(false);
                     }}
                     sx={{
-                      borderRadius: 3,
+                      borderRadius: popupItemRadius,
                       minHeight: 52,
                       border: '1px solid color-mix(in srgb, var(--accent-color) 34%, var(--panel-border))',
                       background: selected ? popupItemActiveBackground : popupItemBackground,
@@ -189,9 +191,15 @@ export function TopMenuSelectField<T extends string>({
                       <CheckIcon
                         sx={{
                           flex: '0 0 auto',
-                          fontSize: '1.05rem',
+                          fontSize: '1rem',
                           color: 'var(--text-main)',
-                          opacity: selected ? 0.95 : 0.18
+                          opacity: selected ? 0.98 : 0.18,
+                          p: 0.4,
+                          borderRadius: '999px',
+                          background: selected
+                            ? 'color-mix(in srgb, var(--accent-color) 26%, transparent)'
+                            : 'transparent',
+                          border: '1px solid color-mix(in srgb, var(--accent-color) 28%, transparent)'
                         }}
                       />
                     </Box>
@@ -224,7 +232,7 @@ export function TopMenuSelectField<T extends string>({
             minWidth: desktopMenuMinWidth ? `${desktopMenuMinWidth}px` : undefined,
             maxWidth: 'calc(100vw - 24px)',
             border: '1px solid var(--panel-border)',
-            borderRadius: 2,
+            borderRadius: popupShellRadius,
             backgroundColor: popupSurfaceColor,
             backgroundImage: popupSurfaceBackground,
             color: 'var(--text-main)',
@@ -257,7 +265,7 @@ export function TopMenuSelectField<T extends string>({
                 setDesktopAnchorEl(null);
               }}
               sx={{
-                borderRadius: 3,
+                borderRadius: popupItemRadius,
                 minHeight: 48,
                 minWidth: 0,
                 whiteSpace: 'nowrap',
@@ -298,9 +306,15 @@ export function TopMenuSelectField<T extends string>({
                 <CheckIcon
                   sx={{
                     flex: '0 0 auto',
-                    fontSize: '1.02rem',
+                    fontSize: '1rem',
                     color: 'var(--text-main)',
-                    opacity: selected ? 0.95 : 0.18
+                    opacity: selected ? 0.98 : 0.18,
+                    p: 0.4,
+                    borderRadius: '999px',
+                    background: selected
+                      ? 'color-mix(in srgb, var(--accent-color) 26%, transparent)'
+                      : 'transparent',
+                    border: '1px solid color-mix(in srgb, var(--accent-color) 28%, transparent)'
                   }}
                 />
               </Box>
