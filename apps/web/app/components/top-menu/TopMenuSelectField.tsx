@@ -1,9 +1,11 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import CheckIcon from '@mui/icons-material/Check';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import CloseIcon from '@mui/icons-material/Close';
 import {
+  Box,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -153,7 +155,7 @@ export function TopMenuSelectField<T extends string>({
                     sx={{
                       borderRadius: 3,
                       minHeight: 52,
-                      border: '1px solid var(--panel-border)',
+                      border: '1px solid color-mix(in srgb, var(--accent-color) 34%, var(--panel-border))',
                       background: selected ? popupItemActiveBackground : popupItemBackground,
                       boxShadow: '0 12px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
                       '&:hover': {
@@ -161,19 +163,38 @@ export function TopMenuSelectField<T extends string>({
                       }
                     }}
                   >
-                    <ListItemText
-                      primary={option.label}
-                      primaryTypographyProps={{
-                        sx: {
-                          color: 'var(--text-main)',
-                          fontWeight: selected ? 800 : 600,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          letterSpacing: '0.01em'
-                        }
+                    <Box
+                      sx={{
+                        width: '100%',
+                        minWidth: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1.2
                       }}
-                    />
+                    >
+                      <ListItemText
+                        primary={option.label}
+                        primaryTypographyProps={{
+                          sx: {
+                            color: 'var(--text-main)',
+                            fontWeight: selected ? 800 : 600,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            letterSpacing: '0.01em'
+                          }
+                        }}
+                      />
+                      <CheckIcon
+                        sx={{
+                          flex: '0 0 auto',
+                          fontSize: '1.05rem',
+                          color: 'var(--text-main)',
+                          opacity: selected ? 0.95 : 0.18
+                        }}
+                      />
+                    </Box>
                   </ListItemButton>
                 );
               })}
@@ -242,7 +263,7 @@ export function TopMenuSelectField<T extends string>({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                border: '1px solid var(--panel-border)',
+                border: '1px solid color-mix(in srgb, var(--accent-color) 34%, var(--panel-border))',
                 background: selected ? popupItemActiveBackground : popupItemBackground,
                 fontWeight: selected ? 800 : 650,
                 letterSpacing: '0.01em',
@@ -255,7 +276,34 @@ export function TopMenuSelectField<T extends string>({
                 }
               }}
             >
-              {option.label}
+              <Box
+                sx={{
+                  width: '100%',
+                  minWidth: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 1.2
+                }}
+              >
+                <span
+                  style={{
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {option.label}
+                </span>
+                <CheckIcon
+                  sx={{
+                    flex: '0 0 auto',
+                    fontSize: '1.02rem',
+                    color: 'var(--text-main)',
+                    opacity: selected ? 0.95 : 0.18
+                  }}
+                />
+              </Box>
             </MenuItem>
           );
         })}
