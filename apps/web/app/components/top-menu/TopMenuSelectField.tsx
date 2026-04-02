@@ -48,9 +48,11 @@ export function TopMenuSelectField<T extends string>({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopAnchorEl, setDesktopAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const popupSurfaceBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 90%, var(--accent-color) 10%), color-mix(in srgb, var(--section-bg) 88%, var(--bg-main) 12%))';
-  const popupItemBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--field-bg) 84%, var(--bg-main) 16%), color-mix(in srgb, var(--field-bg) 68%, var(--bg-main) 32%))';
-  const popupItemActiveBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 24%, var(--field-bg)), color-mix(in srgb, var(--accent-color) 34%, var(--bg-main)))';
+  const popupSurfaceColor = 'var(--bg-main)';
+  const popupSurfaceBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 94%, var(--accent-color) 6%), color-mix(in srgb, var(--bg-main) 88%, black 12%))';
+  const popupItemBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 86%, var(--accent-color) 14%), color-mix(in srgb, var(--bg-main) 78%, black 22%))';
+  const popupItemHoverBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 22%, var(--bg-main)), color-mix(in srgb, var(--accent-color) 28%, var(--bg-main)))';
+  const popupItemActiveBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 30%, var(--bg-main)), color-mix(in srgb, var(--accent-color) 38%, var(--bg-main)))';
   const cls = ['checkbox', layout === 'stacked' ? 'checkboxStacked' : '', wrapperClassName || '']
     .filter(Boolean)
     .join(' ');
@@ -102,11 +104,12 @@ export function TopMenuSelectField<T extends string>({
           maxWidth="xs"
           PaperProps={{
             sx: {
-              background: popupSurfaceBackground,
+              backgroundColor: popupSurfaceColor,
+              backgroundImage: popupSurfaceBackground,
               color: 'var(--text-main)',
               border: '1px solid var(--panel-border)',
               borderRadius: 4,
-              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.34), 0 0 0 1px color-mix(in srgb, var(--panel-border) 88%, transparent)',
+              boxShadow: '0 26px 54px rgba(0, 0, 0, 0.42), 0 0 0 1px color-mix(in srgb, var(--panel-border) 92%, transparent)',
               backdropFilter: 'none',
               isolation: 'isolate'
             }
@@ -127,7 +130,16 @@ export function TopMenuSelectField<T extends string>({
             </IconButton>
           </DialogTitle>
           <DialogContent sx={{ pt: '0 !important', pb: 1.2 }}>
-            <List sx={{ py: 0 }}>
+            <List
+              sx={{
+                py: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.8,
+                backgroundColor: 'transparent',
+                backgroundImage: 'none'
+              }}
+            >
               {options.map(option => {
                 const selected = option.value === value;
                 return (
@@ -141,10 +153,12 @@ export function TopMenuSelectField<T extends string>({
                     sx={{
                       borderRadius: 3,
                       minHeight: 52,
-                      mb: 0.8,
                       border: '1px solid var(--panel-border)',
                       background: selected ? popupItemActiveBackground : popupItemBackground,
-                      boxShadow: '0 10px 22px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+                      boxShadow: '0 12px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                      '&:hover': {
+                        background: selected ? popupItemActiveBackground : popupItemHoverBackground
+                      }
                     }}
                   >
                     <ListItemText
@@ -190,10 +204,11 @@ export function TopMenuSelectField<T extends string>({
             maxWidth: 'calc(100vw - 24px)',
             border: '1px solid var(--panel-border)',
             borderRadius: 2,
-            background: popupSurfaceBackground,
+            backgroundColor: popupSurfaceColor,
+            backgroundImage: popupSurfaceBackground,
             color: 'var(--text-main)',
             overflow: 'hidden',
-            boxShadow: '0 18px 44px rgba(0, 0, 0, 0.42), 0 0 0 1px color-mix(in srgb, var(--panel-border) 88%, transparent)',
+            boxShadow: '0 22px 48px rgba(0, 0, 0, 0.44), 0 0 0 1px color-mix(in srgb, var(--panel-border) 92%, transparent)',
             backdropFilter: 'none',
             isolation: 'isolate'
           }
@@ -202,7 +217,11 @@ export function TopMenuSelectField<T extends string>({
           dense: true,
           sx: {
             p: 0.8,
-            background: popupSurfaceBackground
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.6,
+            backgroundColor: 'transparent',
+            backgroundImage: 'none'
           }
         }}
       >
@@ -223,12 +242,17 @@ export function TopMenuSelectField<T extends string>({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                mb: 0.6,
                 border: '1px solid var(--panel-border)',
                 background: selected ? popupItemActiveBackground : popupItemBackground,
                 fontWeight: selected ? 800 : 650,
                 letterSpacing: '0.01em',
-                boxShadow: '0 10px 22px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+                boxShadow: '0 12px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                '&:hover, &.Mui-focusVisible': {
+                  background: selected ? popupItemActiveBackground : popupItemHoverBackground
+                },
+                '&.Mui-selected:hover': {
+                  background: popupItemActiveBackground
+                }
               }}
             >
               {option.label}

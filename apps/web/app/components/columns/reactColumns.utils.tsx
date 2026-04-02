@@ -26,6 +26,8 @@ import TheaterComedyIcon from '@mui/icons-material/TheaterComedy';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import WizardHatIcon from '@mui/icons-material/AutoAwesome';
 import type { FeedInfo } from '../../store/types';
+import type { TopMenuDateFormat, TopMenuTimezone } from '../top-menu/topMenu.services';
+import { formatTopMenuTimestamp } from '../top-menu/topMenu.services';
 import type { ColumnPalette, FeedFilterPreset, SchemeValue, VibeIcons, VibeValue } from './reactColumns.types';
 import { COLUMN_LAYOUT_TOKENS } from './designTokens';
 
@@ -190,10 +192,22 @@ export function getVibeIcons(vibe: VibeValue): VibeIcons {
   return { summary: AutoStoriesIcon, research: ManageSearchIcon, ask: ChatIcon, share: OpenInNewIcon, hide: VisibilityOffIcon, copy: ContentCopyIcon };
 }
 
-export function formatTime(ms: number): string {
+export function formatTime(
+  ms: number,
+  options?: {
+    locale?: string;
+    timezone?: TopMenuTimezone;
+    dateFormat?: TopMenuDateFormat;
+  }
+): string {
   if (!Number.isFinite(ms)) return '';
   try {
-    return new Date(ms).toLocaleString('bg-BG', { hour12: false });
+    return formatTopMenuTimestamp(
+      ms,
+      options?.locale || 'bg-BG',
+      options?.timezone || 'system',
+      options?.dateFormat || 'ddmmyy'
+    );
   } catch {
     return '';
   }

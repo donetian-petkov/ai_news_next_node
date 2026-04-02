@@ -11,6 +11,9 @@ type Args = {
     scheme: string;
     buttonMode: 'icons' | 'text';
     titleDisplayLanguage: 'original' | 'bg' | 'en';
+    language: 'en' | 'bg';
+    timezone: FeedColumnViewModel['timezone'];
+    dateFormat: FeedColumnViewModel['dateFormat'];
     performanceMode: boolean;
     fontSize: 'sm' | 'md' | 'lg' | 'xl';
     moodFilter: FeedColumnViewModel['moodFilter'];
@@ -167,6 +170,9 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
   const viewModel = useMemo<FeedColumnViewModel>(() => ({
     palette,
     performanceMode: ui.performanceMode,
+    language: ui.language,
+    timezone: ui.timezone,
+    dateFormat: ui.dateFormat,
     moodFilter: ui.moodFilter,
     typeFilter: ui.typeFilter,
     searchQuery: ui.searchQuery,
@@ -188,7 +194,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     labels,
     cardLabels,
     vibeIcons
-  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
+  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.dateFormat, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
 
   return viewModel;
 }

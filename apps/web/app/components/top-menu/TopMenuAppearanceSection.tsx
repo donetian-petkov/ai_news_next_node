@@ -4,6 +4,7 @@ import { Alert } from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
 import {
   buildButtonModeOptions,
+  buildColorModeOptions,
   buildDateFormatOptions,
   buildEffectIntensityOptions,
   buildFontOptions,
@@ -12,6 +13,7 @@ import {
   buildMenuHintOptions,
   buildSchemeOptions,
   buildSoundThemeOptions,
+  buildToggleOptions,
   buildTimezoneOptions,
   buildVibeOptions
 } from './topMenuOptionBuilders';
@@ -29,7 +31,7 @@ export function TopMenuAppearanceSection() {
   return (
     <details className="controlSection controlSectionAppearance" open>
       <summary id="appearanceSummary">{labels.appearanceSummary}</summary>
-      <div className="controlGroup controlGroupAppearance" id="appearanceGroup">
+      <div className="controlGroup controlGroupAppearance topMenuFieldGrid" id="appearanceGroup">
         <TopMenuSelectField
           id="fontSelect"
           title="Change UI font"
@@ -131,9 +133,17 @@ export function TopMenuAppearanceSection() {
           wrapperClassName="topMenuField"
         />
 
-        <button className="btn topMenuField" type="button" disabled={appearance.performanceMode} onClick={actions.onToggleSoundEnabled}>
-          {labels.sound} {appearance.soundEnabled ? labels.soundOn : labels.soundOff}
-        </button>
+        <TopMenuSelectField
+          id="soundEnabledSelect"
+          title="Sound playback toggle"
+          label={labels.sound}
+          value={appearance.soundEnabled ? 'on' : 'off'}
+          disabled={appearance.performanceMode}
+          onChange={next => actions.onSetAppearance({ soundEnabled: next === 'on' })}
+          options={buildToggleOptions(labels.soundOn, labels.soundOff)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
+        />
 
         <TopMenuSelectField
           id="vibeSelect"
@@ -157,12 +167,27 @@ export function TopMenuAppearanceSection() {
           wrapperClassName="topMenuField"
         />
 
-        <button className="btn topMenuField" type="button" onClick={actions.onCycleTheme}>
-          {labels.colorMode}: {appearance.colorMode}
-        </button>
-        <button className="btn topMenuField" type="button" onClick={actions.onTogglePerformanceMode}>
-          {labels.perfMode}: {appearance.performanceMode ? labels.perfOn : labels.perfOff}
-        </button>
+        <TopMenuSelectField
+          id="colorModeSelect"
+          title="Theme source"
+          label={labels.colorMode}
+          value={appearance.colorMode}
+          onChange={next => actions.onSetAppearance({ colorMode: next })}
+          options={buildColorModeOptions(labels)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
+        />
+
+        <TopMenuSelectField
+          id="performanceModeSelect"
+          title="Performance mode"
+          label={labels.perfMode}
+          value={appearance.performanceMode ? 'on' : 'off'}
+          onChange={next => actions.onSetAppearance({ performanceMode: next === 'on' })}
+          options={buildToggleOptions(labels.perfOn, labels.perfOff)}
+          layout="stacked"
+          wrapperClassName="topMenuField"
+        />
 
         {appearance.performanceMode ? (
           <Alert severity="info" sx={{ py: 0 }} className="topMenuFieldGridFull">

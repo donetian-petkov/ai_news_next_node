@@ -2,7 +2,7 @@
 
 import { NewsMoodFilterValue, NewsTypeFilterValue } from '../../store/types';
 import type { Option } from './TopMenuSelectField';
-import type { TopMenuDateFormat, TopMenuTimezone, TopMenuVibe } from './topMenu.services';
+import type { TopMenuColorMode, TopMenuDateFormat, TopMenuTimezone, TopMenuVibe } from './topMenu.services';
 
 export function buildAiProviderOptions(labels: Record<string, string>): Option<'openai' | 'claude' | 'openrouter'>[] {
   return [
@@ -195,5 +195,20 @@ export function buildDateFormatOptions(labels: Record<string, string>): Option<T
     { value: 'ddmmyy', label: labels.dateFormatDdmmyy },
     { value: 'mmddyy', label: labels.dateFormatMmddyy },
     { value: 'yyyymmdd', label: labels.dateFormatYyyymmdd }
+  ];
+}
+
+export function buildColorModeOptions(labels: Record<string, string>): Option<TopMenuColorMode>[] {
+  return [
+    { value: 'system', label: labels.colorModeSystem || labels.timezoneSystem },
+    { value: 'dark', label: labels.colorModeDark || 'Dark' },
+    { value: 'light', label: labels.colorModeLight || 'Light' }
+  ];
+}
+
+export function buildToggleOptions(onLabel: string, offLabel: string): Option<'on' | 'off'>[] {
+  return [
+    { value: 'off', label: offLabel },
+    { value: 'on', label: onLabel }
   ];
 }

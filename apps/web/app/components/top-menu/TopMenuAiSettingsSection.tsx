@@ -15,6 +15,7 @@ import {
   Typography
 } from '@mui/material';
 import { TopMenuSelectField } from './TopMenuSelectField';
+import { FILTERED_FEED_URL } from '../../store/constants';
 import {
   buildAiModelOptions,
   buildAiProviderOptions,
@@ -234,6 +235,44 @@ export function TopMenuAiSettingsSection() {
                     {labels.aiUnavailable}
                   </Alert>
                 ) : null}
+              </div>
+            </Box>
+
+            <Box className="topMenuCardBlock topMenuSubsection" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
+              <SubsectionHeader
+                title="Auto summaries by source"
+                hint="Turn summaries off everywhere, then enable only the feeds you want. Keep Filtered off for strict per-source behavior."
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1.1 }}>
+                <Button size="small" variant="contained" onClick={() => actions.onSetAllFeedSummaries(false)}>
+                  Disable all auto summaries
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => actions.onSetAllFeedSummaries(true)}>
+                  Enable all auto summaries
+                </Button>
+              </Stack>
+              <div className="topMenuFieldGrid">
+                {aiSettings.availableFeeds.map(feed => {
+                  const helperText = feed.url === FILTERED_FEED_URL
+                    ? 'Matched stories from any source. Leave this off if only specific feeds should auto-summarize.'
+                    : `${String(feed.kind || 'rss').toUpperCase()} source`;
+                  return (
+                    <Box key={feed.url} className="topMenuFeatureCard" sx={{ border: '1px solid var(--panel-border)', px: 1.2, py: 0.9 }}>
+                      <FormControlLabel
+                        control={<Switch size="small" checked={!!feed.summaryEnabled} onChange={event => actions.onSetFeedSummaryEnabled(feed.url, event.target.checked)} sx={{ ml: 0.25, mr: 0.75 }} />}
+                        label={(
+                          <Box className="topMenuFeatureCopy">
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{feed.label}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.2, lineHeight: 1.55 }}>
+                              {helperText}
+                            </Typography>
+                          </Box>
+                        )}
+                        sx={{ alignItems: 'flex-start', m: 0, width: '100%', '.MuiFormControlLabel-label': { minWidth: 0, flex: 1 } }}
+                      />
+                    </Box>
+                  );
+                })}
               </div>
             </Box>
 

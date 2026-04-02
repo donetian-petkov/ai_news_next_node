@@ -149,6 +149,9 @@ export type FeedAskState = {
 export type FeedColumnViewModel = {
   palette: ColumnPalette;
   performanceMode: boolean;
+  language: 'en' | 'bg';
+  timezone: 'system' | 'UTC' | 'Europe/Sofia' | 'Europe/London' | 'Europe/Berlin' | 'America/New_York' | 'America/Chicago' | 'America/Denver' | 'America/Los_Angeles' | 'Asia/Tokyo';
+  dateFormat: 'ddmmyy' | 'mmddyy' | 'yyyymmdd';
   moodFilter: MoodFilter;
   typeFilter: TypeFilter;
   searchQuery: string;

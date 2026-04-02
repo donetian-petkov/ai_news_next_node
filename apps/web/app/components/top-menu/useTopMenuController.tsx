@@ -153,6 +153,7 @@ export function useTopMenuController() {
   const controlPanelHandlers = useTopMenuControlPanelHandlers({
     dispatch,
     ui,
+    feeds,
     triggerSoundCue,
     requestNotificationPermission,
     changeAiProvider,
@@ -232,7 +233,12 @@ export function useTopMenuController() {
       dailyBriefingFormat: ui.dailyBriefingFormat,
       dailyBriefingAudio: ui.dailyBriefingAudio,
       dailyBriefingFeedUrls: ui.dailyBriefingFeedUrls,
-      availableFeeds: feeds.map(feed => ({ url: feed.url, label: feed.label })),
+      availableFeeds: feeds.map(feed => ({
+        url: feed.url,
+        label: feed.label,
+        kind: feed.kind,
+        summaryEnabled: feed.summaryEnabled
+      })),
       briefing
     },
     appearance: {

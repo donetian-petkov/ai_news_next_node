@@ -16,6 +16,88 @@ export function getNextColorMode(current: TopMenuColorMode): TopMenuColorMode {
   return COLOR_MODE_ORDER[(idx + 1) % COLOR_MODE_ORDER.length];
 }
 
+export function resolveTopMenuTimezone(timezone: TopMenuTimezone): string | undefined {
+  if (timezone === 'system') {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return undefined;
+    }
+  }
+  return timezone;
+}
+
+type FormattedDateTimeParts = {
+  year: string;
+  month: string;
+  day: string;
+  hour: string;
+  minute: string;
+  second: string;
+};
+
+function getFormattedDateTimeParts(
+  nowMs: number,
+  locale: string,
+  timezone: TopMenuTimezone
+): FormattedDateTimeParts | null {
+  try {
+    const formatter = new Intl.DateTimeFormat(locale, {
+      timeZone: resolveTopMenuTimezone(timezone),
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(new Date(nowMs));
+    const read = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find(part => part.type === type)?.value || '';
+
+    return {
+      year: read('year'),
+      month: read('month'),
+      day: read('day'),
+      hour: read('hour'),
+      minute: read('minute'),
+      second: read('second')
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatTopMenuDate(parts: FormattedDateTimeParts, dateFormat: TopMenuDateFormat): string {
+  if (dateFormat === 'mmddyy') return `${parts.month}/${parts.day}/${parts.year}`;
+  if (dateFormat === 'yyyymmdd') return `20${parts.year}-${parts.month}-${parts.day}`;
+  return `${parts.day}/${parts.month}/${parts.year}`;
+}
+
+export function formatTopMenuDateTimeText(
+  nowMs: number,
+  locale: string,
+  timezone: TopMenuTimezone,
+  dateFormat: TopMenuDateFormat
+): string {
+  const parts = getFormattedDateTimeParts(nowMs, locale, timezone);
+  if (!parts) return '--:--:-- · --/--/--';
+  return `${parts.hour}:${parts.minute}:${parts.second} · ${formatTopMenuDate(parts, dateFormat)}`;
+}
+
+export function formatTopMenuTimestamp(
+  nowMs: number,
+  locale: string,
+  timezone: TopMenuTimezone,
+  dateFormat: TopMenuDateFormat
+): string {
+  const parts = getFormattedDateTimeParts(nowMs, locale, timezone);
+  if (!parts) return '';
+  return `${formatTopMenuDate(parts, dateFormat)} · ${parts.hour}:${parts.minute}`;
+}
+
 export function getNextVibe(current: TopMenuVibe): TopMenuVibe {
   const idx = VIBES.indexOf(current);
   return VIBES[(idx + 1) % VIBES.length];

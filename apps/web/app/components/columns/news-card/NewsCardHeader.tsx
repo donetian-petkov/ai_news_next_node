@@ -70,6 +70,7 @@ export function NewsCardHeader() {
   const CopyIconComp = vibeIcons.copy;
   const titleBg = String(item.titleBg || '').trim();
   const titleEn = String(item.titleEn || '').trim();
+  const timestampLocale = view.language === 'bg' ? 'bg-BG' : 'en-GB';
   const sourceLabel = useMemo(() => {
     const source = normalizeSourceLabel(item.source || '');
     if (source) return source;
@@ -134,7 +135,11 @@ export function NewsCardHeader() {
               flexShrink: 0
             }}
           >
-            {formatTime(item.publishedMs)}
+            {formatTime(item.publishedMs, {
+              locale: timestampLocale,
+              timezone: view.timezone,
+              dateFormat: view.dateFormat
+            })}
           </Typography>
         </Stack>
         <Stack

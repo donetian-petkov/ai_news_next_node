@@ -4,12 +4,14 @@ import { useMemo } from 'react';
 import { sendWsMessage } from '../../store/wsClient';
 import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTitleDisplayLanguage, setTopUiState, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
 import { failBriefing, requestBriefing } from '../../store/slices/briefingSlice';
+import { setFeedSummarySetting } from '../../store/slices/feedsSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 import type { TopMenuControlsActions } from './types';
 
 type Args = {
   dispatch: AppDispatch;
   ui: RootState['ui'];
+  feeds: RootState['feeds']['feeds'];
   triggerSoundCue: (kind: 'toggle' | 'success' | 'error') => void;
   requestNotificationPermission: (enabled: boolean) => Promise<void>;
   changeAiProvider: (provider: 'openai' | 'claude' | 'openrouter') => void;
@@ -24,6 +26,7 @@ type Args = {
 export function useTopMenuControlPanelHandlers({
   dispatch,
   ui,
+  feeds,
   triggerSoundCue,
   requestNotificationPermission,
   changeAiProvider,
@@ -150,6 +153,18 @@ export function useTopMenuControlPanelHandlers({
     },
     onSetAppearance: (patch: Partial<RootState['ui']>) => dispatch(setAppearanceSettings(patch)),
     onSetLanguage: (lang: 'en' | 'bg') => dispatch(setLanguage(lang)),
+    onSetFeedSummaryEnabled: (feedUrl: string, enabled: boolean) => {
+      const targetFeedUrl = String(feedUrl || '').trim();
+      if (!targetFeedUrl) return;
+      const ok = sendWsMessage({ type: 'set_feed_summary', feedUrl: targetFeedUrl, enabled });
+      if (ok) dispatch(setFeedSummarySetting({ feedUrl: targetFeedUrl, enabled }));
+    },
+    onSetAllFeedSummaries: (enabled: boolean) => {
+      feeds.forEach(feed => {
+        const ok = sendWsMessage({ type: 'set_feed_summary', feedUrl: feed.url, enabled });
+        if (ok) dispatch(setFeedSummarySetting({ feedUrl: feed.url, enabled }));
+      });
+    },
     onCycleTheme: cycleTheme,
     onTogglePerformanceMode: () => dispatch(setAppearanceSettings({ performanceMode: !ui.performanceMode })),
     onToggleSoundEnabled: () => {
@@ -157,5 +172,5 @@ export function useTopMenuControlPanelHandlers({
       dispatch(setAppearanceSettings({ soundEnabled: next }));
       if (next) triggerSoundCue('success');
     }
-  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.insightFeatures, ui.localImpactRegion, ui.performanceMode, ui.soundEnabled, ui.trackedTopics]);
+  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, feeds, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.insightFeatures, ui.localImpactRegion, ui.performanceMode, ui.soundEnabled, ui.trackedTopics]);
 }

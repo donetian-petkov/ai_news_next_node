@@ -13,6 +13,9 @@ type Args = {
     scheme: string;
     buttonMode: 'icons' | 'text';
     titleDisplayLanguage: 'original' | 'bg' | 'en';
+    language: 'en' | 'bg';
+    timezone: FeedColumnViewModel['timezone'];
+    dateFormat: FeedColumnViewModel['dateFormat'];
     performanceMode: boolean;
     fontSize: 'sm' | 'md' | 'lg' | 'xl';
     moodFilter: FeedColumnViewModel['moodFilter'];
