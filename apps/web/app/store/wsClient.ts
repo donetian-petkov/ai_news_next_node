@@ -110,6 +110,20 @@ type AiUsageRecentEntry = {
   totalTokens: number;
   createdAt: number;
 };
+type WsAckEvent = {
+  kind: 'ok' | 'error';
+  message: string;
+};
+
+const wsAckListeners = new Set<(event: WsAckEvent) => void>();
+
+function emitWsAck(event: WsAckEvent) {
+  wsAckListeners.forEach(listener => {
+    try {
+      listener(event);
+    } catch {}
+  });
+}
 
 function parseModelList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -643,6 +657,7 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
 
     if (msg.type === WsMessageType.Error) {
       const message = isString(msg.message) ? msg.message : 'Server error';
+      emitWsAck({ kind: 'error', message });
       if (message.toLocaleLowerCase().includes('briefing')) {
         dispatch(failBriefing(message));
       }
@@ -654,9 +669,11 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
     }
 
     if (msg.type === WsMessageType.Ok) {
+      const message = isString(msg.message) ? msg.message : 'Done';
+      emitWsAck({ kind: 'ok', message });
       dispatch(enqueueToast({
         kind: 'success',
-        message: isString(msg.message) ? msg.message : 'Done'
+        message
       }));
       return;
     }
@@ -711,6 +728,13 @@ export function stopWsConnection() {
   ws = null;
   wsUrlCurrent = '';
   try { socket.close(); } catch {}
+}
+
+export function subscribeWsAcks(listener: (event: WsAckEvent) => void) {
+  wsAckListeners.add(listener);
+  return () => {
+    wsAckListeners.delete(listener);
+  };
 }
 
 export function sendWsMessage(payload: unknown): boolean {

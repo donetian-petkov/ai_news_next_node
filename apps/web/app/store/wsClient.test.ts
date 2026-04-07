@@ -350,6 +350,29 @@ describe('wsClient', () => {
     });
   });
 
+  it('notifies ack subscribers for ok and error messages', async () => {
+    const mod = await import('./wsClient');
+    const events: Array<{ kind: 'ok' | 'error'; message: string }> = [];
+    const unsubscribe = mod.subscribeWsAcks(event => {
+      events.push(event);
+    });
+    const dispatch = vi.fn();
+
+    mod.startWsConnection(dispatch as never, 'ws://unit-test');
+    const sock = MockWebSocket.instances[0];
+    sock.emitOpen();
+
+    sock.emitMessage({ type: 'ok', message: 'Added feed: r/movies' });
+    sock.emitMessage({ type: 'error', message: 'Invalid URL' });
+
+    expect(events).toEqual([
+      { kind: 'ok', message: 'Added feed: r/movies' },
+      { kind: 'error', message: 'Invalid URL' }
+    ]);
+
+    unsubscribe();
+  });
+
   it('sendWsMessage succeeds only when socket is open', async () => {
     const mod = await import('./wsClient');
     const dispatch = vi.fn();
