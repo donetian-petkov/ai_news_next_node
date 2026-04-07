@@ -17,13 +17,7 @@ export function getNextColorMode(current: TopMenuColorMode): TopMenuColorMode {
 }
 
 export function resolveTopMenuTimezone(timezone: TopMenuTimezone): string | undefined {
-  if (timezone === 'system') {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch {
-      return undefined;
-    }
-  }
+  if (timezone === 'system') return undefined;
   return timezone;
 }
 
