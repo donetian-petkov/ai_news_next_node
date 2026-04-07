@@ -535,6 +535,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       language: ui.language,
       timezone: ui.timezone,
       dateFormat: ui.dateFormat,
+      showNewsCovers: ui.showNewsCovers,
       performanceMode: ui.performanceMode,
       fontSize: ui.fontSize,
       moodFilter: ui.moodFilter,

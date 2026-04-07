@@ -16,6 +16,7 @@ type Args = {
     language: 'en' | 'bg';
     timezone: FeedColumnViewModel['timezone'];
     dateFormat: FeedColumnViewModel['dateFormat'];
+    showNewsCovers: boolean;
     performanceMode: boolean;
     fontSize: 'sm' | 'md' | 'lg' | 'xl';
     moodFilter: FeedColumnViewModel['moodFilter'];

@@ -420,6 +420,7 @@ function parseNews(v: unknown): NewsItem | null {
     title,
     titleBg: isString(m.titleBg) ? m.titleBg : '',
     titleEn: isString(m.titleEn) ? m.titleEn : '',
+    coverUrl: isString(m.coverUrl) ? m.coverUrl : '',
     source: isString(m.source) ? m.source : '',
     link: isString(m.link) && m.link ? m.link : '#',
     feedUrl,

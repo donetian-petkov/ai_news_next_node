@@ -178,6 +178,7 @@ type UiState = {
   scheme: 'classic' | 'vivid' | 'sunset' | 'neon' | 'ocean' | 'forest';
   timezone: 'system' | 'UTC' | 'Europe/Sofia' | 'Europe/London' | 'Europe/Berlin' | 'America/New_York' | 'America/Chicago' | 'America/Denver' | 'America/Los_Angeles' | 'Asia/Tokyo';
   dateFormat: 'ddmmyy' | 'mmddyy' | 'yyyymmdd';
+  showNewsCovers: boolean;
   performanceMode: boolean;
   buttonMode: 'icons' | 'text';
   menuHintMode: 'text' | 'buttons';
@@ -234,6 +235,7 @@ const initialState: UiState = {
   scheme: 'classic',
   timezone: 'system',
   dateFormat: 'ddmmyy',
+  showNewsCovers: true,
   performanceMode: false,
   buttonMode: 'icons',
   menuHintMode: 'text',
@@ -391,7 +393,7 @@ const uiSlice = createSlice({
         state.typeFilter = next;
       }
     },
-    setAppearanceSettings(state, action: PayloadAction<Partial<Pick<UiState, 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe' | 'colorMode'>>>) {
+    setAppearanceSettings(state, action: PayloadAction<Partial<Pick<UiState, 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'showNewsCovers' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe' | 'colorMode'>>>) {
       const next = action.payload;
       if (next.font === 'system' || next.font === 'manrope' || next.font === 'grotesk' || next.font === 'sora' || next.font === 'plex' || next.font === 'serif' || next.font === 'mono') {
         state.font = next.font;
@@ -407,6 +409,9 @@ const uiSlice = createSlice({
       }
       if (next.dateFormat === 'ddmmyy' || next.dateFormat === 'mmddyy' || next.dateFormat === 'yyyymmdd') {
         state.dateFormat = next.dateFormat;
+      }
+      if (typeof next.showNewsCovers === 'boolean') {
+        state.showNewsCovers = next.showNewsCovers;
       }
       if (typeof next.performanceMode === 'boolean') {
         state.performanceMode = next.performanceMode;
@@ -449,7 +454,7 @@ const uiSlice = createSlice({
         state.soundEnabled = false;
       }
     },
-    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
+    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'showNewsCovers' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
       const next = action.payload;
       if (next.language === 'en' || next.language === 'bg') state.language = next.language;
       if (next.colorMode === 'system' || next.colorMode === 'dark' || next.colorMode === 'light') state.colorMode = next.colorMode;
@@ -508,6 +513,7 @@ const uiSlice = createSlice({
       if (next.scheme === 'classic' || next.scheme === 'vivid' || next.scheme === 'sunset' || next.scheme === 'neon' || next.scheme === 'ocean' || next.scheme === 'forest') state.scheme = next.scheme;
       if (typeof next.timezone === 'string' && isTimezone(next.timezone)) state.timezone = next.timezone;
       if (next.dateFormat === 'ddmmyy' || next.dateFormat === 'mmddyy' || next.dateFormat === 'yyyymmdd') state.dateFormat = next.dateFormat;
+      if (typeof next.showNewsCovers === 'boolean') state.showNewsCovers = next.showNewsCovers;
       if (typeof next.performanceMode === 'boolean') state.performanceMode = next.performanceMode;
       if (state.performanceMode) {
         state.moodFilter = NewsMoodFilterValue.All;

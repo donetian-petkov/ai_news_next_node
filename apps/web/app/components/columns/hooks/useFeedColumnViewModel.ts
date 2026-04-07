@@ -14,6 +14,7 @@ type Args = {
     language: 'en' | 'bg';
     timezone: FeedColumnViewModel['timezone'];
     dateFormat: FeedColumnViewModel['dateFormat'];
+    showNewsCovers: boolean;
     performanceMode: boolean;
     fontSize: 'sm' | 'md' | 'lg' | 'xl';
     moodFilter: FeedColumnViewModel['moodFilter'];
@@ -173,6 +174,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     language: ui.language,
     timezone: ui.timezone,
     dateFormat: ui.dateFormat,
+    showNewsCovers: ui.showNewsCovers,
     moodFilter: ui.moodFilter,
     typeFilter: ui.typeFilter,
     searchQuery: ui.searchQuery,
@@ -194,7 +196,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     labels,
     cardLabels,
     vibeIcons
-  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.dateFormat, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
+  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.dateFormat, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.showNewsCovers, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
 
   return viewModel;
 }

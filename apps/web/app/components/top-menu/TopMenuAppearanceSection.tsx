@@ -99,6 +99,17 @@ export function TopMenuAppearanceSection() {
         />
 
         <TopMenuSelectField
+          id="newsCoversSelect"
+          title="Story cover images"
+          label={labels.newsCoversPrefix || 'News covers:'}
+          value={appearance.showNewsCovers ? 'on' : 'off'}
+          onChange={next => actions.onSetAppearance({ showNewsCovers: next === 'on' })}
+          options={buildToggleOptions(labels.newsCoversOn || 'ON', labels.newsCoversOff || 'OFF')}
+          layout="stacked"
+          wrapperClassName="topMenuField"
+        />
+
+        <TopMenuSelectField
           id="menuHintsSelect"
           title="Top menu hint style"
           label={labels.menuHints}

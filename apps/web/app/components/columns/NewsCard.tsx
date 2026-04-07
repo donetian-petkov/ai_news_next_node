@@ -7,6 +7,7 @@ import { COLUMN_LAYOUT_TOKENS, COLUMN_STYLE_TOKENS, NEWS_CARD_COLOR_TOKENS } fro
 import { NewsCardActions } from './news-card/NewsCardActions';
 import { NewsCardAskPanel } from './news-card/NewsCardAskPanel';
 import { NewsCardBody } from './news-card/NewsCardBody';
+import { NewsCardCover } from './news-card/NewsCardCover';
 import { NewsCardHeader } from './news-card/NewsCardHeader';
 import { NewsCardProvider } from './news-card/context/NewsCardProvider';
 import type { NewsCardProps } from './news-card/newsCard.types';
@@ -126,6 +127,7 @@ export const NewsCard = memo(function NewsCard({ view, state, handlers }: NewsCa
           <span className="glyphBR" />
         </div>
         <CardContent sx={{ pb: COLUMN_LAYOUT_TOKENS.cardContentPaddingBottom }}>
+          <NewsCardCover />
           <NewsCardHeader />
           <NewsCardBody />
           <NewsCardActions />

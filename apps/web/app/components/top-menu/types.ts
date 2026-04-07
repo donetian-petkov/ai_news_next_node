@@ -94,6 +94,7 @@ export type TopMenuControlsModel = {
     scheme: TopMenuUiState['scheme'];
     timezone: TopMenuUiState['timezone'];
     dateFormat: TopMenuUiState['dateFormat'];
+    showNewsCovers: TopMenuUiState['showNewsCovers'];
     buttonMode: TopMenuUiState['buttonMode'];
     menuHintMode: TopMenuUiState['menuHintMode'];
     effectIntensity: TopMenuUiState['effectIntensity'];
@@ -112,6 +113,7 @@ export type TopMenuAppearancePatch = {
   scheme?: TopMenuUiState['scheme'];
   timezone?: TopMenuUiState['timezone'];
   dateFormat?: TopMenuUiState['dateFormat'];
+  showNewsCovers?: TopMenuUiState['showNewsCovers'];
   buttonMode?: TopMenuUiState['buttonMode'];
   menuHintMode?: TopMenuUiState['menuHintMode'];
   effectIntensity?: TopMenuUiState['effectIntensity'];

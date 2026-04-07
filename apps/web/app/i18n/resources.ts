@@ -187,6 +187,9 @@ export const resources = {
         dateFormatDdmmyy: 'DD/MM/YY',
         dateFormatMmddyy: 'MM/DD/YY',
         dateFormatYyyymmdd: 'YYYY-MM-DD',
+        newsCoversPrefix: 'News covers:',
+        newsCoversOn: 'ON',
+        newsCoversOff: 'OFF',
         addStreamTypeRss: 'RSS',
         addStreamTypeReddit: 'Reddit (subreddit)',
         addStreamTypeYoutube: 'YouTube (channel)'
@@ -558,6 +561,9 @@ export const resources = {
         dateFormatDdmmyy: 'ДД/ММ/ГГ',
         dateFormatMmddyy: 'ММ/ДД/ГГ',
         dateFormatYyyymmdd: 'ГГГГ-ММ-ДД',
+        newsCoversPrefix: 'Изображения:',
+        newsCoversOn: 'ВКЛ',
+        newsCoversOff: 'ИЗКЛ',
         addStreamTypeRss: 'RSS',
         addStreamTypeReddit: 'Reddit (subreddit)',
         addStreamTypeYoutube: 'YouTube (канал)'
