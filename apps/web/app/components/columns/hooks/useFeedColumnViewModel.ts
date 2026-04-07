@@ -131,6 +131,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     aiNoSignal: labels.aiNoSignal || 'No strong signal yet',
     aiWaitingHint: labels.aiWaitingHint || 'Waiting for more story context',
     aiNoSignalHint: labels.aiNoSignalHint || 'No useful AI insight was found for this story',
+    imageUnavailable: labels.imageUnavailable || 'Image unavailable',
     headlineRiskSection: labels.headlineRiskSection || 'Headline risk',
     biasSection: labels.biasSection || 'Bias',
     impactSection: labels.impactSection || 'Impact',

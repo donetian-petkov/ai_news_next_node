@@ -43,7 +43,7 @@ export function NewsCardCover() {
 
   const showImage = !!item.coverUrl && !imageFailed;
   const PlaceholderIcon = view.vibeIcons.summary;
-  const placeholderText = view.language === 'bg' ? 'Изображение липсва' : 'Image unavailable';
+  const placeholderText = view.labels.imageUnavailable;
 
   return (
     <Box

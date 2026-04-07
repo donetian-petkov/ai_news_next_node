@@ -94,6 +94,7 @@ export type CardLabels = {
   aiNoSignal: string;
   aiWaitingHint: string;
   aiNoSignalHint: string;
+  imageUnavailable: string;
   headlineRiskSection: string;
   biasSection: string;
   impactSection: string;
