@@ -113,10 +113,10 @@ Expanded top controls panel with AI/appearance sections:
 
 ![Top controls expanded](./docs/screenshots/top-controls-expanded.png)
 
-### News Card (ornamented frame + actions + research/summary body)
-Example card in Cyber Witch with top/bottom action rows and research text:
+### News Card (ornamented frame + actions + AI detail panels)
+Example card in Cyber Witch with cover media, action rows, summary, and expanded AI detail panels:
 
-![News card with research](./docs/screenshots/news-card-research-cyberwitch.png)
+![News card with AI details](./docs/screenshots/news-card-research-cyberwitch.png)
 
 ### Ask Agent (per-news contextual chat)
 Ask Agent panel below a news card:

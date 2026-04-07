@@ -3,12 +3,14 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
-const WebSocket = require('ws');
 
 const repoRoot = path.resolve(__dirname, '..');
 const screenshotDir = path.join(repoRoot, 'docs', 'screenshots');
-const baseUrl = process.env.CAPTURE_BASE_URL || 'http://127.0.0.1:3101';
-const wsUrl = process.env.CAPTURE_WS_URL || 'ws://127.0.0.1:4101';
+const envPath = path.join(repoRoot, '.env');
+const baseUrl = process.env.CAPTURE_BASE_URL || 'http://127.0.0.1:3000';
+const apiBaseUrl = process.env.CAPTURE_API_BASE_URL || 'http://127.0.0.1:4000';
+const authTokenStorageKey = 'ai_news_auth_token';
+const uiPrefsStorageKey = 'aiNews.uiPrefs.v3';
 
 const screenshotNames = [
   'vibe-video-game-columns.png',
@@ -22,6 +24,30 @@ const screenshotNames = [
   'mobile-column-controls.png'
 ];
 
+const baseUiPrefs = {
+  language: 'en',
+  aiProvider: 'openai',
+  colorMode: 'dark',
+  menuCollapsed: true,
+  controlsCollapsed: false,
+  searchVisible: false,
+  addStreamVisible: false,
+  allColumnControlsHidden: false,
+  buttonMode: 'text',
+  font: 'system',
+  fontSize: 'md',
+  scheme: 'classic',
+  timezone: 'system',
+  dateFormat: 'ddmmyy',
+  showNewsCovers: true,
+  performanceMode: false,
+  menuHintMode: 'buttons',
+  effectIntensity: 'medium',
+  soundEnabled: false,
+  soundTheme: 'vibe',
+  vibe: 'arcade'
+};
+
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -30,236 +56,285 @@ async function ensureDir(dir) {
   await fs.promises.mkdir(dir, { recursive: true });
 }
 
-async function enableAiFeatures() {
-  await new Promise((resolve, reject) => {
-    const ws = new WebSocket(wsUrl);
-    ws.on('open', () => {
-      ws.send(JSON.stringify({
-        type: 'set_ai_features',
-        features: {
-          biasDetection: true,
-          sensationalismDetection: true,
-          factHighlights: true,
-          storyImpact: true,
-          dailyBriefing: true,
-          topicTracking: true,
-          perspectiveSimulator: true,
-          emergingStoryDetector: true,
-          historicalComparison: true,
-          futureScenarioGenerator: true,
-          localImpactDetector: true
-        },
-        localRegion: 'Bulgaria',
-        trackedTopics: ['Artificial Intelligence', 'Ukraine', 'Middle East', 'Bulgaria']
-      }));
-      setTimeout(() => {
-        ws.close();
-        resolve();
-      }, 700);
-    });
-    ws.on('error', reject);
+function parseDotEnvValue(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+    || (trimmed.startsWith('\'') && trimmed.endsWith('\''))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function readRequiredOpenAiKey() {
+  const envValue = parseDotEnvValue(process.env.OPENAI_API_KEY || '');
+  if (envValue) return envValue;
+
+  const raw = fs.readFileSync(envPath, 'utf8');
+  for (const line of raw.split(/\r?\n/)) {
+    const match = line.match(/^OPENAI_API_KEY\s*=\s*(.*)$/);
+    if (!match) continue;
+    const value = parseDotEnvValue(match[1]);
+    if (value) return value;
+  }
+  throw new Error(`OPENAI_API_KEY is missing in ${envPath}`);
+}
+
+async function requestJson(url, init = {}) {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers || {})
+    }
   });
-}
 
-async function waitForNews(page) {
-  await page.waitForSelector('.news-item-card', { timeout: 60000 });
-  await wait(2500);
-}
-
-async function waitForAiStatus(page) {
-  const deadline = Date.now() + 120000;
-  while (Date.now() < deadline) {
-    const found = await page.locator('text=/Ready\\s*·|Analyzing|No strong signal yet|Готово\\s*·|Анализира се|Няма силен сигнал/i').count();
-    if (found) return;
-    await wait(2000);
+  const text = await response.text();
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = null;
   }
-  throw new Error('Timed out waiting for AI status on cards');
+
+  if (!response.ok) {
+    const message = body && typeof body.error === 'string'
+      ? body.error
+      : `Request failed (${response.status})`;
+    throw new Error(`${message} at ${url}`);
+  }
+
+  return body;
 }
 
-async function dismissDesktopOverlay(page) {
+async function createCaptureSession() {
+  const apiKey = readRequiredOpenAiKey();
+  const username = `readmecapture${Date.now()}${Math.random().toString(36).slice(2, 7)}`.toLowerCase();
+  const password = `capture-${Math.random().toString(36).slice(2, 12)}`;
+
+  const auth = await requestJson(`${apiBaseUrl}/api/auth/register`, {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+
+  await requestJson(`${apiBaseUrl}/api/auth/provider-key`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${auth.token}`
+    },
+    body: JSON.stringify({
+      provider: 'openai',
+      apiKey
+    })
+  });
+
+  return {
+    token: auth.token,
+    username
+  };
+}
+
+function buildUiPrefs(patch = {}) {
+  return {
+    ...baseUiPrefs,
+    ...patch,
+    persistedAtMs: Date.now()
+  };
+}
+
+async function waitForApp(page) {
+  await page.getByRole('heading', { name: /Live News Stream|Поток Новини На Живо/i }).waitFor({ timeout: 60000 });
+  await page.waitForSelector('.feed-column-shell', { timeout: 90000 });
+  await page.waitForSelector('.news-item-card', { timeout: 90000 });
+  await wait(3000);
+}
+
+async function gotoApp(page) {
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await waitForApp(page);
+}
+
+async function reloadWithPrefs(page, patch) {
+  await page.evaluate(({ patch, uiPrefsStorageKey }) => {
+    const raw = window.localStorage.getItem(uiPrefsStorageKey);
+    let current = {};
+    try {
+      current = raw ? JSON.parse(raw) : {};
+    } catch {
+      current = {};
+    }
+    window.localStorage.setItem(uiPrefsStorageKey, JSON.stringify({
+      ...current,
+      ...patch,
+      persistedAtMs: Date.now()
+    }));
+  }, { patch, uiPrefsStorageKey });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForApp(page);
+}
+
+async function closeDesktopOverlay(page) {
   const overlay = page.locator('.desktopOverlayPaper');
-  const overlayVisible = await overlay.isVisible().catch(() => false);
-  if (!overlayVisible) return;
-  const closeButton = page.getByRole('button', { name: /close/i }).first();
-  if (await closeButton.count()) {
-    await closeButton.click();
-    await wait(500);
-  }
+  if (!(await overlay.isVisible().catch(() => false))) return;
+  await page.getByRole('button', { name: /Close|Затвори/i }).first().click();
+  await overlay.waitFor({ state: 'hidden', timeout: 15000 });
 }
 
 async function openDesktopOverlay(page) {
   const overlay = page.locator('.desktopOverlayPaper');
-  const overlayVisible = await overlay.isVisible().catch(() => false);
-  if (overlayVisible) return;
+  if (await overlay.isVisible().catch(() => false)) return overlay;
   await page.locator('#menuToggle').click();
-  await page.waitForSelector('.desktopOverlayPaper', { state: 'visible' });
-  await wait(300);
+  await overlay.waitFor({ state: 'visible', timeout: 15000 });
+  await wait(500);
+  return overlay;
 }
 
-async function setQuickVibe(page, vibe) {
-  const select = page.locator('#quickVibeSelect');
-  if (await select.count()) {
-    await select.selectOption(vibe);
-    await wait(800);
-  }
+async function captureVibeShot(page, vibe, name) {
+  await reloadWithPrefs(page, { vibe, performanceMode: false });
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await wait(400);
+  await page.screenshot({
+    path: path.join(screenshotDir, name),
+    fullPage: false
+  });
 }
 
-async function ensureDark(page) {
-  if ((await page.evaluate(() => document.body.dataset.theme)) === 'dark') return;
-  await openDesktopOverlay(page);
-  const colorModeButton = page.getByRole('button', { name: /color mode/i }).first();
-  for (let i = 0; i < 3; i += 1) {
-    if ((await page.evaluate(() => document.body.dataset.theme)) === 'dark') break;
-    await colorModeButton.click();
-    await wait(400);
-  }
-  await dismissDesktopOverlay(page);
-}
-
-async function prepDesktop(page) {
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await waitForNews(page);
-  await ensureDark(page);
-}
-
-async function openFirstCardAnalysis(page) {
-  const cardWithAi = page.locator('.news-item-card').filter({
-    has: page.locator('text=/Ready\\s*·|Analyzing|No strong signal yet|Готово\\s*·|Анализира се|Няма силен сигнал/i')
+async function findCardWithResearch(page) {
+  const researchCard = page.locator('.news-item-card').filter({
+    hasText: /Research|Изследване/i
   }).first();
-  const fallbackCard = page.locator('.news-item-card').first();
-  const firstCard = await cardWithAi.count() ? cardWithAi : fallbackCard;
-  await firstCard.scrollIntoViewIfNeeded();
-  const toggle = firstCard.getByRole('button', { name: /show ai analysis|покажи ai анализа/i }).first();
-  if (await toggle.count()) {
-    await toggle.click();
-    await wait(500);
-  }
-  return firstCard;
+
+  if (await researchCard.count()) return researchCard;
+
+  const summaryCard = page.locator('.news-item-card').filter({
+    hasText: /Summary|Резюме/i
+  }).first();
+  if (await summaryCard.count()) return summaryCard;
+
+  return page.locator('.news-item-card').first();
 }
 
-async function captureDesktop() {
+async function captureDesktop(token) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
-    viewport: { width: 1600, height: 1100 },
+    viewport: { width: 1720, height: 1180 },
     colorScheme: 'dark'
   });
 
-  await context.addInitScript(() => {
-    localStorage.setItem('aiNews.uiPrefs.v3', JSON.stringify({
-      colorMode: 'dark',
-      language: 'en',
-      menuCollapsed: true,
-      controlsCollapsed: false,
-      vibe: 'arcade',
-      performanceMode: false,
-      soundEnabled: false
-    }));
+  await context.addInitScript(({ token, authTokenStorageKey, uiPrefsStorageKey, prefs }) => {
+    window.localStorage.setItem(authTokenStorageKey, token);
+    window.localStorage.setItem(uiPrefsStorageKey, JSON.stringify(prefs));
+  }, {
+    token,
+    authTokenStorageKey,
+    uiPrefsStorageKey,
+    prefs: buildUiPrefs()
   });
 
   const page = await context.newPage();
-  await prepDesktop(page);
-  await waitForAiStatus(page);
+  await gotoApp(page);
 
-  await openDesktopOverlay(page);
-  const aiFeaturesHeading = page.getByText('AI features').first();
-  if (await aiFeaturesHeading.count()) {
-    await aiFeaturesHeading.scrollIntoViewIfNeeded();
-    await wait(300);
-  }
-  await page.screenshot({ path: path.join(screenshotDir, 'top-controls-expanded.png'), fullPage: false });
-
-  await dismissDesktopOverlay(page);
-
-  const vibeShots = [
-    ['arcade', 'vibe-video-game-columns.png'],
-    ['scifi', 'vibe-scifi-columns.png'],
-    ['fantasy', 'vibe-fantasy-columns.png'],
-    ['cyberwitch', 'vibe-cyber-witch-columns.png']
-  ];
-
-  for (const [vibe, name] of vibeShots) {
-    await setQuickVibe(page, vibe);
-    await wait(1200);
-    await page.screenshot({ path: path.join(screenshotDir, name), fullPage: false });
-  }
-
-  await openDesktopOverlay(page);
-  const perfButton = page.getByRole('button', { name: /performance mode/i }).first();
-  if (await perfButton.count()) {
-    await perfButton.click();
+  const overlay = await openDesktopOverlay(page);
+  const appearanceSummary = overlay.locator('#appearanceSummary').first();
+  if (await appearanceSummary.count()) {
+    await appearanceSummary.scrollIntoViewIfNeeded();
     await wait(400);
   }
-  await dismissDesktopOverlay(page);
-  await page.screenshot({ path: path.join(screenshotDir, 'performance-mode-view.png'), fullPage: false });
+  await overlay.screenshot({ path: path.join(screenshotDir, 'top-controls-expanded.png') });
+  await closeDesktopOverlay(page);
 
-  await setQuickVibe(page, 'cyberwitch');
-  await wait(1200);
-  const firstCard = await openFirstCardAnalysis(page);
-  await firstCard.screenshot({ path: path.join(screenshotDir, 'news-card-research-cyberwitch.png') });
+  await captureVibeShot(page, 'arcade', 'vibe-video-game-columns.png');
+  await captureVibeShot(page, 'scifi', 'vibe-scifi-columns.png');
+  await captureVibeShot(page, 'fantasy', 'vibe-fantasy-columns.png');
+  await captureVibeShot(page, 'cyberwitch', 'vibe-cyber-witch-columns.png');
 
-  const askButton = firstCard.getByRole('button', { name: /ask agent/i }).first();
+  await reloadWithPrefs(page, { vibe: 'scifi', performanceMode: true });
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await wait(400);
+  await page.screenshot({
+    path: path.join(screenshotDir, 'performance-mode-view.png'),
+    fullPage: false
+  });
+
+  await reloadWithPrefs(page, { vibe: 'cyberwitch', performanceMode: false, buttonMode: 'text' });
+  const detailCard = await findCardWithResearch(page);
+  await detailCard.scrollIntoViewIfNeeded();
+  await wait(400);
+  const aiToggle = detailCard.getByRole('button', { name: /Show AI analysis|Hide AI analysis|Покажи AI анализа|Скрий AI анализа/i }).first();
+  if (await aiToggle.count()) {
+    const label = await aiToggle.textContent();
+    if (label && /show/i.test(label)) {
+      await aiToggle.click();
+      await wait(500);
+    }
+  }
+  await detailCard.screenshot({ path: path.join(screenshotDir, 'news-card-research-cyberwitch.png') });
+
+  const askButton = detailCard.getByRole('button', { name: /Ask agent|Попитай агента/i }).first();
   if (await askButton.count()) {
     await askButton.click();
-    await wait(500);
+    await wait(600);
   }
-  await firstCard.screenshot({ path: path.join(screenshotDir, 'news-card-ask-agent.png') });
+  await detailCard.screenshot({ path: path.join(screenshotDir, 'news-card-ask-agent.png') });
 
   await context.close();
   await browser.close();
 }
 
-async function captureMobile() {
+async function captureMobile(token) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ...devices['iPhone 13'],
     colorScheme: 'dark'
   });
 
-  await context.addInitScript(() => {
-    localStorage.setItem('aiNews.uiPrefs.v3', JSON.stringify({
-      colorMode: 'dark',
-      language: 'en',
+  await context.addInitScript(({ token, authTokenStorageKey, uiPrefsStorageKey, prefs }) => {
+    window.localStorage.setItem(authTokenStorageKey, token);
+    window.localStorage.setItem(uiPrefsStorageKey, JSON.stringify(prefs));
+  }, {
+    token,
+    authTokenStorageKey,
+    uiPrefsStorageKey,
+    prefs: buildUiPrefs({
       vibe: 'cyberwitch',
-      soundEnabled: false,
-      menuCollapsed: true,
-      controlsCollapsed: false
-    }));
+      buttonMode: 'text'
+    })
   });
 
   const page = await context.newPage();
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.feed-column-shell', { timeout: 60000 });
-  await wait(5000);
+  await gotoApp(page);
 
-  const targetColumn = page.locator('.feed-column-shell').filter({
-    hasText: /Filtered|Emerging story/i
-  }).first();
-  const fallbackColumn = page.locator('.feed-column-shell').first();
-  const column = await targetColumn.count() ? targetColumn : fallbackColumn;
+  const column = page.locator('.feed-column-shell').first();
   await column.scrollIntoViewIfNeeded();
-
-  const firstCard = column.locator('.news-item-card').first();
-  const aiToggle = firstCard.getByRole('button', { name: /show ai analysis|покажи ai анализа/i }).first();
-  if (await aiToggle.count()) {
-    await aiToggle.click();
-    await wait(600);
+  const controlsToggle = column.getByRole('button', { name: /Show controls|Hide controls|Покажи контролите|Скрий контролите/i }).first();
+  if (await controlsToggle.count()) {
+    const label = (await controlsToggle.textContent()) || '';
+    if (/show/i.test(label) || /покажи/i.test(label)) {
+      await controlsToggle.click();
+      await wait(500);
+    }
   }
 
   await column.screenshot({ path: path.join(screenshotDir, 'mobile-column-controls.png') });
+
   await context.close();
   await browser.close();
 }
 
 async function main() {
   await ensureDir(screenshotDir);
-  await enableAiFeatures();
-  await captureDesktop();
-  await captureMobile();
-  console.log(`Updated screenshots in ${screenshotDir}`);
+  const { token, username } = await createCaptureSession();
+  await captureDesktop(token);
+  await captureMobile(token);
+  console.log(`Updated README screenshots in ${screenshotDir}`);
+  console.log(`Capture account: ${username}`);
   console.log(`Files: ${screenshotNames.join(', ')}`);
 }
 
-main().catch(err => {
-  console.error(err);
+main().catch(error => {
+  console.error(error);
   process.exit(1);
 });
