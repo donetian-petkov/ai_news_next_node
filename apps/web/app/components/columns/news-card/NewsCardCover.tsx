@@ -43,7 +43,7 @@ export function NewsCardCover() {
 
   const showImage = !!item.coverUrl && !imageFailed;
   const PlaceholderIcon = view.vibeIcons.summary;
-  const placeholderText = view.language === 'bg' ? 'Няма изображение' : 'No cover';
+  const placeholderText = view.language === 'bg' ? 'Изображение липсва' : 'Image unavailable';
 
   return (
     <Box
@@ -101,15 +101,10 @@ export function NewsCardCover() {
             aria-hidden="true"
             sx={{
               position: 'absolute',
-              right: 16,
-              bottom: 14,
-              color: view.accent,
-              opacity: 0.92,
-              transform: 'scale(1.15)'
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(5, 10, 20, 0.04), rgba(5, 10, 20, 0.24) 58%, rgba(5, 10, 20, 0.44))'
             }}
-          >
-            <PlaceholderIcon sx={{ fontSize: 24 }} />
-          </Box>
+          />
         </>
       )}
 
@@ -147,29 +142,50 @@ export function NewsCardCover() {
         </Box>
 
         {!showImage ? (
-          <Box sx={{ maxWidth: '74%' }}>
-            <Typography
-              variant="caption"
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none'
+            }}
+          >
+            <Box
               sx={{
-                display: 'block',
-                color: NEWS_CARD_COLOR_TOKENS.headerMuted,
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-                mb: 0.35
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1.1,
+                textAlign: 'center'
               }}
             >
-              {placeholderText}
-            </Typography>
-            <Box
-              aria-hidden="true"
-              sx={{
-                width: '100%',
-                maxWidth: 176,
-                height: 7,
-                borderRadius: '999px',
-                background: `linear-gradient(90deg, ${view.accent}, transparent)`
-              }}
-            />
+              <Box
+                sx={{
+                  display: 'grid',
+                  placeItems: 'center',
+                  width: 82,
+                  height: 82,
+                  borderRadius: '50%',
+                  border: `1px solid ${view.accent}77`,
+                  background: `radial-gradient(circle at 30% 30%, ${view.soft}, rgba(6, 12, 24, 0.86) 72%)`,
+                  boxShadow: view.performanceMode ? 'none' : `0 12px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08)`
+                }}
+              >
+                <PlaceholderIcon sx={{ fontSize: 46, color: view.accent, opacity: 0.98 }} />
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: NEWS_CARD_COLOR_TOKENS.headerMuted,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {placeholderText}
+              </Typography>
+            </Box>
           </Box>
         ) : null}
       </Box>
