@@ -1364,6 +1364,23 @@ function extractImageUrlFromHtml(raw: unknown, base?: string): string | undefine
   return toAbsoluteHttpUrl(match[1], base);
 }
 
+function extractExternalLinkFromHtml(raw: unknown, base?: string): string | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined;
+  const hrefRe = /<a[^>]+href=["']([^"']+)["']/ig;
+  let match: RegExpExecArray | null = null;
+  while ((match = hrefRe.exec(raw))) {
+    const url = toAbsoluteHttpUrl(match[1], base);
+    if (!url) continue;
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+      if (host === 'reddit.com' || host.endsWith('.reddit.com') || host === 'redd.it') continue;
+    } catch {}
+    return url;
+  }
+  return undefined;
+}
+
 function extractYouTubeVideoId(raw: unknown): string | undefined {
   const input = String(raw || '').trim();
   if (!input) return undefined;
@@ -1395,9 +1412,14 @@ function buildYouTubeThumbnailUrl(videoId: string): string | undefined {
 
 function extractCoverUrlFromItem(item: any, fi: FeedInfo, link: string): string | undefined {
   const base = toAbsoluteHttpUrl(link) || toAbsoluteHttpUrl(fi.url) || fi.url;
+  const externalLink = extractExternalLinkFromHtml(item.description, base)
+    || extractExternalLinkFromHtml(item.content, base)
+    || extractExternalLinkFromHtml(item.summary, base);
   const youtubeId = typeof item.ytVideoId === 'string' && item.ytVideoId.trim()
     ? item.ytVideoId.trim()
-    : extractYouTubeVideoId(link) || '';
+    : extractYouTubeVideoId(link)
+      || extractYouTubeVideoId(externalLink)
+      || '';
 
   return extractEnclosureImageUrl(item.enclosure, base)
     || extractMediaUrl(item.mediaThumbnail, base)
