@@ -4679,7 +4679,7 @@ wss.on('connection', (ws: WebSocket) => {
 
       if (!feedsList.some(f => f.url === url)) {
         const fi: FeedInfo = { url, label, kind, intervalSec };
-        feedsList.push(fi);
+        feedsList.unshift(fi);
         ensureFeedSettings(fi);
         feedSettings.get(url)!.intervalSec = intervalSec;
         feedSettings.get(url)!.kind = kind;

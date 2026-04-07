@@ -24,11 +24,12 @@ const feedsSlice = createSlice({
     setFeeds(state, action: PayloadAction<FeedInfo[]>) {
       const nextFeeds = action.payload;
       const nextUrls = new Set(nextFeeds.map(f => f.url));
+      const knownUrls = new Set(state.orderByUrl);
       state.feeds = nextFeeds;
 
       state.orderByUrl = [
-        ...state.orderByUrl.filter(url => nextUrls.has(url)),
-        ...nextFeeds.map(f => f.url).filter(url => !state.orderByUrl.includes(url))
+        ...nextFeeds.map(f => f.url).filter(url => !knownUrls.has(url)),
+        ...state.orderByUrl.filter(url => nextUrls.has(url))
       ];
 
       Object.keys(state.pinnedByUrl).forEach(url => {
@@ -161,8 +162,8 @@ const feedsSlice = createSlice({
 
       if (Array.isArray(next.orderByUrl)) {
         state.orderByUrl = [
-          ...next.orderByUrl.filter(url => urls.has(url)),
-          ...state.feeds.map(f => f.url).filter(url => !next.orderByUrl!.includes(url))
+          ...state.feeds.map(f => f.url).filter(url => !next.orderByUrl!.includes(url)),
+          ...next.orderByUrl.filter(url => urls.has(url))
         ];
       }
     }

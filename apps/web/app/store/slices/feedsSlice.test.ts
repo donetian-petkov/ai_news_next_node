@@ -48,6 +48,24 @@ describe('feedsSlice', () => {
     expect(next.deleteAgeByUrl['https://new']).toBe('week');
   });
 
+  it('places newly discovered feeds at the front of the column order', () => {
+    const previous = {
+      feeds: [makeFeed('https://a', 'A'), makeFeed('https://b', 'B')],
+      pinnedByUrl: {},
+      controlsOpenByUrl: { 'https://a': false, 'https://b': false },
+      deleteAgeByUrl: { 'https://a': 'week' as const, 'https://b': 'week' as const },
+      orderByUrl: ['https://a', 'https://b']
+    };
+
+    const next = feedsReducer(previous, setFeeds([
+      makeFeed('https://new', 'New'),
+      makeFeed('https://a', 'A'),
+      makeFeed('https://b', 'B')
+    ]));
+
+    expect(next.orderByUrl).toEqual(['https://new', 'https://a', 'https://b']);
+  });
+
   it('toggles pinned and control visibility state', () => {
     let state = feedsReducer(undefined, setFeeds([makeFeed('https://a')]));
 
@@ -93,7 +111,7 @@ describe('feedsSlice', () => {
     expect(state.controlsOpenByUrl['https://missing']).toBeUndefined();
     expect(state.deleteAgeByUrl['https://c']).toBe('year');
     expect(state.deleteAgeByUrl['https://missing']).toBeUndefined();
-    expect(state.orderByUrl).toEqual(['https://b', 'https://a', 'https://c']);
+    expect(state.orderByUrl).toEqual(['https://c', 'https://b', 'https://a']);
   });
 
   it('sets all feed controls open/closed', () => {
