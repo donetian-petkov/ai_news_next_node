@@ -392,6 +392,11 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 // ---------------------------------------------------------------------------
 
 const FILTERED_FEED_URL = '__filtered__';
+const CURRENT_STATE_VERSION = 2;
+const IGN_FEED_URL = 'https://www.ign.com/rss/v2/articles/feed?categories=news';
+const DEFAULT_FEED_MIGRATIONS: Record<number, string[]> = {
+  2: [IGN_FEED_URL]
+};
 
 // ✅ Default feeds — ORDER MATTERS
 const defaultFeeds: FeedInfo[] = [
@@ -409,7 +414,7 @@ const defaultFeeds: FeedInfo[] = [
   { url: 'https://hollywoodreporter.com/c/music/feed', label: 'THR Music', kind: 'rss', intervalSec: 240 },
   { url: 'https://www.npr.org/rss/rss.php?id=1008', label: 'NPR Music', kind: 'rss', intervalSec: 180 },
   { url: 'https://www.npr.org/rss/rss.php?id=1045', label: 'NPR Movies', kind: 'rss', intervalSec: 180 },
-  { url: 'https://www.ign.com/rss/v2/articles/feed?categories=news', label: 'IGN', kind: 'rss', intervalSec: 180 },
+  { url: IGN_FEED_URL, label: 'IGN', kind: 'rss', intervalSec: 180 },
   { url: 'https://feeds.feedburner.com/variety/headlines', label: 'Variety', kind: 'rss', intervalSec: 180 },
   { url: 'https://www.rollingstone.com/music/music-news/feed/', label: 'Rolling Stone', kind: 'rss', intervalSec: 180 },
   { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml', label: 'NYT Movies', kind: 'rss', intervalSec: 180 },
@@ -903,6 +908,40 @@ type PersistedState = {
   recent: NewsInternal[];
 };
 
+function migratedDefaultFeedUrlsForVersion(version: number): Set<string> {
+  const urls = new Set<string>();
+  for (let nextVersion = version + 1; nextVersion <= CURRENT_STATE_VERSION; nextVersion += 1) {
+    const additions = DEFAULT_FEED_MIGRATIONS[nextVersion];
+    if (!Array.isArray(additions)) continue;
+    additions.forEach(url => urls.add(url));
+  }
+  return urls;
+}
+
+function mergeLoadedFeedsWithDefaultMigrations(version: number, loadedFeeds: FeedInfo[]): FeedInfo[] {
+  const migratedUrls = migratedDefaultFeedUrlsForVersion(version);
+  if (!migratedUrls.size) return loadedFeeds;
+
+  const loadedByUrl = new Map(loadedFeeds.map(feed => [feed.url, feed] as const));
+  const result: FeedInfo[] = [];
+  const seen = new Set<string>();
+
+  for (const defaultFeed of defaultFeeds) {
+    const loaded = loadedByUrl.get(defaultFeed.url);
+    if (!loaded && !migratedUrls.has(defaultFeed.url)) continue;
+    result.push(loaded || defaultFeed);
+    seen.add(defaultFeed.url);
+  }
+
+  for (const feed of loadedFeeds) {
+    if (seen.has(feed.url)) continue;
+    result.push(feed);
+    seen.add(feed.url);
+  }
+
+  return result;
+}
+
 function ensureDataDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
 }
@@ -950,7 +989,7 @@ function saveStateNow() {
 
   ensureDataDir();
   const st: PersistedState = {
-    version: 1,
+    version: CURRENT_STATE_VERSION,
     keywords,
     aiFeatures,
     localRegion,
@@ -3898,7 +3937,7 @@ function startScheduler() {
 
 // ---------------- Load persisted state ----------------
 function applyLoadedState(st: PersistedState | null) {
-  if (!st || st.version !== 1) return;
+  if (!st || typeof st.version !== 'number' || st.version < 1 || st.version > CURRENT_STATE_VERSION) return;
 
   if (Array.isArray(st.keywords)) {
     keywords = normalizeKeywordList(st.keywords);
@@ -3916,7 +3955,7 @@ function applyLoadedState(st: PersistedState | null) {
   }
 
   if (Array.isArray(st.feeds) && st.feeds.length) {
-    feedsList = st.feeds;
+    feedsList = mergeLoadedFeedsWithDefaultMigrations(st.version, st.feeds);
   }
 
   if (st.feedSettings && typeof st.feedSettings === 'object') {
