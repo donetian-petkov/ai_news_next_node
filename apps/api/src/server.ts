@@ -409,6 +409,7 @@ const defaultFeeds: FeedInfo[] = [
   { url: 'https://hollywoodreporter.com/c/music/feed', label: 'THR Music', kind: 'rss', intervalSec: 240 },
   { url: 'https://www.npr.org/rss/rss.php?id=1008', label: 'NPR Music', kind: 'rss', intervalSec: 180 },
   { url: 'https://www.npr.org/rss/rss.php?id=1045', label: 'NPR Movies', kind: 'rss', intervalSec: 180 },
+  { url: 'https://www.ign.com/rss/v2/articles/feed?categories=news', label: 'IGN', kind: 'rss', intervalSec: 180 },
   { url: 'https://feeds.feedburner.com/variety/headlines', label: 'Variety', kind: 'rss', intervalSec: 180 },
   { url: 'https://www.rollingstone.com/music/music-news/feed/', label: 'Rolling Stone', kind: 'rss', intervalSec: 180 },
   { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml', label: 'NYT Movies', kind: 'rss', intervalSec: 180 },
@@ -3631,6 +3632,16 @@ function shouldUseRedditHeaders(kind: FeedKind) {
   return kind === 'reddit';
 }
 
+function shouldUseIgnHeaders(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+    return host === 'ign.com' && parsed.pathname.includes('/rss/');
+  } catch {
+    return false;
+  }
+}
+
 async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModified: boolean }> {
   ensureFeedRuntime(fi.url);
   const rt = feedRuntime.get(fi.url)!;
@@ -3647,6 +3658,10 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
 
   if (shouldUseRedditHeaders(fi.kind)) {
     headers['User-Agent'] = 'live-news-ai/1.0 (reddit rss)';
+  }
+
+  if (shouldUseIgnHeaders(fi.url)) {
+    headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
   }
 
   if (rt.etag) headers['If-None-Match'] = rt.etag;
