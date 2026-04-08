@@ -22,203 +22,16 @@ import { useNewsBodyModes } from './useNewsBodyModes';
 import { useColumnDragDrop } from './useColumnDragDrop';
 import { useColumnsPresentation } from './useColumnsPresentation';
 import { cutoffFromAge } from '../../top-menu/topMenu.services';
+import { dedupeNewsItemsBySignature } from './newsDeduplication';
 
 type Args = {
   wsUrl: string;
 };
 
-const DUPLICATE_MATCH_SIMILARITY_THRESHOLD = 0.9;
-const DUPLICATE_MATCH_TOKEN_OVERLAP_THRESHOLD = 0.6;
-const DUPLICATE_MATCH_MIN_SHARED_TOKENS = 3;
 const DUPLICATE_MATCH_TIME_WINDOW_MS = 12 * 60 * 60 * 1000;
 const EMERGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SUMMARY_STALL_THRESHOLD_MS = 90_000;
 const SUMMARY_STATUS_REFRESH_MS = 15_000;
-const BULGARIAN_NOISE_STEMS = new Set<string>([
-  '\u0441\u043b\u0443\u0436\u0435\u0431\u043d' // служебн
-]);
-
-type TextVector = {
-  counts: Map<string, number>;
-  norm: number;
-};
-
-type TextSignature = {
-  vector: TextVector;
-  tokens: Set<string>;
-  publishedMs: number;
-};
-
-function normalizedTokens(text: string): string[] {
-  return String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\u045d/g, '\u0438') // ѝ -> и
-    .replace(/\u0439/g, '\u0438') // й -> и
-    .replace(/\u044a/g, '\u0430') // ъ -> а
-    .replace(/\u044c/g, '') // ь -> ''
-    .replace(/\u044e/g, '\u0443') // ю -> у
-    .replace(/\u044f/g, '\u0430') // я -> а
-    .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[^a-z0-9\u0400-\u04ff\s]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .map(token => token.trim())
-    .filter(token => token.length > 2)
-    .map(token => token.slice(0, Math.min(7, token.length)));
-}
-
-function primarySimilarityText(item: NewsItem): string {
-  const summary = String(item.summary || '').trim();
-  if (summary) return summary;
-  const research = String(item.research || '').trim();
-  if (research) return research;
-  return String(item.title || '').trim();
-}
-
-function toVector(item: NewsItem): TextVector {
-  const sourceText = primarySimilarityText(item);
-  const counts = new Map<string, number>();
-  normalizedTokens(sourceText).forEach(token => {
-    counts.set(token, (counts.get(token) || 0) + 1);
-  });
-  const norm = Math.sqrt(Array.from(counts.values()).reduce((sum, value) => sum + value * value, 0));
-  return { counts, norm };
-}
-
-function toTokenSet(item: NewsItem): Set<string> {
-  const sourceText = primarySimilarityText(item);
-  return new Set(
-    normalizedTokens(sourceText)
-      .filter(token => token.length >= 4)
-      .filter(token => !BULGARIAN_NOISE_STEMS.has(token))
-  );
-}
-
-function cosineSimilarity(a: TextVector, b: TextVector): number {
-  if (!a.norm || !b.norm) return 0;
-  let dot = 0;
-  a.counts.forEach((count, token) => {
-    const other = b.counts.get(token);
-    if (!other) return;
-    dot += count * other;
-  });
-  return dot / (a.norm * b.norm);
-}
-
-function tokenOverlapSimilarity(a: Set<string>, b: Set<string>): number {
-  if (!a.size || !b.size) return 0;
-  const [smaller, larger] = a.size <= b.size ? [a, b] : [b, a];
-  let intersection = 0;
-  smaller.forEach(token => {
-    if (larger.has(token)) intersection += 1;
-  });
-  return intersection / smaller.size;
-}
-
-function sharedTokenCount(a: Set<string>, b: Set<string>): number {
-  if (!a.size || !b.size) return 0;
-  const [smaller, larger] = a.size <= b.size ? [a, b] : [b, a];
-  let intersection = 0;
-  smaller.forEach(token => {
-    if (larger.has(token)) intersection += 1;
-  });
-  return intersection;
-}
-
-function dedupeNewsItemsBySignature(items: NewsItem[], maxTimeDeltaMs = DUPLICATE_MATCH_TIME_WINDOW_MS): NewsItem[] {
-  const keptSignatures: TextSignature[] = [];
-  const uniqueItems: NewsItem[] = [];
-
-  for (const item of items) {
-    const signature: TextSignature = {
-      vector: toVector(item),
-      tokens: toTokenSet(item),
-      publishedMs: Number(item.publishedMs || 0)
-    };
-    const isDuplicate = keptSignatures.some(kept => {
-      const cosine = cosineSimilarity(signature.vector, kept.vector);
-      if (cosine >= DUPLICATE_MATCH_SIMILARITY_THRESHOLD) return true;
-
-      const overlap = tokenOverlapSimilarity(signature.tokens, kept.tokens);
-      const fuzzyOverlap = fuzzyTokenOverlapSimilarity(signature.tokens, kept.tokens);
-      const maxOverlap = Math.max(overlap, fuzzyOverlap);
-      const sharedTokens = sharedTokenCount(signature.tokens, kept.tokens);
-      if (
-        maxOverlap < DUPLICATE_MATCH_SIMILARITY_THRESHOLD
-        && !(maxOverlap >= DUPLICATE_MATCH_TOKEN_OVERLAP_THRESHOLD && sharedTokens >= DUPLICATE_MATCH_MIN_SHARED_TOKENS)
-      ) {
-        return false;
-      }
-
-      if (!signature.publishedMs || !kept.publishedMs) return true;
-      const timeDeltaMs = Math.abs(signature.publishedMs - kept.publishedMs);
-      return timeDeltaMs <= maxTimeDeltaMs;
-    });
-
-    if (isDuplicate) continue;
-    uniqueItems.push(item);
-    keptSignatures.push(signature);
-  }
-
-  return uniqueItems;
-}
-
-function oneEditApart(a: string, b: string): boolean {
-  const lenA = a.length;
-  const lenB = b.length;
-  if (Math.abs(lenA - lenB) > 1) return false;
-
-  let i = 0;
-  let j = 0;
-  let edits = 0;
-  while (i < lenA && j < lenB) {
-    if (a[i] === b[j]) {
-      i += 1;
-      j += 1;
-      continue;
-    }
-
-    edits += 1;
-    if (edits > 1) return false;
-
-    if (lenA > lenB) {
-      i += 1;
-    } else if (lenB > lenA) {
-      j += 1;
-    } else {
-      i += 1;
-      j += 1;
-    }
-  }
-
-  if (i < lenA || j < lenB) edits += 1;
-  return edits <= 1;
-}
-
-function fuzzyTokenOverlapSimilarity(a: Set<string>, b: Set<string>): number {
-  if (!a.size || !b.size) return 0;
-  const [smaller, larger] = a.size <= b.size ? [Array.from(a), Array.from(b)] : [Array.from(b), Array.from(a)];
-  let matches = 0;
-
-  smaller.forEach(token => {
-    if (larger.includes(token)) {
-      matches += 1;
-      return;
-    }
-
-    const hasNear = larger.some(candidate => {
-      if (Math.abs(candidate.length - token.length) > 1) return false;
-      return oneEditApart(token, candidate);
-    });
-    if (hasNear) matches += 1;
-  });
-
-  return matches / smaller.length;
-}
-
 export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
@@ -235,6 +48,40 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     () => t('columns', { returnObjects: true }) as Record<string, string>,
     [t]
   );
+  const hasText = (value?: string) => Boolean(String(value || '').trim());
+  const filteredRepresentativePreferred = (candidate: NewsItem, current: NewsItem) => {
+    const candidatePinned = !!pinnedNewsById[candidate.id];
+    const currentPinned = !!pinnedNewsById[current.id];
+    if (candidatePinned !== currentPinned) return candidatePinned;
+    if (Boolean(candidate.coverUrl) !== Boolean(current.coverUrl)) return Boolean(candidate.coverUrl);
+    if (hasText(candidate.summary) !== hasText(current.summary)) return hasText(candidate.summary);
+    if (hasText(candidate.research) !== hasText(current.research)) return hasText(candidate.research);
+    const candidateTranslated = hasText(candidate.titleBg) || hasText(candidate.titleEn);
+    const currentTranslated = hasText(current.titleBg) || hasText(current.titleEn);
+    if (candidateTranslated !== currentTranslated) return candidateTranslated;
+    const candidateCluster = candidate.emergingSignal?.clusterSize || 0;
+    const currentCluster = current.emergingSignal?.clusterSize || 0;
+    if (candidateCluster !== currentCluster) return candidateCluster > currentCluster;
+    return Number(candidate.publishedMs || 0) > Number(current.publishedMs || 0);
+  };
+  const emergingVelocityRank = (item: NewsItem) => {
+    if (item.emergingSignal?.velocity === 'viral') return 3;
+    if (item.emergingSignal?.velocity === 'rising') return 2;
+    if (item.emergingSignal?.velocity === 'watch') return 1;
+    return 0;
+  };
+  const emergingRepresentativePreferred = (candidate: NewsItem, current: NewsItem) => {
+    const candidateVelocity = emergingVelocityRank(candidate);
+    const currentVelocity = emergingVelocityRank(current);
+    if (candidateVelocity !== currentVelocity) return candidateVelocity > currentVelocity;
+    const candidateCluster = candidate.emergingSignal?.clusterSize || 0;
+    const currentCluster = current.emergingSignal?.clusterSize || 0;
+    if (candidateCluster !== currentCluster) return candidateCluster > currentCluster;
+    if (Boolean(candidate.coverUrl) !== Boolean(current.coverUrl)) return Boolean(candidate.coverUrl);
+    if (hasText(candidate.summary) !== hasText(current.summary)) return hasText(candidate.summary);
+    if (hasText(candidate.research) !== hasText(current.research)) return hasText(candidate.research);
+    return Number(candidate.publishedMs || 0) > Number(current.publishedMs || 0);
+  };
 
   useEffect(() => {
     document.body.dataset.reactRenderer = '1';
@@ -386,7 +233,10 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       };
     }
 
-    const uniqueMatched = dedupeNewsItemsBySignature(sortedMatched);
+    const uniqueMatched = dedupeNewsItemsBySignature(sortedMatched, {
+      maxTimeDeltaMs: DUPLICATE_MATCH_TIME_WINDOW_MS,
+      prefer: filteredRepresentativePreferred
+    });
     const uniqueIds = new Set(uniqueMatched.map(item => item.id));
     const duplicateMap: Record<string, true> = {};
     sortedMatched.forEach(item => {
@@ -402,25 +252,23 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const emergingColumnItems = useMemo(() => {
     if (!ui.insightFeatures.emergingStoryDetector || !ui.showEmergingColumn) return [] as NewsItem[];
     const freshnessCutoffMs = Date.now() - EMERGING_MAX_AGE_MS;
-    const velocityRank = (item: NewsItem) => {
-      if (item.emergingSignal?.velocity === 'viral') return 3;
-      if (item.emergingSignal?.velocity === 'rising') return 2;
-      if (item.emergingSignal?.velocity === 'watch') return 1;
-      return 0;
-    };
     return dedupeNewsItemsBySignature(
       filteredColumnItems
         .filter(item => !!item?.emergingSignal && (item.emergingSignal?.clusterSize || 0) >= 2)
         .filter(item => Number(item.publishedMs || 0) >= freshnessCutoffMs)
         .sort((a, b) => {
+          const velocityDiff = emergingVelocityRank(b) - emergingVelocityRank(a);
+          if (velocityDiff) return velocityDiff;
+          const clusterDiff = (b.emergingSignal?.clusterSize || 0) - (a.emergingSignal?.clusterSize || 0);
+          if (clusterDiff) return clusterDiff;
+          if (Boolean(b.coverUrl) !== Boolean(a.coverUrl)) return b.coverUrl ? 1 : -1;
+          if (hasText(b.summary) !== hasText(a.summary)) return hasText(b.summary) ? 1 : -1;
           const recencyDiff = Number(b.publishedMs || 0) - Number(a.publishedMs || 0);
           if (recencyDiff) return recencyDiff;
-          const velocityDiff = velocityRank(b) - velocityRank(a);
-          if (velocityDiff) return velocityDiff;
-          return (b.emergingSignal?.clusterSize || 0) - (a.emergingSignal?.clusterSize || 0);
+          return Number(b.research ? 1 : 0) - Number(a.research ? 1 : 0);
         })
         .map(item => ({ ...item, feedUrl: EMERGING_FEED_URL, isMatch: false })),
-      EMERGING_MAX_AGE_MS
+      { maxTimeDeltaMs: EMERGING_MAX_AGE_MS, prefer: emergingRepresentativePreferred }
     ).slice(0, 30);
   }, [filteredColumnItems, ui.insightFeatures.emergingStoryDetector, ui.showEmergingColumn]);
 
