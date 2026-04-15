@@ -6,6 +6,7 @@ import feedsReducer, {
   setFeedColumnSettings,
   setFeedDeleteAge,
   setFeedIntervalSetting,
+  setFeedTranslationSetting,
   setFeeds,
   toggleFeedControls,
   togglePinned
@@ -18,6 +19,7 @@ const makeFeed = (url: string, label = 'Feed'): FeedInfo => ({
   kind: 'rss',
   intervalSec: 60,
   summaryEnabled: true,
+  translationEnabled: true,
   researchEnabled: false,
   budget: 'standard',
   sortMode: 'newest',
@@ -131,6 +133,10 @@ describe('feedsSlice', () => {
 
     state = feedsReducer(state, setFeedBudgetSetting({ feedUrl: 'https://a', budget: 'high' }));
     expect(state.feeds[0].budget).toBe('high');
+    expect(state.feeds[0].translationEnabled).toBe(true);
+
+    state = feedsReducer(state, setFeedTranslationSetting({ feedUrl: 'https://a', enabled: false }));
+    expect(state.feeds[0].translationEnabled).toBe(false);
 
     state = feedsReducer(state, setFeedIntervalSetting({ feedUrl: 'https://a', intervalSec: 10 }));
     expect(state.feeds[0].intervalSec).toBe(20);

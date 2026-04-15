@@ -129,6 +129,7 @@ describe('wsClient', () => {
       feedSettings: {
         'https://a': {
           summaryEnabled: true,
+          translationEnabled: false,
           researchEnabled: true,
           budget: 'high',
           sortMode: 'matched',
@@ -172,6 +173,7 @@ describe('wsClient', () => {
         kind: 'rss',
         intervalSec: 45,
         summaryEnabled: true,
+        translationEnabled: false,
         researchEnabled: true,
         budget: 'high',
         sortMode: 'matched',

@@ -14,7 +14,14 @@ type Args = {
   searchQuery: string;
   performanceMode: boolean;
   visibleByFeed: Record<string, number>;
+  storiesPerColumn: number;
 };
+
+function normalizeStoriesPerColumn(value: number): number {
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 1) return COLUMN_LAYOUT_TOKENS.initialVisibleItems;
+  return Math.max(1, Math.min(200, parsed));
+}
 
 export function useFeedColumnItems({
   feed,
@@ -25,7 +32,8 @@ export function useFeedColumnItems({
   typeFilter,
   searchQuery,
   performanceMode,
-  visibleByFeed
+  visibleByFeed,
+  storiesPerColumn
 }: Args) {
   const items = isMatchColumn ? filteredColumnItems : (itemsByFeed[feed.url] || []);
 
@@ -57,7 +65,15 @@ export function useFeedColumnItems({
     });
   }, [items, moodFilter, performanceMode, searchQuery, typeFilter]);
 
-  const visibleLimit = Math.max(COLUMN_LAYOUT_TOKENS.initialVisibleItems, visibleByFeed[feed.url] || COLUMN_LAYOUT_TOKENS.initialVisibleItems);
+  const maxStoriesPerColumn = normalizeStoriesPerColumn(storiesPerColumn);
+  const defaultVisibleLimit = Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, maxStoriesPerColumn);
+  const visibleLimit = Math.max(
+    1,
+    Math.min(
+      maxStoriesPerColumn,
+      Math.floor(Number(visibleByFeed[feed.url] || defaultVisibleLimit))
+    )
+  );
   const shownItems = itemsVisible.slice(0, visibleLimit);
 
   return {

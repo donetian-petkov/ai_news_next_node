@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import type { AppDispatch } from '../../../store/store';
-import { removeFeedLocally, setFeedBudgetSetting, setFeedColumnSettings, setFeedIntervalSetting, setFeedResearchSetting, setFeedSummarySetting } from '../../../store/slices/feedsSlice';
+import { removeFeedLocally, setFeedBudgetSetting, setFeedColumnSettings, setFeedIntervalSetting, setFeedResearchSetting, setFeedSummarySetting, setFeedTranslationSetting } from '../../../store/slices/feedsSlice';
 import { removeOldItemsInFeed } from '../../../store/slices/newsSlice';
 import { setKeywords as setUiKeywords } from '../../../store/slices/uiSlice';
 import { sendWsMessage } from '../../../store/wsClient';
@@ -33,6 +33,13 @@ export function useFeedColumnActions({
     const nextEnabled = !feed.summaryEnabled;
     const ok = sendWsMessage({ type: 'set_feed_summary', feedUrl: feed.url, enabled: nextEnabled });
     if (ok) dispatch(setFeedSummarySetting({ feedUrl: feed.url, enabled: nextEnabled }));
+  }, [connected, dispatch]);
+
+  const toggleFeedTranslation = useCallback((feed: FeedInfo) => {
+    if (!connected) return;
+    const nextEnabled = !feed.translationEnabled;
+    const ok = sendWsMessage({ type: 'set_feed_translation', feedUrl: feed.url, enabled: nextEnabled });
+    if (ok) dispatch(setFeedTranslationSetting({ feedUrl: feed.url, enabled: nextEnabled }));
   }, [connected, dispatch]);
 
   const toggleFeedResearch = useCallback((feed: FeedInfo) => {
@@ -103,6 +110,7 @@ export function useFeedColumnActions({
   return {
     removeFeed,
     toggleFeedSummary,
+    toggleFeedTranslation,
     toggleFeedResearch,
     setFeedBudget,
     setFeedInterval,

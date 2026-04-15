@@ -85,11 +85,12 @@ export function NewsCardBody() {
   const insightStatus = item.insightStatus;
   const showSummaryBlock = hasSummaryBlock;
   const showResearchBlock = hasResearchBlock;
-  const summaryRedundantWithTitle = summaryVisible && !hideAllSummaries && isSummaryRedundantWithTitle(summaryText, [
-    item.title,
-    item.titleBg || '',
-    item.titleEn || ''
-  ]);
+  const titleCandidatesForSummary = view.translationEnabled
+    ? [item.title, item.titleBg || '', item.titleEn || '']
+    : [item.title];
+  const summaryRedundantWithTitle = summaryVisible
+    && !hideAllSummaries
+    && isSummaryRedundantWithTitle(summaryText, titleCandidatesForSummary);
   const levelLabels: Record<'high' | 'medium' | 'low', string> = {
     high: labels.levelHigh,
     medium: labels.levelMedium,

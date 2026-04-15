@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppDispatch } from '../../../store/hooks';
 import { EMERGING_FEED_URL, FILTERED_FEED_URL } from '../../../store/constants';
 import type { NewsItem } from '../../../store/types';
+import { reorderFeeds } from '../../../store/slices/feedsSlice';
 import { startWsConnection, stopWsConnection } from '../../../store/wsClient';
 import {
   type SchemeValue,
@@ -287,6 +288,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
           kind: 'rss',
           intervalSec: 0,
           summaryEnabled: false,
+          translationEnabled: true,
           researchEnabled: false,
           budget: 'high',
           sortMode: 'matched',
@@ -317,6 +319,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
         kind: 'rss' as const,
         intervalSec: 120,
         summaryEnabled: false,
+        translationEnabled: true,
         researchEnabled: false,
         budget: 'standard' as const,
         sortMode: 'newest' as const,
@@ -331,10 +334,25 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
 
   const { visibleByFeed, setVisibleByFeed, hydratedColumns } = useColumnHydration({
     renderedFeeds,
+    storyLimit: ui.storiesPerColumn,
     showMoreNewsAllSeq: ui.showMoreNewsAllSeq,
     resetNewsShownAllSeq: ui.resetNewsShownAllSeq,
     columnNodesRef
   });
+
+  const moveFeedToTop = (feedUrl: string) => {
+    const targetFeedUrl = String(feedUrl || '').trim();
+    if (!targetFeedUrl || targetFeedUrl === FILTERED_FEED_URL || targetFeedUrl === EMERGING_FEED_URL) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const firstRegular = renderedFeeds.find(feed => feed.url !== FILTERED_FEED_URL && feed.url !== EMERGING_FEED_URL);
+    if (firstRegular && firstRegular.url !== targetFeedUrl) {
+      dispatch(reorderFeeds({ fromUrl: targetFeedUrl, toUrl: firstRegular.url }));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const {
     requestSummary,
@@ -358,6 +376,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const {
     removeFeed,
     toggleFeedSummary,
+    toggleFeedTranslation,
     toggleFeedResearch,
     setFeedBudget,
     setFeedInterval,
@@ -391,6 +410,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       searchQuery: ui.searchQuery,
       hideAllResearch: ui.hideAllResearch,
       hideAllSummaries: ui.hideAllSummaries,
+      storiesPerColumn: ui.storiesPerColumn,
       aiEnabled: ui.aiEnabled,
       aiAvailable: ui.aiAvailable,
       insightFeatures: ui.insightFeatures,
@@ -420,8 +440,10 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     getBodyMode,
     getDefaultBodyMode,
     setBodyMode,
+    moveFeedToTop,
     removeFeed,
     toggleFeedSummary,
+    toggleFeedTranslation,
     toggleFeedResearch,
     setFeedBudget,
     setFeedInterval,

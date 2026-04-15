@@ -56,6 +56,7 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('add_feed'), url: z.string(), label: z.string().optional(), kind: feedKindSchema.optional(), intervalSec: z.number().optional() }),
   z.object({ type: z.literal('remove_feed'), feedUrl: z.string() }),
   z.object({ type: z.literal('set_feed_summary'), feedUrl: z.string(), enabled: z.boolean() }),
+  z.object({ type: z.literal('set_feed_translation'), feedUrl: z.string(), enabled: z.boolean() }),
   z.object({ type: z.literal('set_feed_research'), feedUrl: z.string(), enabled: z.boolean() }),
   z.object({ type: z.literal('set_feed_budget'), feedUrl: z.string(), budget: budgetModeSchema }),
   z.object({ type: z.literal('set_all_budget'), budget: budgetModeSchema }),

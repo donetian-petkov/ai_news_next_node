@@ -189,6 +189,7 @@ export type FeedInfo = {
   kind: FeedKind;
   intervalSec: number;
   summaryEnabled: boolean;
+  translationEnabled: boolean;
   researchEnabled: boolean;
   budget: BudgetMode;
   sortMode: SortMode;

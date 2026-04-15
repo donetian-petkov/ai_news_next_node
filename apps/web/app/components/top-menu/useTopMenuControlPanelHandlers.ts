@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { sendWsMessage } from '../../store/wsClient';
-import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setTitleDisplayLanguage, setTopUiState, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
+import { setAiSettings, setAppearanceSettings, setKeywords, setLanguage, setMoodFilter, setNotifySettings, setStoriesPerColumn, setTitleDisplayLanguage, setTopUiState, setTypeFilter, triggerResetNewsShownAll, triggerShowMoreNewsAll } from '../../store/slices/uiSlice';
 import { failBriefing, requestBriefing } from '../../store/slices/briefingSlice';
 import { setFeedSummarySetting } from '../../store/slices/feedsSlice';
 import type { AppDispatch, RootState } from '../../store/store';
@@ -42,6 +42,7 @@ export function useTopMenuControlPanelHandlers({
     onShowMoreNewsAll: () => dispatch(triggerShowMoreNewsAll()),
     onResetNewsShownAll: () => dispatch(triggerResetNewsShownAll()),
     onDeleteOldAllColumns: deleteOldAllColumns,
+    onSetStoriesPerColumn: (count: number) => dispatch(setStoriesPerColumn(count)),
     onToggleAiEnabled: (enabled: boolean) => {
       const ok = sendWsMessage({ type: 'toggle_ai', enabled });
       if (ok) dispatch(setAiSettings({ aiEnabled: enabled }));

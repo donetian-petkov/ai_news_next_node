@@ -55,6 +55,8 @@ export type TopMenuContextValue = {
     onClose: () => void;
   };
   onScrollToColumns: () => void;
+  onScrollToPageTop: () => void;
+  onScrollToPageBottom: () => void;
   onOpenHelp: () => void;
   onToggleMenu: () => void;
   onToggleSearch: () => void;

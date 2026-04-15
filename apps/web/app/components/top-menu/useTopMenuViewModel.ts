@@ -42,6 +42,8 @@ type Args = {
   mobileDrawerOpen: boolean;
   onCloseMobileDrawer: () => void;
   onScrollToColumns: () => void;
+  onScrollToPageTop: () => void;
+  onScrollToPageBottom: () => void;
   onOpenHelp: () => void;
   onToggleMenu: () => void;
   onToggleSearch: () => void;
@@ -90,6 +92,8 @@ export function useTopMenuViewModel({
   mobileDrawerOpen,
   onCloseMobileDrawer,
   onScrollToColumns,
+  onScrollToPageTop,
+  onScrollToPageBottom,
   onOpenHelp,
   onToggleMenu,
   onToggleSearch,
@@ -166,6 +170,8 @@ export function useTopMenuViewModel({
       onClose: onCloseMobileDrawer
     },
     onScrollToColumns,
+    onScrollToPageTop,
+    onScrollToPageBottom,
     onOpenHelp,
     onToggleMenu,
     onToggleSearch,
@@ -177,7 +183,7 @@ export function useTopMenuViewModel({
     onChangeVibe,
     onPlayToggleSound,
     onReorderFeeds
-  }), [addStream, addStreamLabel, addStreamVisible, allColumnLabel, connected, controlsActions, controlsLabel, controlsModel, dateFormat, helpCloseLabel, helpOpen, helpTitle, hideAllResearch, hideAllSummaries, isMobile, labels, language, menuItemsAsIcons, menuLabel, mobileDrawerOpen, onChangeVibe, onCloseHelp, onCloseMobileDrawer, onDismissToast, onOpenHelp, onPlayToggleSound, onReorderFeeds, onScrollToColumns, onToggleAddStream, onToggleAllColumnControls, onToggleControls, onToggleHideAllResearch, onToggleHideAllSummaries, onToggleMenu, onToggleSearch, orderedFeeds, search, searchLabel, searchVisible, showDesktopBody, status, timezone, toasts, topHintAsButtons, totalTokens, vibe]);
+  }), [addStream, addStreamLabel, addStreamVisible, allColumnLabel, connected, controlsActions, controlsLabel, controlsModel, dateFormat, helpCloseLabel, helpOpen, helpTitle, hideAllResearch, hideAllSummaries, isMobile, labels, language, menuItemsAsIcons, menuLabel, mobileDrawerOpen, onChangeVibe, onCloseHelp, onCloseMobileDrawer, onDismissToast, onOpenHelp, onPlayToggleSound, onReorderFeeds, onScrollToColumns, onScrollToPageBottom, onScrollToPageTop, onToggleAddStream, onToggleAllColumnControls, onToggleControls, onToggleHideAllResearch, onToggleHideAllSummaries, onToggleMenu, onToggleSearch, orderedFeeds, search, searchLabel, searchVisible, showDesktopBody, status, timezone, toasts, topHintAsButtons, totalTokens, vibe]);
 
   return {
     contextValue

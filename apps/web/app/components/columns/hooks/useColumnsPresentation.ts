@@ -24,6 +24,7 @@ type Args = {
     searchQuery: string;
     hideAllResearch: boolean;
     hideAllSummaries: boolean;
+    storiesPerColumn: number;
     aiEnabled: boolean;
     aiAvailable: boolean;
     insightFeatures: FeedColumnViewModel['insightFeatures'];
@@ -53,8 +54,10 @@ type Args = {
   getBodyMode: FeedColumnHandlers['getBodyMode'];
   getDefaultBodyMode: FeedColumnHandlers['getDefaultBodyMode'];
   setBodyMode: FeedColumnHandlers['setBodyMode'];
+  moveFeedToTop: FeedColumnHandlers['onMoveFeedToTop'];
   removeFeed: FeedColumnHandlers['onRemoveFeed'];
   toggleFeedSummary: FeedColumnHandlers['onToggleFeedSummary'];
+  toggleFeedTranslation: FeedColumnHandlers['onToggleFeedTranslation'];
   toggleFeedResearch: FeedColumnHandlers['onToggleFeedResearch'];
   setFeedBudget: FeedColumnHandlers['onSetFeedBudget'];
   setFeedInterval: FeedColumnHandlers['onSetFeedInterval'];
@@ -97,8 +100,10 @@ export function useColumnsPresentation({
   getBodyMode,
   getDefaultBodyMode,
   setBodyMode,
+  moveFeedToTop,
   removeFeed,
   toggleFeedSummary,
+  toggleFeedTranslation,
   toggleFeedResearch,
   setFeedBudget,
   setFeedInterval,
@@ -139,10 +144,13 @@ export function useColumnsPresentation({
     getBodyMode,
     getDefaultBodyMode,
     setBodyMode,
+    moveFeedToTop,
     setAdvancedControlsByUrl,
     setVisibleByFeed,
+    storiesPerColumn: ui.storiesPerColumn,
     removeFeed,
     toggleFeedSummary,
+    toggleFeedTranslation,
     toggleFeedResearch,
     setFeedBudget,
     setFeedInterval,

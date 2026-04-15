@@ -89,7 +89,8 @@ export function useTopMenuActions({
   const { resetAllNewest, deleteOldAllColumns } = useTopMenuMaintenanceActions({
     dispatch,
     feeds,
-    deleteAgeAll
+    deleteAgeAll,
+    storiesPerColumn: ui.storiesPerColumn
   });
 
   return {

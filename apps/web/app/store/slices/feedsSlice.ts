@@ -83,6 +83,11 @@ const feedsSlice = createSlice({
       if (idx < 0) return;
       state.feeds[idx].summaryEnabled = action.payload.enabled;
     },
+    setFeedTranslationSetting(state, action: PayloadAction<{ feedUrl: string; enabled: boolean }>) {
+      const idx = state.feeds.findIndex(f => f.url === action.payload.feedUrl);
+      if (idx < 0) return;
+      state.feeds[idx].translationEnabled = action.payload.enabled;
+    },
     setFeedResearchSetting(state, action: PayloadAction<{ feedUrl: string; enabled: boolean }>) {
       const idx = state.feeds.findIndex(f => f.url === action.payload.feedUrl);
       if (idx < 0) return;
@@ -178,6 +183,7 @@ export const {
   removeFeedLocally,
   setFeedDeleteAge,
   setFeedSummarySetting,
+  setFeedTranslationSetting,
   setFeedResearchSetting,
   setFeedBudgetSetting,
   setFeedIntervalSetting,

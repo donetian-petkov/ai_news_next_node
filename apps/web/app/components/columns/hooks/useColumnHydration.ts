@@ -7,13 +7,32 @@ import { COLUMN_LAYOUT_TOKENS } from '../designTokens';
 
 type Args = {
   renderedFeeds: FeedInfo[];
+  storyLimit: number;
   showMoreNewsAllSeq: number;
   resetNewsShownAllSeq: number;
   columnNodesRef: MutableRefObject<Record<string, HTMLDivElement | null>>;
 };
 
+function normalizeStoryLimit(value: number): number {
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 1) return COLUMN_LAYOUT_TOKENS.initialVisibleItems;
+  return Math.max(1, Math.min(200, parsed));
+}
+
+function defaultVisibleCount(storyLimit: number): number {
+  return Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, normalizeStoryLimit(storyLimit));
+}
+
+function clampVisibleCount(value: number | undefined, storyLimit: number): number {
+  const limit = normalizeStoryLimit(storyLimit);
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 1) return defaultVisibleCount(limit);
+  return Math.max(1, Math.min(limit, parsed));
+}
+
 export function useColumnHydration({
   renderedFeeds,
+  storyLimit,
   showMoreNewsAllSeq,
   resetNewsShownAllSeq,
   columnNodesRef
@@ -26,36 +45,38 @@ export function useColumnHydration({
     setVisibleByFeed(prev => {
       const next: Record<string, number> = {};
       renderedFeeds.forEach(feed => {
-        next[feed.url] = Math.max(COLUMN_LAYOUT_TOKENS.initialVisibleItems, prev[feed.url] || COLUMN_LAYOUT_TOKENS.initialVisibleItems);
+        next[feed.url] = typeof prev[feed.url] === 'number'
+          ? clampVisibleCount(prev[feed.url], storyLimit)
+          : defaultVisibleCount(storyLimit);
       });
       return next;
     });
-  }, [renderedFeeds]);
+  }, [renderedFeeds, storyLimit]);
 
   useEffect(() => {
     if (showMoreNewsAllSeq <= 0 || !renderedFeeds.length) return;
     setVisibleByFeed(prev => {
       const next = { ...prev };
       renderedFeeds.forEach(feed => {
-        next[feed.url] = Math.max(
-          COLUMN_LAYOUT_TOKENS.initialVisibleItems,
-          (next[feed.url] || COLUMN_LAYOUT_TOKENS.initialVisibleItems) + COLUMN_LAYOUT_TOKENS.visibleItemsStep
+        next[feed.url] = clampVisibleCount(
+          (next[feed.url] || defaultVisibleCount(storyLimit)) + COLUMN_LAYOUT_TOKENS.visibleItemsStep,
+          storyLimit
         );
       });
       return next;
     });
-  }, [showMoreNewsAllSeq, renderedFeeds]);
+  }, [showMoreNewsAllSeq, renderedFeeds, storyLimit]);
 
   useEffect(() => {
     if (resetNewsShownAllSeq <= 0 || !renderedFeeds.length) return;
     setVisibleByFeed(prev => {
       const next = { ...prev };
       renderedFeeds.forEach(feed => {
-        next[feed.url] = COLUMN_LAYOUT_TOKENS.initialVisibleItems;
+        next[feed.url] = defaultVisibleCount(storyLimit);
       });
       return next;
     });
-  }, [resetNewsShownAllSeq, renderedFeeds]);
+  }, [resetNewsShownAllSeq, renderedFeeds, storyLimit]);
 
   useEffect(() => {
     setHydratedColumns(prev => {

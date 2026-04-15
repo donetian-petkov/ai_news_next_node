@@ -22,6 +22,7 @@ type Args = {
     searchQuery: string;
     hideAllResearch: boolean;
     hideAllSummaries: boolean;
+    storiesPerColumn: number;
     aiEnabled: boolean;
     aiAvailable: boolean;
     insightFeatures: FeedColumnViewModel['insightFeatures'];
@@ -181,6 +182,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     searchQuery: ui.searchQuery,
     hideAllResearch: ui.hideAllResearch,
     hideAllSummaries: ui.hideAllSummaries,
+    storiesPerColumn: ui.storiesPerColumn,
     aiEnabled: ui.aiEnabled,
     aiAvailable: ui.aiAvailable,
     insightFeatures: ui.insightFeatures,
@@ -197,7 +199,7 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
     labels,
     cardLabels,
     vibeIcons
-  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.dateFormat, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.showNewsCovers, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
+  }), [cardLabels, compactBtnSx, compactFormSx, connected, connectionStatus, fontScale, labels, palette, ui.aiAvailable, ui.aiEnabled, ui.buttonMode, ui.dateFormat, ui.hideAllResearch, ui.hideAllSummaries, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.moodFilter, ui.performanceMode, ui.searchQuery, ui.showNewsCovers, ui.storiesPerColumn, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, vibeIcons]);
 
   return viewModel;
 }

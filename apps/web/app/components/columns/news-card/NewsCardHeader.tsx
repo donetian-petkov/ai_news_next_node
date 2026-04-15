@@ -82,6 +82,8 @@ export function NewsCardHeader() {
   const [titleOverride, setTitleOverride] = useState<'auto' | 'translated' | 'original'>('auto');
   const sourceTitleLanguage = useMemo(() => detectTitleLanguage(item.title), [item.title]);
   const translatedCandidate = useMemo(() => {
+    if (!view.translationEnabled) return '';
+
     const bgCandidate = titleBg && titleBg !== item.title ? titleBg : '';
     const enCandidate = titleEn && titleEn !== item.title ? titleEn : '';
 
@@ -98,15 +100,15 @@ export function NewsCardHeader() {
     if (sourceTitleLanguage === 'bg') return enCandidate;
     if (sourceTitleLanguage === 'en') return bgCandidate;
     return bgCandidate || enCandidate;
-  }, [item.title, sourceTitleLanguage, titleBg, titleEn, view.titleDisplayLanguage]);
+  }, [item.title, sourceTitleLanguage, titleBg, titleEn, view.titleDisplayLanguage, view.translationEnabled]);
   const hasAnyTranslation = !!translatedCandidate;
   const displayTranslated = titleOverride === 'translated'
-    || (titleOverride === 'auto' && view.titleDisplayLanguage !== 'original' && hasAnyTranslation);
+    || (titleOverride === 'auto' && view.translationEnabled && view.titleDisplayLanguage !== 'original' && hasAnyTranslation);
   const displayedTitle = displayTranslated && translatedCandidate ? translatedCandidate : item.title;
 
   useEffect(() => {
     setTitleOverride('auto');
-  }, [item.id, view.titleDisplayLanguage, titleBg, titleEn]);
+  }, [item.id, view.titleDisplayLanguage, titleBg, titleEn, view.translationEnabled]);
 
   return (
     <>
@@ -263,26 +265,40 @@ export function NewsCardHeader() {
       </Stack>
 
       <Stack direction="row" alignItems="flex-start" spacing={0.7} sx={{ mb: showSourceLabel ? 0.45 : 1.1 }}>
-        <Tooltip
-          title={displayTranslated ? labels.showOriginalTitle : labels.showTranslatedTitle}
-        >
+        {view.translationEnabled ? (
+          <Tooltip
+            title={displayTranslated ? labels.showOriginalTitle : labels.showTranslatedTitle}
+          >
+            <Typography
+              component="button"
+              type="button"
+              onClick={() => {
+                if (hasAnyTranslation) {
+                  setTitleOverride(displayTranslated ? 'original' : 'translated');
+                  return;
+                }
+                onRequestTitleTranslation(item);
+              }}
+              sx={{
+                p: 0,
+                m: 0,
+                border: 0,
+                background: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: `${1.12 * fontScale}rem`,
+                lineHeight: 1.36,
+                fontWeight: 800,
+                color: NEWS_CARD_COLOR_TOKENS.title,
+                fontFamily: 'var(--news-title-font-family, var(--font-family))'
+              }}
+            >
+              {displayedTitle}
+            </Typography>
+          </Tooltip>
+        ) : (
           <Typography
-            component="button"
-            type="button"
-            onClick={() => {
-              if (hasAnyTranslation) {
-                setTitleOverride(displayTranslated ? 'original' : 'translated');
-                return;
-              }
-              onRequestTitleTranslation(item);
-            }}
             sx={{
-              p: 0,
-              m: 0,
-              border: 0,
-              background: 'transparent',
-              textAlign: 'left',
-              cursor: 'pointer',
               fontSize: `${1.12 * fontScale}rem`,
               lineHeight: 1.36,
               fontWeight: 800,
@@ -290,9 +306,9 @@ export function NewsCardHeader() {
               fontFamily: 'var(--news-title-font-family, var(--font-family))'
             }}
           >
-            {displayedTitle}
+            {item.title}
           </Typography>
-        </Tooltip>
+        )}
         <MuiLink
           href={item.link}
           target="_blank"

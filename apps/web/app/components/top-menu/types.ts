@@ -55,6 +55,7 @@ export type TopMenuControlsModel = {
   quickRow: {
     aiAvailable: TopMenuUiState['aiAvailable'];
     aiEnabled: TopMenuUiState['aiEnabled'];
+    storiesPerColumn: TopMenuUiState['storiesPerColumn'];
   };
   notifications: {
     notifyEnabled: TopMenuUiState['notifyEnabled'];
@@ -130,6 +131,7 @@ export type TopMenuControlsActions = {
   onShowMoreNewsAll: () => void;
   onResetNewsShownAll: () => void;
   onDeleteOldAllColumns: () => void;
+  onSetStoriesPerColumn: (count: number) => void;
   onToggleAiEnabled: (enabled: boolean) => void;
   onOpenHelp: () => void;
   onNotifyEnabledChange: (enabled: boolean) => void;

@@ -9,12 +9,13 @@ type Args = {
   dispatch: AppDispatch;
   feeds: RootState['feeds']['feeds'];
   deleteAgeAll: TopMenuDeleteAge;
+  storiesPerColumn: number;
 };
 
-export function useTopMenuMaintenanceActions({ dispatch, feeds, deleteAgeAll }: Args) {
+export function useTopMenuMaintenanceActions({ dispatch, feeds, deleteAgeAll, storiesPerColumn }: Args) {
   const resetAllNewest = useCallback(() => {
-    dispatch(resetAllToNewestLimit(10));
-  }, [dispatch]);
+    dispatch(resetAllToNewestLimit(storiesPerColumn));
+  }, [dispatch, storiesPerColumn]);
 
   const deleteOldAllColumns = useCallback(() => {
     const cutoffMs = cutoffFromAge(deleteAgeAll);

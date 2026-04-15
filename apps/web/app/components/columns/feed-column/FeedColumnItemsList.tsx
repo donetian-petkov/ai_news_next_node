@@ -36,7 +36,8 @@ export function FeedColumnItemsList() {
     hideAllResearch,
     hideAllSummaries,
     palette,
-    connected
+    connected,
+    storiesPerColumn
   } = view;
 
   const {
@@ -103,6 +104,7 @@ export function FeedColumnItemsList() {
     compactBtnSx,
     buttonMode,
     titleDisplayLanguage: view.titleDisplayLanguage,
+    translationEnabled: feed.translationEnabled,
     language,
     timezone,
     dateFormat,
@@ -119,7 +121,7 @@ export function FeedColumnItemsList() {
     accent,
     soft,
     matchAccent: palette.m
-  }), [accent, aiAvailable, buttonMode, cardLabels, compactBtnSx, connected, dateFormat, fontScale, hideAllResearch, hideAllSummaries, language, palette.m, performanceMode, showNewsCovers, soft, timezone, vibeIcons, view.insightFeatures, view.localImpactRegion, view.titleDisplayLanguage, view.trackedTopics]);
+  }), [accent, aiAvailable, buttonMode, cardLabels, compactBtnSx, connected, dateFormat, feed.translationEnabled, fontScale, hideAllResearch, hideAllSummaries, language, palette.m, performanceMode, showNewsCovers, soft, timezone, vibeIcons, view.insightFeatures, view.localImpactRegion, view.titleDisplayLanguage, view.trackedTopics]);
 
   const sharedCardHandlers = useMemo<NewsCardHandlers>(() => ({
     onTogglePinnedNews,
@@ -212,7 +214,7 @@ export function FeedColumnItemsList() {
           />
         );
       })}
-      {itemsVisible.length > shownItems.length ? (
+      {itemsVisible.length > shownItems.length && shownItems.length < storiesPerColumn ? (
         <Button
           size="small"
           variant="outlined"
@@ -227,7 +229,7 @@ export function FeedColumnItemsList() {
           {labels.showFiveMore}
         </Button>
       ) : null}
-      {itemsVisible.length > COLUMN_LAYOUT_TOKENS.initialVisibleItems && shownItems.length > COLUMN_LAYOUT_TOKENS.initialVisibleItems ? (
+      {itemsVisible.length > Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, storiesPerColumn) && shownItems.length > Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, storiesPerColumn) ? (
         <Button
           size="small"
           variant="outlined"

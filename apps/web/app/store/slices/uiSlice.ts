@@ -132,6 +132,12 @@ function normalizeInsightFeatures(
   };
 }
 
+function normalizeStoriesPerColumn(value: unknown, fallback = 10): number {
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.max(1, Math.min(200, parsed));
+}
+
 type UiState = {
   language: 'en' | 'bg';
   colorMode: 'system' | 'dark' | 'light';
@@ -146,6 +152,7 @@ type UiState = {
   hideAllResearchSeq: number;
   hideAllResearch: boolean;
   hideAllSummaries: boolean;
+  storiesPerColumn: number;
   showMoreNewsAllSeq: number;
   resetNewsShownAllSeq: number;
   helpOpen: boolean;
@@ -203,6 +210,7 @@ const initialState: UiState = {
   hideAllResearchSeq: 0,
   hideAllResearch: false,
   hideAllSummaries: false,
+  storiesPerColumn: 10,
   showMoreNewsAllSeq: 0,
   resetNewsShownAllSeq: 0,
   helpOpen: false,
@@ -280,6 +288,9 @@ const uiSlice = createSlice({
     },
     setHideAllSummaries(state, action: PayloadAction<boolean>) {
       state.hideAllSummaries = !!action.payload;
+    },
+    setStoriesPerColumn(state, action: PayloadAction<number>) {
+      state.storiesPerColumn = normalizeStoriesPerColumn(action.payload, state.storiesPerColumn);
     },
     triggerShowMoreNewsAll(state) {
       state.showMoreNewsAllSeq += 1;
@@ -454,7 +465,7 @@ const uiSlice = createSlice({
         state.soundEnabled = false;
       }
     },
-    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'showNewsCovers' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
+    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'storiesPerColumn' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'showNewsCovers' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
       const next = action.payload;
       if (next.language === 'en' || next.language === 'bg') state.language = next.language;
       if (next.colorMode === 'system' || next.colorMode === 'dark' || next.colorMode === 'light') state.colorMode = next.colorMode;
@@ -465,6 +476,7 @@ const uiSlice = createSlice({
       if (typeof next.allColumnControlsHidden === 'boolean') state.allColumnControlsHidden = next.allColumnControlsHidden;
       if (typeof next.showFilteredColumn === 'boolean') state.showFilteredColumn = next.showFilteredColumn;
       if (typeof next.showEmergingColumn === 'boolean') state.showEmergingColumn = next.showEmergingColumn;
+      if (typeof next.storiesPerColumn !== 'undefined') state.storiesPerColumn = normalizeStoriesPerColumn(next.storiesPerColumn, state.storiesPerColumn);
       if (typeof next.notifyEnabled === 'boolean') state.notifyEnabled = next.notifyEnabled;
       if (next.notifyMode === 'matched' || next.notifyMode === 'matched_pinned' || next.notifyMode === 'pinned' || next.notifyMode === 'all') state.notifyMode = next.notifyMode;
       if (isMoodFilter(next.moodFilter)) state.moodFilter = next.moodFilter;
@@ -565,6 +577,7 @@ export const {
   triggerHideAllResearch,
   setHideAllResearch,
   setHideAllSummaries,
+  setStoriesPerColumn,
   triggerShowMoreNewsAll,
   triggerResetNewsShownAll,
   setHelpOpen,

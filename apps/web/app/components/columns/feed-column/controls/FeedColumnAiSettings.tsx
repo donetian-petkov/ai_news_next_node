@@ -10,7 +10,7 @@ export function FeedColumnAiSettings() {
   const { feed, isMatchColumn } = useFeedColumnContext();
   const { view, handlers } = useFeedColumnsContext();
   const { aiAvailable, connected, compactBtnSx, compactFormSx, labels, keywords } = view;
-  const { onToggleFeedSummary, onToggleFeedResearch, onSetFeedBudget, onSetKeywords } = handlers;
+  const { onToggleFeedSummary, onToggleFeedTranslation, onToggleFeedResearch, onSetFeedBudget, onSetKeywords } = handlers;
   const [keywordsDraft, setKeywordsDraft] = useState('');
 
   const addKeywords = () => {
@@ -55,6 +55,16 @@ export function FeedColumnAiSettings() {
         sx={compactBtnSx}
       >
         {feed.summaryEnabled ? labels.summariesOn : labels.summariesOff}
+      </Button>
+      <Button
+        size="small"
+        fullWidth
+        variant={feed.translationEnabled ? 'contained' : 'outlined'}
+        onClick={() => onToggleFeedTranslation(feed)}
+        disabled={!connected}
+        sx={compactBtnSx}
+      >
+        {feed.translationEnabled ? labels.translationsOn : labels.translationsOff}
       </Button>
       <Button
         size="small"

@@ -229,6 +229,7 @@ type FeedRuntime = {
 
 type FeedSettings = {
   summaryEnabled: boolean;
+  translationEnabled: boolean;
   researchEnabled: boolean;
 
   // auto-research guardrails
@@ -1060,6 +1061,7 @@ function defaultSettingsForFeed(fi: FeedInfo): FeedSettings {
 
   return {
     summaryEnabled,
+    translationEnabled: true,
     researchEnabled,
     budget: 'standard',
     sortMode: 'newest',
@@ -1067,6 +1069,32 @@ function defaultSettingsForFeed(fi: FeedInfo): FeedSettings {
     intervalSec: fi.intervalSec,
     kind: fi.kind,
     label: fi.label
+  };
+}
+
+function normalizeFeedSettings(raw: Partial<FeedSettings> | undefined, fi: FeedInfo): FeedSettings {
+  const base = defaultSettingsForFeed(fi);
+  const filters = raw?.filters;
+  return {
+    summaryEnabled: typeof raw?.summaryEnabled === 'boolean' ? raw.summaryEnabled : base.summaryEnabled,
+    translationEnabled: raw?.translationEnabled !== false,
+    researchEnabled: typeof raw?.researchEnabled === 'boolean' ? raw.researchEnabled : base.researchEnabled,
+    budget: raw?.budget === 'low' || raw?.budget === 'standard' || raw?.budget === 'high'
+      ? raw.budget
+      : base.budget,
+    sortMode: raw?.sortMode === 'newest' || raw?.sortMode === 'oldest' || raw?.sortMode === 'matched'
+      ? raw.sortMode
+      : base.sortMode,
+    filters: {
+      onlyMatches: !!filters?.onlyMatches,
+      onlyResearched: !!filters?.onlyResearched,
+      onlySummaries: !!filters?.onlySummaries
+    },
+    intervalSec: Math.max(0, Math.min(3600, Math.floor(Number(raw?.intervalSec ?? base.intervalSec) || base.intervalSec))),
+    kind: raw?.kind === 'reddit' || raw?.kind === 'youtube' || raw?.kind === 'rss'
+      ? raw.kind
+      : fi.kind,
+    label: typeof raw?.label === 'string' && raw.label.trim() ? raw.label.trim() : fi.label
   };
 }
 
@@ -1085,11 +1113,7 @@ function ensureFeedSettings(fi: FeedInfo) {
   if (!feedSettings.has(fi.url)) {
     feedSettings.set(fi.url, defaultSettingsForFeed(fi));
   } else {
-    // keep kind/interval/label in sync if missing
-    const s = feedSettings.get(fi.url)!;
-    if (!s.kind) s.kind = fi.kind;
-    if (!s.intervalSec) s.intervalSec = fi.intervalSec;
-    if (!s.label && fi.label) s.label = fi.label;
+    feedSettings.set(fi.url, normalizeFeedSettings(feedSettings.get(fi.url), fi));
   }
 }
 
@@ -2454,6 +2478,26 @@ function summaryInstruction(lang: SummaryLang): string {
   return 'Write TWO short sentences: first Bulgarian (max 14 words), then English (max 14 words). Separate with " / ".';
 }
 
+function summaryInstructionWithoutTranslation(title: string): string {
+  if (looksBulgarianTitle(title)) {
+    return 'Write ONE short sentence in Bulgarian (max 18 words). Do not translate.';
+  }
+  if (looksEnglishTitle(title)) {
+    return 'Write ONE short sentence in English (max 18 words). Do not translate.';
+  }
+  return 'Write ONE short sentence in the same language as the original headline/context (max 18 words). Do not translate.';
+}
+
+function isTranslationEnabledForFeed(feedUrl: string): boolean {
+  return feedSettings.get(feedUrl)?.translationEnabled !== false;
+}
+
+function summaryInstructionForFeed(feedUrl: string, title: string): string {
+  return isTranslationEnabledForFeed(feedUrl)
+    ? summaryInstruction(summaryLang)
+    : summaryInstructionWithoutTranslation(title);
+}
+
 // ---------------- Better Research Prompt ----------------
 function researchInstruction(lang: ResearchLang): string {
   const common = [
@@ -2862,10 +2906,11 @@ async function oneLineSummary(
   title: string,
   source: string,
   context: string,
-  budget: BudgetMode
+  budget: BudgetMode,
+  feedUrl: string
 ): Promise<string | undefined> {
   const input =
-    `${summaryInstruction(summaryLang)} No quotes.\n` +
+    `${summaryInstructionForFeed(feedUrl, title)} No quotes.\n` +
     `Source: ${source}\n` +
     `Headline: ${title}\n` +
     (context ? `Context: ${context}\n` : '');
@@ -3391,6 +3436,7 @@ function enqueueTitleTranslateBackfill(options?: {
     if (done >= max) break;
     if (targetFeedUrl && !eligibleForFeed(it, targetFeedUrl)) continue;
     if (hiddenIds.has(it.id)) continue;
+    if (!isTranslationEnabledForFeed(it.feedUrl)) continue;
     if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) continue;
 
     const itemBudget = feedSettings.get(it.feedUrl)?.budget || 'standard';
@@ -3471,7 +3517,7 @@ async function runOneJob(job: AiJob) {
 
       const ctx = it.__ctx || '';
       const text = await withTimeout(
-        oneLineSummary(it.title, it.source, ctx, budget),
+        oneLineSummary(it.title, it.source, ctx, budget, it.feedUrl),
         AI_SUMMARY_TIMEOUT_MS,
         `summary:${it.id}`
       );
@@ -3489,6 +3535,7 @@ async function runOneJob(job: AiJob) {
     if (job.kind === 'title_translate') {
       if (!job.manual && budget !== 'high') return;
       if (activeModel('summary') === 'none') return;
+      if (!isTranslationEnabledForFeed(it.feedUrl)) return;
       if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) return;
 
       const translated = await withTimeout(
@@ -3881,7 +3928,9 @@ async function processFeed(fi: FeedInfo) {
         if ((wantFeedSummary || wantFilteredSummary) && isPublishedInRecentSummaryWindow(publishedMs)) {
           enqueueJob({ kind: 'summary', id, feedUrl: fi.url });
         }
-        if (budget === 'high') enqueueJob({ kind: 'title_translate', id, feedUrl: fi.url });
+        if (budget === 'high' && isTranslationEnabledForFeed(fi.url)) {
+          enqueueJob({ kind: 'title_translate', id, feedUrl: fi.url });
+        }
         enqueueJob({ kind: 'mood', id, feedUrl: fi.url });
         enqueueJob({ kind: 'news_type', id, feedUrl: fi.url });
         if (wantFeedResearch || wantFilteredResearch) enqueueJob({ kind: 'research', id, feedUrl: fi.url });
@@ -3960,7 +4009,13 @@ function applyLoadedState(st: PersistedState | null) {
 
   if (st.feedSettings && typeof st.feedSettings === 'object') {
     for (const [url, s] of Object.entries(st.feedSettings)) {
-      feedSettings.set(url, s);
+      const feedInfo = feedsList.find(feed => feed.url === url) || {
+        url,
+        label: typeof s?.label === 'string' ? s.label : url,
+        kind: s?.kind === 'reddit' || s?.kind === 'youtube' || s?.kind === 'rss' ? s.kind : 'rss',
+        intervalSec: Math.max(0, Math.min(3600, Math.floor(Number(s?.intervalSec) || 120)))
+      };
+      feedSettings.set(url, normalizeFeedSettings(s, feedInfo));
     }
   }
 
@@ -3990,7 +4045,7 @@ function applyLoadedState(st: PersistedState | null) {
 
   // ensure filtered settings exist too
   if (!feedSettings.has(FILTERED_FEED_URL)) {
-    feedSettings.set(FILTERED_FEED_URL, {
+    feedSettings.set(FILTERED_FEED_URL, normalizeFeedSettings({
       summaryEnabled: SUMMARY_DEFAULT_FILTERED,
       researchEnabled: RESEARCH_DEFAULT_FILTERED,
       budget: 'standard',
@@ -3999,7 +4054,12 @@ function applyLoadedState(st: PersistedState | null) {
       intervalSec: 0,
       kind: 'rss',
       label: 'Filtered'
-    });
+    }, {
+      url: FILTERED_FEED_URL,
+      label: 'Filtered',
+      kind: 'rss',
+      intervalSec: 0
+    }));
   }
 
   reprocessCachedItems(false);
@@ -4019,7 +4079,7 @@ async function loadState() {
 
 // ensure filtered pseudo-feed exists in settings
 if (!feedSettings.has(FILTERED_FEED_URL)) {
-  feedSettings.set(FILTERED_FEED_URL, {
+  feedSettings.set(FILTERED_FEED_URL, normalizeFeedSettings({
     summaryEnabled: SUMMARY_DEFAULT_FILTERED,
     researchEnabled: RESEARCH_DEFAULT_FILTERED,
     budget: 'standard',
@@ -4028,7 +4088,12 @@ if (!feedSettings.has(FILTERED_FEED_URL)) {
     intervalSec: 0,
     kind: 'rss',
     label: 'Filtered'
-  });
+  }, {
+    url: FILTERED_FEED_URL,
+    label: 'Filtered',
+    kind: 'rss',
+    intervalSec: 0
+  }));
 }
 
 // ---------------- WebSocket handling ----------------
@@ -4109,6 +4174,10 @@ wss.on('connection', (ws: WebSocket) => {
 
       const it = recent.find(x => x.id === id && x.feedUrl === feedUrl) || recent.find(x => x.id === id);
       if (!it) return;
+      if (!isTranslationEnabledForFeed(it.feedUrl)) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Title translation is disabled for this column.' }));
+        return;
+      }
       enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl, manual: true });
       ws.send(JSON.stringify({ type: 'ok', message: 'Title translation requested.' }));
       return;
@@ -4395,6 +4464,59 @@ wss.on('connection', (ws: WebSocket) => {
       return;
     }
 
+    if (msg.type === 'set_feed_translation') {
+      const feedUrl = String(msg.feedUrl || '').trim();
+      const enabled = !!msg.enabled;
+      if (!feedUrl) return;
+
+      if (!feedSettings.has(feedUrl)) {
+        feedSettings.set(feedUrl, defaultSettingsForFeed({ url: feedUrl, label: feedUrl, kind: 'rss', intervalSec: 120 }));
+      }
+
+      const settings = feedSettings.get(feedUrl)!;
+      const previous = settings.translationEnabled !== false;
+      settings.translationEnabled = enabled;
+      broadcastConfig();
+
+      let refreshedSummaries = 0;
+      if (previous !== enabled && aiEnabled && aiAvailable && activeModel('summary') !== 'none') {
+        const MAX = 260;
+        const list = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
+        for (const it of list) {
+          if (refreshedSummaries >= MAX) break;
+          if (!eligibleForFeed(it, feedUrl)) continue;
+
+          const hasSummary = !!String(it.summary || '').trim();
+          const shouldBackfillMissing = !hasSummary
+            && shouldHaveSummary(it)
+            && isPublishedInRecentSummaryWindow(it.publishedMs);
+          if (!hasSummary && !shouldBackfillMissing) continue;
+
+          if (hasSummary) it.summary = '';
+          const before = hasSummaryJobQueuedOrRunning(it.id, it.feedUrl);
+          enqueueJob({ kind: 'summary', id: it.id, feedUrl: it.feedUrl });
+          const after = hasSummaryJobQueuedOrRunning(it.id, it.feedUrl);
+          if (!before && after) refreshedSummaries++;
+          broadcastNewsUpdate(it);
+        }
+      }
+
+      let queuedTitleTranslations = 0;
+      if (enabled && previous !== enabled) {
+        queuedTitleTranslations = enqueueTitleTranslateBackfill({ feedUrl, max: 220 });
+      }
+
+      ws.send(JSON.stringify({
+        type: 'ok',
+        message: enabled
+          ? `Translations enabled. Refreshing ${refreshedSummaries} summaries and queued ${queuedTitleTranslations} title translations.`
+          : `Translations disabled. Refreshing ${refreshedSummaries} summaries in their original language.`
+      }));
+
+      markDirty();
+      return;
+    }
+
     if (msg.type === 'set_feed_research') {
       const feedUrl = String(msg.feedUrl || '').trim();
       const enabled = !!msg.enabled;
@@ -4458,6 +4580,7 @@ wss.on('connection', (ws: WebSocket) => {
         for (const it of list) {
           if (done >= MAX) break;
           if (!eligibleForFeed(it, feedUrl)) continue;
+          if (!isTranslationEnabledForFeed(it.feedUrl)) continue;
           if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) continue;
           enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl });
           done++;
@@ -4490,6 +4613,7 @@ wss.on('connection', (ws: WebSocket) => {
         let done = 0;
         for (const it of list) {
           if (done >= MAX) break;
+          if (!isTranslationEnabledForFeed(it.feedUrl)) continue;
           if (!needsTitleTranslation(it.title, it.titleBg, it.titleEn)) continue;
           enqueueJob({ kind: 'title_translate', id: it.id, feedUrl: it.feedUrl });
           done++;

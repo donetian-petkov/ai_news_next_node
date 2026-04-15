@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import uiReducer, { setSearchQuery, setTopUiState, triggerHideAllResearch, setAppearanceSettings, setNotifySettings, setAiSettings, setKeywords, setMoodFilter, setTypeFilter, hydrateUiSettings, enqueueToast, dismissToast } from './uiSlice';
+import uiReducer, { setSearchQuery, setTopUiState, triggerHideAllResearch, setAppearanceSettings, setNotifySettings, setAiSettings, setKeywords, setMoodFilter, setTypeFilter, hydrateUiSettings, enqueueToast, dismissToast, setStoriesPerColumn } from './uiSlice';
 import { NewsMoodFilterValue, NewsTypeFilterValue } from '../types';
 
 describe('uiSlice', () => {
@@ -19,6 +19,7 @@ describe('uiSlice', () => {
       hideAllResearchSeq: 0,
       hideAllResearch: false,
       hideAllSummaries: false,
+      storiesPerColumn: 10,
       showMoreNewsAllSeq: 0,
       resetNewsShownAllSeq: 0,
       helpOpen: false,
@@ -133,6 +134,17 @@ describe('uiSlice', () => {
 
     state = uiReducer(state, triggerHideAllResearch());
     expect(state.hideAllResearchSeq).toBe(2);
+  });
+
+  it('stores and clamps stories-per-column settings', () => {
+    let state = uiReducer(undefined, setStoriesPerColumn(15));
+    expect(state.storiesPerColumn).toBe(15);
+
+    state = uiReducer(state, setStoriesPerColumn(999));
+    expect(state.storiesPerColumn).toBe(200);
+
+    state = uiReducer(state, hydrateUiSettings({ storiesPerColumn: 5 }));
+    expect(state.storiesPerColumn).toBe(5);
   });
 
   it('updates appearance and notify settings', () => {
