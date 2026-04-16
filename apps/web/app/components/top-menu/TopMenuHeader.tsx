@@ -8,8 +8,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 import OpenWithIcon from '@mui/icons-material/OpenWith';
 import SearchIcon from '@mui/icons-material/Search';
 import SummarizeIcon from '@mui/icons-material/Summarize';
-import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
-import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
 import { DateTimePill } from './DateTimePill';
 import { StatusPills } from './StatusPills';
 import { QuickVibeSelect } from './QuickVibeSelect';
@@ -28,8 +26,6 @@ export function TopMenuHeader() {
     hideAllResearchLabel,
     hideAllSummariesLabel,
     onScrollToColumns,
-    onScrollToPageTop,
-    onScrollToPageBottom,
     onOpenHelp,
     onToggleMenu,
     onToggleSearch,
@@ -61,12 +57,6 @@ export function TopMenuHeader() {
             <Button className="subHintBtn" size="small" variant="outlined" type="button" onClick={onToggleSearch} startIcon={<SearchIcon fontSize="small" />}>
               / {labels.subHintSearch}
             </Button>
-            <Button className="subHintBtn" size="small" variant="outlined" type="button" onClick={onScrollToPageTop} startIcon={<VerticalAlignTopIcon fontSize="small" />}>
-              {labels.pageTop}
-            </Button>
-            <Button className="subHintBtn" size="small" variant="outlined" type="button" onClick={onScrollToPageBottom} startIcon={<VerticalAlignBottomIcon fontSize="small" />}>
-              {labels.pageBottom}
-            </Button>
           </Stack>
         ) : (
           <div className="subHint" id="subHint">
@@ -89,22 +79,6 @@ export function TopMenuHeader() {
             </Stack>
             <Stack direction="row" spacing={0.8}>
               <IconButton
-                className="mobileMenuToggleBtn"
-                size="small"
-                onClick={onScrollToPageTop}
-                aria-label={labels.pageTop}
-              >
-                <VerticalAlignTopIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                className="mobileMenuToggleBtn"
-                size="small"
-                onClick={onScrollToPageBottom}
-                aria-label={labels.pageBottom}
-              >
-                <VerticalAlignBottomIcon fontSize="small" />
-              </IconButton>
-              <IconButton
                 id="menuToggle"
                 className="mobileMenuToggleBtn"
                 size="small"
@@ -122,8 +96,6 @@ export function TopMenuHeader() {
           <TopMenuActionButton id="quickSearchBtn" label={searchLabel} icon={<SearchIcon fontSize="small" />} onClick={onToggleSearch} />
           <TopMenuActionButton id="quickAddStreamBtn" label={addStreamLabel} icon={<AddIcon fontSize="small" />} onClick={onToggleAddStream} />
           <TopMenuActionButton id="allColControlsToggle" label={allColumnLabel} icon={<GridViewIcon fontSize="small" />} onClick={onToggleAllColumnControls} />
-          <TopMenuActionButton id="pageTopBtn" label={labels.pageTop} icon={<VerticalAlignTopIcon fontSize="small" />} onClick={onScrollToPageTop} />
-          <TopMenuActionButton id="pageBottomBtn" label={labels.pageBottom} icon={<VerticalAlignBottomIcon fontSize="small" />} onClick={onScrollToPageBottom} />
           <TopMenuActionButton id="hideAllResearchBtn" label={hideAllResearchLabel} icon={<AutoAwesomeIcon fontSize="small" />} onClick={onToggleHideAllResearch} />
           <TopMenuActionButton id="hideAllSummariesBtn" label={hideAllSummariesLabel} icon={<SummarizeIcon fontSize="small" />} onClick={onToggleHideAllSummaries} />
           <TopMenuActionButton id="menuToggle" label={menuLabel} icon={<MenuIcon fontSize="small" />} onClick={onToggleMenu} />

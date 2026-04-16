@@ -2,8 +2,8 @@
 
 import { useMemo, useRef, useState } from 'react';
 import CheckIcon from '@mui/icons-material/Check';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import CloseIcon from '@mui/icons-material/Close';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import {
   Box,
   Dialog,
@@ -21,6 +21,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 export type Option<T extends string> = {
   value: T;
   label: string;
+  iconSrc?: string;
 };
 
 type Props<T extends string> = {
@@ -60,10 +61,11 @@ export function TopMenuSelectField<T extends string>({
   const cls = ['checkbox', layout === 'stacked' ? 'checkboxStacked' : '', wrapperClassName || '']
     .filter(Boolean)
     .join(' ');
-  const selectedLabel = useMemo(
-    () => options.find(option => option.value === value)?.label || value,
+  const selectedOption = useMemo(
+    () => options.find(option => option.value === value),
     [options, value]
   );
+  const selectedLabel = selectedOption?.label || value;
   const desktopMenuOpen = !!desktopAnchorEl;
   const desktopMenuMinWidth = desktopAnchorEl
     ? Math.min(
@@ -71,6 +73,41 @@ export function TopMenuSelectField<T extends string>({
       typeof window !== 'undefined' ? Math.max(window.innerWidth - 24, 160) : desktopAnchorEl.getBoundingClientRect().width
     )
     : undefined;
+
+  const renderOptionGlyph = (iconSrc?: string) => {
+    if (!iconSrc) return null;
+
+    return (
+      <Box
+        sx={{
+          flex: '0 0 auto',
+          width: 26,
+          height: 26,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '999px',
+          border: '1px solid color-mix(in srgb, var(--accent-color) 34%, var(--panel-border))',
+          background:
+            'radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-color) 18%, rgba(255, 255, 255, 0.08)), transparent 72%), linear-gradient(180deg, color-mix(in srgb, var(--field-bg) 80%, var(--accent-color) 20%), color-mix(in srgb, var(--bg-main) 78%, var(--accent-color) 22%))',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08)'
+        }}
+      >
+        <Box
+          component="img"
+          src={iconSrc}
+          alt=""
+          sx={{
+            width: '72%',
+            height: '72%',
+            display: 'block',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 1px 6px rgba(0, 0, 0, 0.26))'
+          }}
+        />
+      </Box>
+    );
+  };
 
   const trigger = (
     <button
@@ -87,7 +124,14 @@ export function TopMenuSelectField<T extends string>({
         else setDesktopAnchorEl(triggerRef.current);
       }}
     >
-      <span className="topMenuSelectTriggerLabel">{selectedLabel}</span>
+      <span className="topMenuSelectTriggerContent">
+        {selectedOption?.iconSrc ? (
+          <Box component="span" className="topMenuSelectTriggerGlyph" aria-hidden="true">
+            <Box component="img" className="topMenuSelectTriggerGlyphImage" src={selectedOption.iconSrc} alt="" />
+          </Box>
+        ) : null}
+        <span className="topMenuSelectTriggerLabel">{selectedLabel}</span>
+      </span>
       <span className="topMenuSelectTriggerIcon" aria-hidden="true">
         <KeyboardArrowDownIcon fontSize="small" />
       </span>
@@ -176,8 +220,23 @@ export function TopMenuSelectField<T extends string>({
                       }}
                     >
                       <ListItemText
-                        primary={option.label}
+                        primary={(
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
+                            {renderOptionGlyph(option.iconSrc)}
+                            <Box
+                              component="span"
+                              sx={{
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {option.label}
+                            </Box>
+                          </Box>
+                        )}
                         primaryTypographyProps={{
+                          component: 'div',
                           sx: {
                             color: 'var(--text-main)',
                             fontWeight: selected ? 800 : 600,
@@ -294,15 +353,18 @@ export function TopMenuSelectField<T extends string>({
                   gap: 1.2
                 }}
               >
-                <span
-                  style={{
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                >
-                  {option.label}
-                </span>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0, flex: '1 1 auto' }}>
+                  {renderOptionGlyph(option.iconSrc)}
+                  <span
+                    style={{
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    {option.label}
+                  </span>
+                </Box>
                 <CheckIcon
                   sx={{
                     flex: '0 0 auto',

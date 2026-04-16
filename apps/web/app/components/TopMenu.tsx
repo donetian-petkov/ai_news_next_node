@@ -2,6 +2,7 @@
 
 import { HelpDialog } from './top-menu/HelpDialog';
 import { TopMenuHeader } from './top-menu/TopMenuHeader';
+import { TopMenuViewportScrollDock } from './top-menu/TopMenuViewportScrollDock';
 import { TopMenuMobileDrawer } from './top-menu/TopMenuMobileDrawer';
 import { TopMenuDesktopSections } from './top-menu/TopMenuDesktopSections';
 import { ToastStack } from './top-menu/ToastStack';
@@ -23,6 +24,7 @@ export default function TopMenu() {
           <TopMenuDesktopSections />
         </div>
 
+        <TopMenuViewportScrollDock />
         <TopMenuMobileDrawer />
 
         <HelpDialog />

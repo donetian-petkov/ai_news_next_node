@@ -1,5 +1,6 @@
 'use client';
 
+import { TopMenuSelectField } from './TopMenuSelectField';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
 type VibeValue = 'default' | 'anime' | 'arcade' | 'cinema' | 'newspaper' | 'cyberwitch' | 'fantasy' | 'scifi';
@@ -16,26 +17,27 @@ export function QuickVibeSelect({ value, labels, fullWidth = false, onChange }: 
   const resolvedValue = value ?? topMenu.vibe;
   const resolvedLabels = labels ?? topMenu.labels;
   const resolvedOnChange = onChange ?? topMenu.onChangeVibe;
+  const wrapperClassName = ['topQuickLabel', fullWidth ? 'topQuickLabelFull' : ''].filter(Boolean).join(' ');
+  const options: Array<{ value: VibeValue; label: string; iconSrc: string }> = [
+    { value: 'default', label: resolvedLabels.defaultVibe, iconSrc: '/ornaments/default/glyph.svg' },
+    { value: 'anime', label: resolvedLabels.anime, iconSrc: '/ornaments/anime/glyph.svg' },
+    { value: 'arcade', label: resolvedLabels.arcade, iconSrc: '/ornaments/arcade/glyph.svg' },
+    { value: 'cinema', label: resolvedLabels.cinema, iconSrc: '/ornaments/cinema/glyph.svg' },
+    { value: 'newspaper', label: resolvedLabels.newspaper, iconSrc: '/ornaments/newspaper/glyph.svg' },
+    { value: 'cyberwitch', label: resolvedLabels.cyberwitch, iconSrc: '/ornaments/cyberwitch/glyph.svg' },
+    { value: 'fantasy', label: resolvedLabels.fantasy, iconSrc: '/ornaments/fantasy/glyph.svg' },
+    { value: 'scifi', label: resolvedLabels.scifi, iconSrc: '/ornaments/scifi/glyph.svg' }
+  ];
 
   return (
-    <label className="checkbox topQuickLabel" title={resolvedLabels.vibe} style={fullWidth ? { flex: 1 } : undefined}>
-      <span id="quickVibeLabelText">{resolvedLabels.vibe}</span>
-      <select
+    <TopMenuSelectField
         id="quickVibeSelect"
-        className="select topQuickSelect"
+        label={resolvedLabels.vibe}
+        title={resolvedLabels.vibe}
         value={resolvedValue}
-        onChange={e => resolvedOnChange(e.target.value as VibeValue)}
-        style={fullWidth ? { width: '100%' } : undefined}
-      >
-        <option value="default">{resolvedLabels.defaultVibe}</option>
-        <option value="anime">{resolvedLabels.anime}</option>
-        <option value="arcade">{resolvedLabels.arcade}</option>
-        <option value="cinema">{resolvedLabels.cinema}</option>
-        <option value="newspaper">{resolvedLabels.newspaper}</option>
-        <option value="cyberwitch">{resolvedLabels.cyberwitch}</option>
-        <option value="fantasy">{resolvedLabels.fantasy}</option>
-        <option value="scifi">{resolvedLabels.scifi}</option>
-      </select>
-    </label>
+        onChange={resolvedOnChange}
+        options={options}
+        wrapperClassName={wrapperClassName}
+      />
   );
 }
