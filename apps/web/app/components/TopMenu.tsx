@@ -17,19 +17,22 @@ export default function TopMenu() {
 
   return (
     <TopMenuProvider value={contextValue}>
-      <div className="topbar">
-        <div className="topbarInner" id="topbarInner" ref={topbarInnerRef}>
-          <TopMenuHeader />
+      <>
+        <div className="topbar">
+          <div className="topbarInner" id="topbarInner" ref={topbarInnerRef}>
+            <TopMenuHeader />
 
-          <TopMenuDesktopSections />
+            <TopMenuDesktopSections />
+          </div>
+
+          <TopMenuMobileDrawer />
+
+          <HelpDialog />
+          <ToastStack />
         </div>
 
         <TopMenuViewportScrollDock />
-        <TopMenuMobileDrawer />
-
-        <HelpDialog />
-        <ToastStack />
-      </div>
+      </>
     </TopMenuProvider>
   );
 }
