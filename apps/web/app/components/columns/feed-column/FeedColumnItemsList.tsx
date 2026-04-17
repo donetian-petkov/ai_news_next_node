@@ -222,33 +222,37 @@ export function FeedColumnItemsList() {
           />
         );
       })}
-      {itemsVisible.length > shownItems.length && showMoreCount > 0 ? (
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={() => {
-            const target = itemsVisible[shownItems.length];
-            if (target?.id) {
-              pendingScrollRef.current = { mode: 'news', newsId: target.id };
-            }
-            onShowMoreNews(feed.url);
-          }}
-        >
-          {t('columns.showMoreCount', { count: showMoreCount })}
-        </Button>
-      ) : null}
-      {itemsVisible.length > resetVisibleCount && shownItems.length > resetVisibleCount ? (
-        <Button
-          size="small"
-          variant="outlined"
-          color="secondary"
-          onClick={() => {
-            pendingScrollRef.current = { mode: 'top' };
-            onResetNewsToTen(feed.url);
-          }}
-        >
-          {t('columns.resetToTopCount', { count: resetVisibleCount })}
-        </Button>
+      {itemsVisible.length > 0 ? (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={showMoreCount < 1}
+            onClick={() => {
+              if (showMoreCount < 1) return;
+              const target = itemsVisible[shownItems.length];
+              if (target?.id) {
+                pendingScrollRef.current = { mode: 'news', newsId: target.id };
+              }
+              onShowMoreNews(feed.url);
+            }}
+          >
+            {t('columns.showMoreNewsCount', { count: showMoreCount || 5 })}
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="secondary"
+            disabled={shownItems.length <= resetVisibleCount}
+            onClick={() => {
+              if (shownItems.length <= resetVisibleCount) return;
+              pendingScrollRef.current = { mode: 'top' };
+              onResetNewsToTen(feed.url);
+            }}
+          >
+            {t('columns.resetToFirstCount', { count: resetVisibleCount })}
+          </Button>
+        </Stack>
       ) : null}
     </Stack>
   );
