@@ -175,7 +175,7 @@ const newsSlice = createSlice({
       state.itemsByFeed[feedUrl] = list.filter(it => !Number.isFinite(it.publishedMs) || it.publishedMs >= cutoffMs);
     },
     resetAllToNewestLimit(state, action: PayloadAction<number>) {
-      const limit = Math.max(1, Math.min(50, Math.floor(action.payload || 10)));
+      const limit = Math.max(1, Math.min(200, Math.floor(action.payload || 10)));
       Object.keys(state.itemsByFeed).forEach(feedUrl => {
         const list = Array.isArray(state.itemsByFeed[feedUrl]) ? [...state.itemsByFeed[feedUrl]] : [];
         list.sort((a, b) => b.publishedMs - a.publishedMs);

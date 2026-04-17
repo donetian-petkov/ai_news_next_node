@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { NewsMoodFilterValue, NewsTypeFilterValue, type FeedInfo, type NewsItem } from '../../../../store/types';
-import { COLUMN_LAYOUT_TOKENS } from '../../designTokens';
+import { clampVisibleCount, normalizeStoryLimit } from '../../storyVisibility';
 
 type Args = {
   feed: FeedInfo;
@@ -16,12 +16,6 @@ type Args = {
   visibleByFeed: Record<string, number>;
   storiesPerColumn: number;
 };
-
-function normalizeStoriesPerColumn(value: number): number {
-  const parsed = Math.floor(Number(value));
-  if (!Number.isFinite(parsed) || parsed < 1) return COLUMN_LAYOUT_TOKENS.initialVisibleItems;
-  return Math.max(1, Math.min(200, parsed));
-}
 
 export function useFeedColumnItems({
   feed,
@@ -65,15 +59,8 @@ export function useFeedColumnItems({
     });
   }, [items, moodFilter, performanceMode, searchQuery, typeFilter]);
 
-  const maxStoriesPerColumn = normalizeStoriesPerColumn(storiesPerColumn);
-  const defaultVisibleLimit = Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, maxStoriesPerColumn);
-  const visibleLimit = Math.max(
-    1,
-    Math.min(
-      maxStoriesPerColumn,
-      Math.floor(Number(visibleByFeed[feed.url] || defaultVisibleLimit))
-    )
-  );
+  const maxStoriesPerColumn = normalizeStoryLimit(storiesPerColumn);
+  const visibleLimit = clampVisibleCount(visibleByFeed[feed.url], maxStoriesPerColumn);
   const shownItems = itemsVisible.slice(0, visibleLimit);
 
   return {

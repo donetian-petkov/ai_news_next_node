@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UiButton } from '../design-system/UiButton';
 import { UiSelect } from '../design-system/UiSelect';
+import { getDefaultVisibleCount, getShowMoreStep } from '../columns/storyVisibility';
 import { useTopMenuContext } from './context/useTopMenuContext';
 
 export function TopMenuControlsQuickRow() {
+  const { t } = useTranslation();
   const {
     labels,
     controls: {
@@ -21,6 +24,8 @@ export function TopMenuControlsQuickRow() {
   const selectedStoryPreset = presetStoryCounts.includes(storiesPerColumn) ? String(storiesPerColumn) : 'custom';
   const parsedCustomStories = Math.floor(Number(customStoriesDraft));
   const customStoriesValid = Number.isFinite(parsedCustomStories) && parsedCustomStories >= 1;
+  const resetShownCount = getDefaultVisibleCount(storiesPerColumn);
+  const showMoreAllCount = getShowMoreStep(undefined, storiesPerColumn);
 
   useEffect(() => {
     setCustomStoriesDraft(String(storiesPerColumn));
@@ -29,12 +34,14 @@ export function TopMenuControlsQuickRow() {
   return (
     <div className="controlsCompactRow controlsRow">
       <div className="controlGroup">
-        <UiButton id="resetBtn" onClick={actions.onResetAllNewest}>{labels.resetAllToNewestTen}</UiButton>
-        <UiButton id="showMoreNewsAllBtn" onClick={actions.onShowMoreNewsAll}>
-          {labels.showMoreNewsAll}
+        <UiButton id="resetBtn" onClick={actions.onResetAllNewest}>
+          {t('topMenu.resetAllToNewestCount', { count: storiesPerColumn })}
+        </UiButton>
+        <UiButton id="showMoreNewsAllBtn" onClick={actions.onShowMoreNewsAll} disabled={showMoreAllCount < 1}>
+          {showMoreAllCount > 0 ? t('topMenu.showMoreNewsAllCount', { count: showMoreAllCount }) : labels.showMoreNewsAll}
         </UiButton>
         <UiButton id="resetNewsShownAllBtn" onClick={actions.onResetNewsShownAll}>
-          {labels.resetNewsShownAll}
+          {t('topMenu.resetNewsShownAllCount', { count: resetShownCount })}
         </UiButton>
         <UiSelect
           id="storiesPerColumnSelect"

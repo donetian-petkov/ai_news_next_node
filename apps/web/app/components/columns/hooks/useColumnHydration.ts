@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { FeedInfo } from '../../../store/types';
 import { COLUMN_LAYOUT_TOKENS } from '../designTokens';
+import { clampVisibleCount, getDefaultVisibleCount, getShowMoreStep } from '../storyVisibility';
 
 type Args = {
   renderedFeeds: FeedInfo[];
@@ -12,23 +13,6 @@ type Args = {
   resetNewsShownAllSeq: number;
   columnNodesRef: MutableRefObject<Record<string, HTMLDivElement | null>>;
 };
-
-function normalizeStoryLimit(value: number): number {
-  const parsed = Math.floor(Number(value));
-  if (!Number.isFinite(parsed) || parsed < 1) return COLUMN_LAYOUT_TOKENS.initialVisibleItems;
-  return Math.max(1, Math.min(200, parsed));
-}
-
-function defaultVisibleCount(storyLimit: number): number {
-  return Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, normalizeStoryLimit(storyLimit));
-}
-
-function clampVisibleCount(value: number | undefined, storyLimit: number): number {
-  const limit = normalizeStoryLimit(storyLimit);
-  const parsed = Math.floor(Number(value));
-  if (!Number.isFinite(parsed) || parsed < 1) return defaultVisibleCount(limit);
-  return Math.max(1, Math.min(limit, parsed));
-}
 
 export function useColumnHydration({
   renderedFeeds,
@@ -47,7 +31,7 @@ export function useColumnHydration({
       renderedFeeds.forEach(feed => {
         next[feed.url] = typeof prev[feed.url] === 'number'
           ? clampVisibleCount(prev[feed.url], storyLimit)
-          : defaultVisibleCount(storyLimit);
+          : getDefaultVisibleCount(storyLimit);
       });
       return next;
     });
@@ -59,7 +43,7 @@ export function useColumnHydration({
       const next = { ...prev };
       renderedFeeds.forEach(feed => {
         next[feed.url] = clampVisibleCount(
-          (next[feed.url] || defaultVisibleCount(storyLimit)) + COLUMN_LAYOUT_TOKENS.visibleItemsStep,
+          (next[feed.url] || getDefaultVisibleCount(storyLimit)) + getShowMoreStep(next[feed.url], storyLimit),
           storyLimit
         );
       });
@@ -72,7 +56,7 @@ export function useColumnHydration({
     setVisibleByFeed(prev => {
       const next = { ...prev };
       renderedFeeds.forEach(feed => {
-        next[feed.url] = defaultVisibleCount(storyLimit);
+        next[feed.url] = getDefaultVisibleCount(storyLimit);
       });
       return next;
     });

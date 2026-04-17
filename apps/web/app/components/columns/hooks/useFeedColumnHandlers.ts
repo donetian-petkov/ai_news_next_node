@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { setAskDraft, toggleAskOpen, togglePinnedNews } from '../../../store/slices/newsSlice';
 import { setFeedDeleteAge, toggleFeedControls, togglePinned } from '../../../store/slices/feedsSlice';
 import type { AppDispatch } from '../../../store/store';
-import { COLUMN_LAYOUT_TOKENS } from '../designTokens';
+import { clampVisibleCount, getDefaultVisibleCount, getShowMoreStep } from '../storyVisibility';
 import type { FeedColumnHandlers } from '../reactColumns.types';
 
 type Args = {
@@ -85,14 +85,14 @@ export function useFeedColumnHandlers({
     onRemoveOldInFeed: removeOldInFeed,
     onShowMoreNews: (feedUrl: string) => setVisibleByFeed(prev => ({
       ...prev,
-      [feedUrl]: Math.min(
-        storiesPerColumn,
-        (prev[feedUrl] || Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, storiesPerColumn)) + COLUMN_LAYOUT_TOKENS.visibleItemsStep
+      [feedUrl]: clampVisibleCount(
+        (prev[feedUrl] || getDefaultVisibleCount(storiesPerColumn)) + getShowMoreStep(prev[feedUrl], storiesPerColumn),
+        storiesPerColumn
       )
     })),
     onResetNewsToTen: (feedUrl: string) => setVisibleByFeed(prev => ({
       ...prev,
-      [feedUrl]: Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, storiesPerColumn)
+      [feedUrl]: getDefaultVisibleCount(storiesPerColumn)
     })),
     onTogglePinnedNews: (id: string) => dispatch(togglePinnedNews(id)),
     onCopyLink: copyLink,

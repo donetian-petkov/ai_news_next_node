@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { Alert, Button, Skeleton, Stack } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import type { BodyMode, FeedAskState } from '../reactColumns.types';
 import { collapseText, compactResearch, extractConfidence } from '../reactColumns.utils';
 import { NewsCard } from '../NewsCard';
 import { useFeedColumnsContext } from '../context/useFeedColumnsContext';
 import { useFeedColumnContext } from './context/useFeedColumnContext';
 import { COLUMN_COLOR_TOKENS, COLUMN_LAYOUT_TOKENS } from '../designTokens';
+import { getDefaultVisibleCount, getShowMoreStep } from '../storyVisibility';
 import type { NewsCardHandlers, NewsCardStateModel, NewsCardViewModel } from '../news-card/newsCard.types';
 import { askKey, bodyKey, cssEscape, getDefaultAskState, type PendingScrollTarget } from './feedColumnItems.utils';
 
@@ -16,6 +18,7 @@ function pendingKey(feedUrl: string, id: string): string {
 }
 
 export function FeedColumnItemsList() {
+  const { t } = useTranslation();
   const { feed, items, itemsVisible, shownItems, isMatchColumn, accent, soft } = useFeedColumnContext();
   const { view, state, handlers } = useFeedColumnsContext();
 
@@ -71,6 +74,11 @@ export function FeedColumnItemsList() {
   } = handlers;
 
   const pendingScrollRef = useRef<PendingScrollTarget | null>(null);
+  const resetVisibleCount = getDefaultVisibleCount(storiesPerColumn);
+  const showMoreCount = Math.min(
+    getShowMoreStep(shownItems.length, storiesPerColumn),
+    Math.max(0, itemsVisible.length - shownItems.length)
+  );
 
   useEffect(() => {
     const pending = pendingScrollRef.current;
@@ -214,7 +222,7 @@ export function FeedColumnItemsList() {
           />
         );
       })}
-      {itemsVisible.length > shownItems.length && shownItems.length < storiesPerColumn ? (
+      {itemsVisible.length > shownItems.length && showMoreCount > 0 ? (
         <Button
           size="small"
           variant="outlined"
@@ -226,10 +234,10 @@ export function FeedColumnItemsList() {
             onShowMoreNews(feed.url);
           }}
         >
-          {labels.showFiveMore}
+          {t('columns.showMoreCount', { count: showMoreCount })}
         </Button>
       ) : null}
-      {itemsVisible.length > Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, storiesPerColumn) && shownItems.length > Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, storiesPerColumn) ? (
+      {itemsVisible.length > resetVisibleCount && shownItems.length > resetVisibleCount ? (
         <Button
           size="small"
           variant="outlined"
@@ -239,7 +247,7 @@ export function FeedColumnItemsList() {
             onResetNewsToTen(feed.url);
           }}
         >
-          {labels.resetToTenItems}
+          {t('columns.resetToTopCount', { count: resetVisibleCount })}
         </Button>
       ) : null}
     </Stack>
