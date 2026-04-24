@@ -75,10 +75,9 @@ export function FeedColumnItemsList() {
 
   const pendingScrollRef = useRef<PendingScrollTarget | null>(null);
   const resetVisibleCount = getDefaultVisibleCount(storiesPerColumn);
-  const showMoreCount = Math.min(
-    getShowMoreStep(shownItems.length, storiesPerColumn),
-    Math.max(0, itemsVisible.length - shownItems.length)
-  );
+  const showMoreCount = getShowMoreStep(shownItems.length, storiesPerColumn);
+  const canShowMore = itemsVisible.length > shownItems.length;
+  const canReset = shownItems.length > resetVisibleCount;
 
   useEffect(() => {
     const pending = pendingScrollRef.current;
@@ -227,9 +226,9 @@ export function FeedColumnItemsList() {
           <Button
             size="small"
             variant="outlined"
-            disabled={showMoreCount < 1}
+            disabled={!canShowMore}
             onClick={() => {
-              if (showMoreCount < 1) return;
+              if (!canShowMore) return;
               const target = itemsVisible[shownItems.length];
               if (target?.id) {
                 pendingScrollRef.current = { mode: 'news', newsId: target.id };
@@ -237,15 +236,15 @@ export function FeedColumnItemsList() {
               onShowMoreNews(feed.url);
             }}
           >
-            {t('columns.showMoreNewsCount', { count: showMoreCount || 5 })}
+            {t('columns.showMoreNewsCount', { count: showMoreCount })}
           </Button>
           <Button
             size="small"
             variant="outlined"
             color="secondary"
-            disabled={shownItems.length <= resetVisibleCount}
+            disabled={!canReset}
             onClick={() => {
-              if (shownItems.length <= resetVisibleCount) return;
+              if (!canReset) return;
               pendingScrollRef.current = { mode: 'top' };
               onResetNewsToTen(feed.url);
             }}

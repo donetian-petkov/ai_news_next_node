@@ -37,8 +37,8 @@ export function TopMenuControlsQuickRow() {
         <UiButton id="resetBtn" onClick={actions.onResetAllNewest}>
           {t('topMenu.resetAllToNewestCount', { count: storiesPerColumn })}
         </UiButton>
-        <UiButton id="showMoreNewsAllBtn" onClick={actions.onShowMoreNewsAll} disabled={showMoreAllCount < 1}>
-          {showMoreAllCount > 0 ? t('topMenu.showMoreNewsAllCount', { count: showMoreAllCount }) : labels.showMoreNewsAll}
+        <UiButton id="showMoreNewsAllBtn" onClick={actions.onShowMoreNewsAll}>
+          {t('topMenu.showMoreNewsAllCount', { count: showMoreAllCount })}
         </UiButton>
         <UiButton id="resetNewsShownAllBtn" onClick={actions.onResetNewsShownAll}>
           {t('topMenu.resetNewsShownAllCount', { count: resetShownCount })}

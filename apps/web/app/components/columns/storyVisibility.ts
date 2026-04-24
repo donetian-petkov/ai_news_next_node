@@ -10,18 +10,16 @@ export function normalizeStoryLimit(
 }
 
 export function getDefaultVisibleCount(storyLimit: number): number {
-  return Math.min(COLUMN_LAYOUT_TOKENS.initialVisibleItems, normalizeStoryLimit(storyLimit));
+  return normalizeStoryLimit(storyLimit);
 }
 
 export function clampVisibleCount(value: number | undefined, storyLimit: number): number {
-  const limit = normalizeStoryLimit(storyLimit);
   const parsed = Math.floor(Number(value));
-  if (!Number.isFinite(parsed) || parsed < 1) return getDefaultVisibleCount(limit);
-  return Math.max(1, Math.min(limit, parsed));
+  if (!Number.isFinite(parsed) || parsed < 1) return getDefaultVisibleCount(storyLimit);
+  return Math.max(1, parsed);
 }
 
 export function getShowMoreStep(currentVisible: number | undefined, storyLimit: number): number {
-  const limit = normalizeStoryLimit(storyLimit);
-  const visible = clampVisibleCount(currentVisible, limit);
-  return Math.max(0, Math.min(COLUMN_LAYOUT_TOKENS.visibleItemsStep, limit - visible));
+  void currentVisible;
+  return normalizeStoryLimit(storyLimit);
 }
