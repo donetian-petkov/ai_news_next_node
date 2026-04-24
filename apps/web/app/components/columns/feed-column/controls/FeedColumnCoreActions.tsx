@@ -5,7 +5,7 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import TuneIcon from '@mui/icons-material/Tune';
 import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
-import { Button, Stack } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { useFeedColumnsContext } from '../../context/useFeedColumnsContext';
 import { useFeedColumnContext } from '../context/useFeedColumnContext';
 
@@ -17,32 +17,53 @@ export function FeedColumnCoreActions() {
   const { onTogglePinnedColumn, onMoveFeedToTop, onRemoveFeed, onToggleFeedControls } = handlers;
   const pinned = !!pinnedByUrl[feed.url];
   const controlsOpen = typeof controlsOpenByUrl[feed.url] === 'boolean' ? !!controlsOpenByUrl[feed.url] : true;
+  const showColumnActions = !isMatchColumn && !isEmergingColumn;
+  const actionBtnSx = {
+    ...compactBtnSx,
+    width: '100%',
+    minWidth: 0,
+    justifyContent: 'center',
+    px: { xs: 1, sm: 1.15 },
+    '& .MuiButton-startIcon': {
+      ml: 0,
+      mr: { xs: 0.55, sm: 0.7 }
+    }
+  } as const;
 
   return (
-    <Stack direction="row" spacing={1} sx={{ mb: 1.1 }} flexWrap="wrap">
-      {!isMatchColumn && !isEmergingColumn ? (
+    <Box
+      sx={{
+        mb: 1.1,
+        display: 'grid',
+        gap: 1,
+        gridTemplateColumns: showColumnActions
+          ? { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' }
+          : 'minmax(0, 1fr)'
+      }}
+    >
+      {showColumnActions ? (
         <Button
           size="small"
           variant={pinned ? 'contained' : 'outlined'}
           startIcon={pinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
           onClick={() => onTogglePinnedColumn(feed.url)}
-          sx={compactBtnSx}
+          sx={actionBtnSx}
         >
           {pinned ? labels.pinned : labels.pin}
         </Button>
       ) : null}
-      {!isMatchColumn && !isEmergingColumn ? (
+      {showColumnActions ? (
         <Button
           size="small"
           variant="outlined"
           startIcon={<VerticalAlignTopIcon />}
           onClick={() => onMoveFeedToTop(feed.url)}
-          sx={compactBtnSx}
+          sx={actionBtnSx}
         >
           {labels.moveToTop}
         </Button>
       ) : null}
-      {!isMatchColumn && !isEmergingColumn ? (
+      {showColumnActions ? (
         <Button
           size="small"
           variant="outlined"
@@ -50,7 +71,7 @@ export function FeedColumnCoreActions() {
           startIcon={<DeleteOutlineIcon />}
           onClick={() => onRemoveFeed(feed.url)}
           disabled={!connected}
-          sx={compactBtnSx}
+          sx={actionBtnSx}
         >
           {labels.remove}
         </Button>
@@ -60,10 +81,13 @@ export function FeedColumnCoreActions() {
         variant="outlined"
         startIcon={<TuneIcon />}
         onClick={() => onToggleFeedControls(feed.url)}
-        sx={compactBtnSx}
+        sx={{
+          ...actionBtnSx,
+          gridColumn: '1 / -1'
+        }}
       >
         {controlsOpen ? labels.hideControls : labels.showControls}
       </Button>
-    </Stack>
+    </Box>
   );
 }
