@@ -28,9 +28,9 @@ export default function TopMenu() {
           <TopMenuMobileDrawer />
 
           <HelpDialog />
-          <ToastStack />
         </div>
 
+        <ToastStack />
         <TopMenuViewportScrollDock />
       </>
     </TopMenuProvider>
