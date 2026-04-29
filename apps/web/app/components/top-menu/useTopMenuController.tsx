@@ -5,6 +5,8 @@ import { useMediaQuery } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
+  dismissAllNotifications,
+  dismissNotification,
   dismissToast,
   setAppearanceSettings,
   setHelpOpen,
@@ -35,6 +37,7 @@ export function useTopMenuController() {
   const totalTokens = useAppSelector(s => s.aiUsage.totalTokens);
   const feeds = useAppSelector(s => s.feeds.feeds);
   const orderByUrl = useAppSelector(s => s.feeds.orderByUrl);
+  const notificationInbox = useAppSelector(s => s.ui.notificationInbox);
   const toasts = useAppSelector(s => s.ui.toasts);
   const briefing = useAppSelector(s => s.briefing);
 
@@ -47,6 +50,7 @@ export function useTopMenuController() {
   const [feedLabel, setFeedLabel] = useState('');
   const [feedInterval, setFeedInterval] = useState('120');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [deleteAgeAll, setDeleteAgeAll] = useState<TopMenuDeleteAge>('week');
   const [addStatus, setAddStatus] = useState<AddStatus>(null);
   const topbarInnerRef = useRef<HTMLDivElement | null>(null);
@@ -143,6 +147,10 @@ export function useTopMenuController() {
 
   const onOpenHelp = () => dispatch(setHelpOpen(true));
   const onCloseHelp = () => dispatch(setHelpOpen(false));
+  const onOpenNotifications = () => setNotificationsOpen(true);
+  const onCloseNotifications = () => setNotificationsOpen(false);
+  const onDismissNotification = (id: string) => dispatch(dismissNotification(id));
+  const onDismissAllNotifications = () => dispatch(dismissAllNotifications());
   const onDismissToast = (id: string) => dispatch(dismissToast(id));
   const onCloseMobileDrawer = () => setMobileDrawerOpen(false);
   const onToggleHideAllResearch = () => dispatch(setHideAllResearch(!ui.hideAllResearch));
@@ -298,6 +306,12 @@ export function useTopMenuController() {
     helpTitle: labels.helpTitle,
     helpCloseLabel: labels.close,
     onCloseHelp,
+    notificationsOpen,
+    notificationInbox,
+    onOpenNotifications,
+    onCloseNotifications,
+    onDismissNotification,
+    onDismissAllNotifications,
     toasts,
     onDismissToast,
     mobileDrawerOpen,

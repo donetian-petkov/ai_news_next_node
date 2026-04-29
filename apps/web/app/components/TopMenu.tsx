@@ -1,6 +1,7 @@
 'use client';
 
 import { HelpDialog } from './top-menu/HelpDialog';
+import { NotificationsDialog } from './top-menu/NotificationsDialog';
 import { TopMenuHeader } from './top-menu/TopMenuHeader';
 import { TopMenuViewportScrollDock } from './top-menu/TopMenuViewportScrollDock';
 import { TopMenuMobileDrawer } from './top-menu/TopMenuMobileDrawer';
@@ -28,6 +29,7 @@ export default function TopMenu() {
           <TopMenuMobileDrawer />
 
           <HelpDialog />
+          <NotificationsDialog />
         </div>
 
         <ToastStack />

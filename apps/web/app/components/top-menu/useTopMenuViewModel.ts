@@ -37,7 +37,13 @@ type Args = {
   helpTitle: string;
   helpCloseLabel: string;
   onCloseHelp: () => void;
-  toasts: Array<{ id: string; kind: 'success' | 'error' | 'warning' | 'info'; message: string }>;
+  notificationsOpen: boolean;
+  notificationInbox: Array<{ id: string; kind: 'success' | 'error' | 'warning' | 'info'; message: string; createdAt: number }>;
+  onOpenNotifications: () => void;
+  onCloseNotifications: () => void;
+  onDismissNotification: (id: string) => void;
+  onDismissAllNotifications: () => void;
+  toasts: Array<{ id: string; kind: 'success' | 'error' | 'warning' | 'info'; message: string; createdAt: number }>;
   onDismissToast: (id: string) => void;
   mobileDrawerOpen: boolean;
   onCloseMobileDrawer: () => void;
@@ -87,6 +93,12 @@ export function useTopMenuViewModel({
   helpTitle,
   helpCloseLabel,
   onCloseHelp,
+  notificationsOpen,
+  notificationInbox,
+  onOpenNotifications,
+  onCloseNotifications,
+  onDismissNotification,
+  onDismissAllNotifications,
   toasts,
   onDismissToast,
   mobileDrawerOpen,
@@ -161,6 +173,14 @@ export function useTopMenuViewModel({
       closeLabel: helpCloseLabel,
       onClose: onCloseHelp
     },
+    notifications: {
+      open: notificationsOpen,
+      items: notificationInbox,
+      onOpen: onOpenNotifications,
+      onClose: onCloseNotifications,
+      onDismiss: onDismissNotification,
+      onDismissAll: onDismissAllNotifications
+    },
     toast: {
       toasts,
       onDismiss: onDismissToast
@@ -183,7 +203,7 @@ export function useTopMenuViewModel({
     onChangeVibe,
     onPlayToggleSound,
     onReorderFeeds
-  }), [addStream, addStreamLabel, addStreamVisible, allColumnLabel, connected, controlsActions, controlsLabel, controlsModel, dateFormat, helpCloseLabel, helpOpen, helpTitle, hideAllResearch, hideAllSummaries, isMobile, labels, language, menuItemsAsIcons, menuLabel, mobileDrawerOpen, onChangeVibe, onCloseHelp, onCloseMobileDrawer, onDismissToast, onOpenHelp, onPlayToggleSound, onReorderFeeds, onScrollToColumns, onScrollToPageBottom, onScrollToPageTop, onToggleAddStream, onToggleAllColumnControls, onToggleControls, onToggleHideAllResearch, onToggleHideAllSummaries, onToggleMenu, onToggleSearch, orderedFeeds, search, searchLabel, searchVisible, showDesktopBody, status, timezone, toasts, topHintAsButtons, totalTokens, vibe]);
+  }), [addStream, addStreamLabel, addStreamVisible, allColumnLabel, connected, controlsActions, controlsLabel, controlsModel, dateFormat, helpCloseLabel, helpOpen, helpTitle, hideAllResearch, hideAllSummaries, isMobile, labels, language, menuItemsAsIcons, menuLabel, mobileDrawerOpen, notificationInbox, notificationsOpen, onChangeVibe, onCloseHelp, onCloseMobileDrawer, onCloseNotifications, onDismissAllNotifications, onDismissNotification, onDismissToast, onOpenHelp, onOpenNotifications, onPlayToggleSound, onReorderFeeds, onScrollToColumns, onScrollToPageBottom, onScrollToPageTop, onToggleAddStream, onToggleAllColumnControls, onToggleControls, onToggleHideAllResearch, onToggleHideAllSummaries, onToggleMenu, onToggleSearch, orderedFeeds, search, searchLabel, searchVisible, showDesktopBody, status, timezone, toasts, topHintAsButtons, totalTokens, vibe]);
 
   return {
     contextValue

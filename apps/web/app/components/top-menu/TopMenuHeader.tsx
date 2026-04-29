@@ -1,10 +1,11 @@
 'use client';
 
-import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
+import { Badge, Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GridViewIcon from '@mui/icons-material/GridView';
 import MenuIcon from '@mui/icons-material/Menu';
+import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import OpenWithIcon from '@mui/icons-material/OpenWith';
 import SearchIcon from '@mui/icons-material/Search';
 import SummarizeIcon from '@mui/icons-material/Summarize';
@@ -25,6 +26,7 @@ export function TopMenuHeader() {
     menuLabel,
     hideAllResearchLabel,
     hideAllSummariesLabel,
+    notifications,
     onScrollToColumns,
     onOpenHelp,
     onToggleMenu,
@@ -34,6 +36,9 @@ export function TopMenuHeader() {
     onToggleHideAllResearch,
     onToggleHideAllSummaries
   } = useTopMenuContext();
+  const notificationCount = notifications.items.length;
+  const notificationsLabelBase = labels.notificationsInbox || labels.notificationsSummary || 'Notifications';
+  const notificationsLabel = notificationCount ? `${notificationsLabelBase} (${notificationCount})` : notificationsLabelBase;
 
   return (
     <div className="headerRow">
@@ -79,6 +84,31 @@ export function TopMenuHeader() {
             </Stack>
             <Stack direction="row" spacing={0.8}>
               <IconButton
+                id="mobileNotificationsToggle"
+                className="mobileMenuToggleBtn"
+                size="small"
+                aria-label={notificationsLabel}
+                onClick={notifications.onOpen}
+              >
+                <Badge
+                  badgeContent={notificationCount > 0 ? (notificationCount > 99 ? '99+' : notificationCount) : undefined}
+                  color="secondary"
+                  overlap="circular"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      minWidth: 18,
+                      height: 18,
+                      px: 0.5,
+                      fontSize: '0.7rem',
+                      fontWeight: 900,
+                      border: '1px solid rgba(255,255,255,0.18)'
+                    }
+                  }}
+                >
+                  <NotificationsOutlinedIcon fontSize="small" />
+                </Badge>
+              </IconButton>
+              <IconButton
                 id="menuToggle"
                 className="mobileMenuToggleBtn"
                 size="small"
@@ -93,6 +123,7 @@ export function TopMenuHeader() {
         <Stack className="headerRight" direction="row" flexWrap="wrap" gap={1.1} alignItems="center">
           <StatusPills />
           <QuickVibeSelect />
+          <TopMenuActionButton id="notificationsToggle" label={notificationsLabel} badgeContent={notificationCount} icon={<NotificationsOutlinedIcon fontSize="small" />} onClick={notifications.onOpen} />
           <TopMenuActionButton id="quickSearchBtn" label={searchLabel} icon={<SearchIcon fontSize="small" />} onClick={onToggleSearch} />
           <TopMenuActionButton id="quickAddStreamBtn" label={addStreamLabel} icon={<AddIcon fontSize="small" />} onClick={onToggleAddStream} />
           <TopMenuActionButton id="allColControlsToggle" label={allColumnLabel} icon={<GridViewIcon fontSize="small" />} onClick={onToggleAllColumnControls} />

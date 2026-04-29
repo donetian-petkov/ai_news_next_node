@@ -9,6 +9,7 @@ type TopMenuToast = {
   id: string;
   kind: 'success' | 'error' | 'warning' | 'info';
   message: string;
+  createdAt: number;
 };
 
 export type TopMenuContextValue = {
@@ -45,6 +46,14 @@ export type TopMenuContextValue = {
     title: string;
     closeLabel: string;
     onClose: () => void;
+  };
+  notifications: {
+    open: boolean;
+    items: TopMenuToast[];
+    onOpen: () => void;
+    onClose: () => void;
+    onDismiss: (id: string) => void;
+    onDismissAll: () => void;
   };
   toast: {
     toasts: TopMenuToast[];

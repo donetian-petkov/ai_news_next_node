@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-type Toast = { id: string; kind: 'info' | 'success' | 'error'; message: string };
+type Toast = { id: string; kind: 'info' | 'success' | 'error' | 'warning'; message: string; createdAt: number };
 
 type UseTopMenuToastLifecycleArgs = {
   toasts: Toast[];
@@ -52,4 +52,3 @@ export function useTopMenuToastLifecycle({
     };
   }, []);
 }
-

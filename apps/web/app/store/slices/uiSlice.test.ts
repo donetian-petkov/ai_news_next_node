@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import uiReducer, { setSearchQuery, setTopUiState, triggerHideAllResearch, setAppearanceSettings, setNotifySettings, setAiSettings, setKeywords, setMoodFilter, setTypeFilter, hydrateUiSettings, enqueueToast, dismissToast, setStoriesPerColumn } from './uiSlice';
+import uiReducer, { setSearchQuery, setTopUiState, triggerHideAllResearch, setAppearanceSettings, setNotifySettings, setAiSettings, setKeywords, setMoodFilter, setTypeFilter, hydrateUiSettings, enqueueToast, dismissToast, dismissNotification, dismissAllNotifications, setStoriesPerColumn } from './uiSlice';
 import { NewsMoodFilterValue, NewsTypeFilterValue } from '../types';
 
 describe('uiSlice', () => {
@@ -88,7 +88,8 @@ describe('uiSlice', () => {
       soundEnabled: true,
       soundTheme: 'vibe',
       vibe: 'default',
-      toasts: []
+      toasts: [],
+      notificationInbox: []
     });
   });
 
@@ -285,10 +286,19 @@ describe('uiSlice', () => {
       state = uiReducer(state, enqueueToast({ kind: 'info', message: `toast-${i}` }));
     }
     expect(state.toasts).toHaveLength(8);
+    expect(state.notificationInbox).toHaveLength(10);
     const firstToastId = state.toasts[0]?.id;
     expect(firstToastId).toBeTruthy();
 
     state = uiReducer(state, dismissToast(firstToastId || ''));
     expect(state.toasts.some(t => t.id === firstToastId)).toBe(false);
+    expect(state.notificationInbox.some(t => t.id === firstToastId)).toBe(true);
+
+    state = uiReducer(state, dismissNotification(firstToastId || ''));
+    expect(state.notificationInbox.some(t => t.id === firstToastId)).toBe(false);
+
+    state = uiReducer(state, dismissAllNotifications());
+    expect(state.notificationInbox).toEqual([]);
+    expect(state.toasts).toEqual([]);
   });
 });

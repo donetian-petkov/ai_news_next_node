@@ -36,6 +36,16 @@ type AiProvider = 'openai' | 'claude' | 'openrouter';
 type AiModelKind = 'summary' | 'research' | 'ask';
 type AiProviderModelOptions = Record<AiModelKind, string[]>;
 type AiModelsByProvider = Record<AiProvider, AiProviderModelOptions>;
+type UiToastKind = 'info' | 'success' | 'error' | 'warning';
+type UiNotification = {
+  id: string;
+  kind: UiToastKind;
+  message: string;
+  createdAt: number;
+};
+
+const MAX_ACTIVE_TOASTS = 8;
+const MAX_NOTIFICATION_HISTORY = 60;
 
 const DEFAULT_AI_INSIGHT_FEATURES: AiInsightFeatureSettings = {
   biasDetection: false,
@@ -193,7 +203,8 @@ type UiState = {
   soundEnabled: boolean;
   soundTheme: 'vibe' | 'default' | 'anime' | 'arcade' | 'cinema' | 'newspaper' | 'cyberwitch' | 'fantasy' | 'scifi';
   vibe: 'default' | 'anime' | 'arcade' | 'cinema' | 'newspaper' | 'cyberwitch' | 'fantasy' | 'scifi';
-  toasts: Array<{ id: string; kind: 'info' | 'success' | 'error'; message: string }>;
+  toasts: UiNotification[];
+  notificationInbox: UiNotification[];
 };
 
 const initialState: UiState = {
@@ -251,7 +262,8 @@ const initialState: UiState = {
   soundEnabled: true,
   soundTheme: 'vibe',
   vibe: 'default',
-  toasts: []
+  toasts: [],
+  notificationInbox: []
 };
 
 const uiSlice = createSlice({
@@ -552,19 +564,35 @@ const uiSlice = createSlice({
       }
       if (typeof next.vibe === 'string' && isVibe(next.vibe)) state.vibe = next.vibe;
     },
-    enqueueToast(state, action: PayloadAction<{ kind: 'info' | 'success' | 'error'; message: string }>) {
+    enqueueToast(state, action: PayloadAction<{ kind: UiToastKind; message: string }>) {
       const message = String(action.payload.message || '').trim();
       if (!message) return;
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      state.toasts.push({ id, kind: action.payload.kind, message });
-      if (state.toasts.length > 8) {
-        state.toasts.splice(0, state.toasts.length - 8);
+      const createdAt = Date.now();
+      const id = `${createdAt}-${Math.random().toString(36).slice(2, 8)}`;
+      const nextNotification = { id, kind: action.payload.kind, message, createdAt };
+      state.toasts.push(nextNotification);
+      if (state.toasts.length > MAX_ACTIVE_TOASTS) {
+        state.toasts.splice(0, state.toasts.length - MAX_ACTIVE_TOASTS);
+      }
+      state.notificationInbox.push(nextNotification);
+      if (state.notificationInbox.length > MAX_NOTIFICATION_HISTORY) {
+        state.notificationInbox.splice(0, state.notificationInbox.length - MAX_NOTIFICATION_HISTORY);
       }
     },
     dismissToast(state, action: PayloadAction<string>) {
       const id = String(action.payload || '');
       if (!id) return;
       state.toasts = state.toasts.filter(t => t.id !== id);
+    },
+    dismissNotification(state, action: PayloadAction<string>) {
+      const id = String(action.payload || '');
+      if (!id) return;
+      state.notificationInbox = state.notificationInbox.filter(t => t.id !== id);
+      state.toasts = state.toasts.filter(t => t.id !== id);
+    },
+    dismissAllNotifications(state) {
+      state.notificationInbox = [];
+      state.toasts = [];
     }
   }
 });
@@ -590,6 +618,8 @@ export const {
   setAppearanceSettings,
   hydrateUiSettings,
   enqueueToast,
-  dismissToast
+  dismissToast,
+  dismissNotification,
+  dismissAllNotifications
 } = uiSlice.actions;
 export default uiSlice.reducer;
