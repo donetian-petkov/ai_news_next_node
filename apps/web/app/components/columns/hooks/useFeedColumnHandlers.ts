@@ -33,6 +33,7 @@ type Args = {
   requestSummary: FeedColumnHandlers['onRequestSummary'];
   requestTitleTranslation: FeedColumnHandlers['onRequestTitleTranslation'];
   requestResearch: FeedColumnHandlers['onRequestResearch'];
+  requestAutoActions: FeedColumnHandlers['onRequestAutoActions'];
   requestAsk: FeedColumnHandlers['onAskSubmit'];
 };
 
@@ -62,6 +63,7 @@ export function useFeedColumnHandlers({
   requestSummary,
   requestTitleTranslation,
   requestResearch,
+  requestAutoActions,
   requestAsk
 }: Args) {
   return useMemo<FeedColumnHandlers>(() => ({
@@ -102,8 +104,9 @@ export function useFeedColumnHandlers({
     onRequestSummary: requestSummary,
     onRequestTitleTranslation: requestTitleTranslation,
     onRequestResearch: requestResearch,
+    onRequestAutoActions: requestAutoActions,
     onToggleAsk: (id, feedUrl) => dispatch(toggleAskOpen({ id, feedUrl })),
     onSetAskDraft: (id, feedUrl, draft) => dispatch(setAskDraft({ id, feedUrl, draft })),
     onAskSubmit: requestAsk
-  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, moveFeedToTop, removeFeed, removeOldInFeed, requestAsk, requestResearch, requestSummary, requestTitleTranslation, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, storiesPerColumn, toggleFeedResearch, toggleFeedSummary, toggleFeedTranslation]);
+  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, moveFeedToTop, removeFeed, removeOldInFeed, requestAsk, requestAutoActions, requestResearch, requestSummary, requestTitleTranslation, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, storiesPerColumn, toggleFeedResearch, toggleFeedSummary, toggleFeedTranslation]);
 }

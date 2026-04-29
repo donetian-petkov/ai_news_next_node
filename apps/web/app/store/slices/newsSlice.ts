@@ -84,6 +84,11 @@ function applyNewsBatch(state: NewsState, items: NewsItem[]) {
     if (item.research && item.research.trim()) {
       delete state.researchPendingById[key];
       delete state.researchPendingById[item.id];
+    } else if (item.researchPending === true) {
+      state.researchPendingById[key] = true;
+    } else if (item.researchPending === false) {
+      delete state.researchPendingById[key];
+      delete state.researchPendingById[item.id];
     }
   });
 

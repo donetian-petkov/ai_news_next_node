@@ -72,6 +72,7 @@ type Args = {
   requestSummary: FeedColumnHandlers['onRequestSummary'];
   requestTitleTranslation: FeedColumnHandlers['onRequestTitleTranslation'];
   requestResearch: FeedColumnHandlers['onRequestResearch'];
+  requestAutoActions: FeedColumnHandlers['onRequestAutoActions'];
   requestAsk: FeedColumnHandlers['onAskSubmit'];
 };
 
@@ -118,6 +119,7 @@ export function useColumnsPresentation({
   requestSummary,
   requestTitleTranslation,
   requestResearch,
+  requestAutoActions,
   requestAsk
 }: Args) {
   const viewModel = useFeedColumnViewModel({ ui, labels, connected, status });
@@ -165,6 +167,7 @@ export function useColumnsPresentation({
     requestSummary,
     requestTitleTranslation,
     requestResearch,
+    requestAutoActions,
     requestAsk
   });
 

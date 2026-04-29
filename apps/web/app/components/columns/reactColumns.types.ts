@@ -224,6 +224,10 @@ export type FeedColumnHandlers = {
   onRequestSummary: (it: NewsItem) => void;
   onRequestTitleTranslation: (it: NewsItem) => void;
   onRequestResearch: (it: NewsItem) => void;
+  onRequestAutoActions: (
+    it: NewsItem,
+    actions: { summary?: boolean; research?: boolean; titleTranslate?: boolean; mood?: boolean; newsType?: boolean }
+  ) => boolean;
   onToggleAsk: (id: string, feedUrl: string) => void;
   onSetAskDraft: (id: string, feedUrl: string, draft: string) => void;
   onAskSubmit: (it: NewsItem) => void;

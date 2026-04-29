@@ -19,6 +19,13 @@ import { COLUMN_LAYOUT_TOKENS } from '../designTokens';
 
 type AskStateMap = Record<string, { used: number; remaining: number; draft: string; pending: boolean }>;
 type SharePlatform = 'copy' | 'card' | 'facebook' | 'reddit' | 'x' | 'tiktok';
+type AutoItemRequest = {
+  summary?: boolean;
+  research?: boolean;
+  titleTranslate?: boolean;
+  mood?: boolean;
+  newsType?: boolean;
+};
 
 type UseNewsItemActionsArgs = {
   dispatch: AppDispatch;
@@ -30,11 +37,15 @@ type UseNewsItemActionsArgs = {
 const ASK_AGENT_REPLY_TIMEOUT_MS = 45_000;
 
 function askKey(it: NewsItem): string {
-  return `${it.feedUrl}::${it.id}`;
+  return `${actionFeedUrl(it)}::${it.id}`;
 }
 
 function pendingKey(it: NewsItem): string {
-  return `${it.feedUrl}::${it.id}`;
+  return `${actionFeedUrl(it)}::${it.id}`;
+}
+
+function actionFeedUrl(it: NewsItem): string {
+  return String(it.originFeedUrl || it.feedUrl || '').trim();
 }
 
 function cssEscape(value: string): string {
@@ -78,8 +89,10 @@ export function useNewsItemActions({
   const requestSummary = useCallback((it: NewsItem) => {
     if (!connected) return;
     const key = pendingKey(it);
+    const feedUrl = actionFeedUrl(it);
+    if (!feedUrl) return;
     dispatch(setSummaryPending(key));
-    dispatch(clearSummaryForItem({ id: it.id, feedUrl: it.feedUrl }));
+    dispatch(clearSummaryForItem({ id: it.id, feedUrl }));
 
     if (summaryTimeoutsRef.current[key]) {
       window.clearTimeout(summaryTimeoutsRef.current[key]);
@@ -92,7 +105,7 @@ export function useNewsItemActions({
     const ok = sendWsMessage({
       type: 'run_summary_item',
       id: it.id,
-      feedUrl: it.feedUrl
+      feedUrl
     });
     if (!ok) dispatch(clearSummaryPending(key));
   }, [connected, dispatch]);
@@ -100,8 +113,10 @@ export function useNewsItemActions({
   const requestResearch = useCallback((it: NewsItem) => {
     if (!connected) return;
     const key = pendingKey(it);
+    const feedUrl = actionFeedUrl(it);
+    if (!feedUrl) return;
     dispatch(setResearchPending(key));
-    dispatch(clearResearchForItem({ id: it.id, feedUrl: it.feedUrl }));
+    dispatch(clearResearchForItem({ id: it.id, feedUrl }));
 
     if (researchTimeoutsRef.current[key]) {
       window.clearTimeout(researchTimeoutsRef.current[key]);
@@ -114,19 +129,70 @@ export function useNewsItemActions({
     const ok = sendWsMessage({
       type: 'run_research_item',
       id: it.id,
-      feedUrl: it.feedUrl
+      feedUrl
     });
     if (!ok) dispatch(clearResearchPending(key));
   }, [connected, dispatch]);
 
   const requestTitleTranslation = useCallback((it: NewsItem) => {
     if (!connected) return;
+    const feedUrl = actionFeedUrl(it);
+    if (!feedUrl) return;
     sendWsMessage({
       type: 'run_title_translate_item',
       id: it.id,
-      feedUrl: it.feedUrl
+      feedUrl
     });
   }, [connected]);
+
+  const requestAutoActions = useCallback((it: NewsItem, actions: AutoItemRequest) => {
+    if (!connected) return false;
+    const feedUrl = actionFeedUrl(it);
+    if (!feedUrl) return false;
+
+    const next: AutoItemRequest = {};
+    if (actions.summary) next.summary = true;
+    if (actions.research) next.research = true;
+    if (actions.titleTranslate) next.titleTranslate = true;
+    if (actions.mood) next.mood = true;
+    if (actions.newsType) next.newsType = true;
+    if (!Object.keys(next).length) return false;
+
+    const key = pendingKey(it);
+    if (next.summary) {
+      dispatch(setSummaryPending(key));
+      if (summaryTimeoutsRef.current[key]) {
+        window.clearTimeout(summaryTimeoutsRef.current[key]);
+      }
+      summaryTimeoutsRef.current[key] = window.setTimeout(() => {
+        dispatch(clearSummaryPending(key));
+        delete summaryTimeoutsRef.current[key];
+      }, COLUMN_LAYOUT_TOKENS.summaryPendingTimeoutMs);
+    }
+    if (next.research) {
+      dispatch(setResearchPending(key));
+      if (researchTimeoutsRef.current[key]) {
+        window.clearTimeout(researchTimeoutsRef.current[key]);
+      }
+      researchTimeoutsRef.current[key] = window.setTimeout(() => {
+        dispatch(clearResearchPending(key));
+        delete researchTimeoutsRef.current[key];
+      }, COLUMN_LAYOUT_TOKENS.researchPendingTimeoutMs);
+    }
+
+    const ok = sendWsMessage({
+      type: 'run_item_auto',
+      id: it.id,
+      feedUrl,
+      ...next
+    });
+    if (!ok) {
+      if (next.summary) dispatch(clearSummaryPending(key));
+      if (next.research) dispatch(clearResearchPending(key));
+      return false;
+    }
+    return true;
+  }, [connected, dispatch]);
 
   const hideItem = useCallback((it: NewsItem) => {
     const ok = sendWsMessage({ type: 'hide_item', id: it.id });
@@ -262,6 +328,8 @@ export function useNewsItemActions({
 
   const requestAsk = useCallback((it: NewsItem) => {
     if (!connected) return;
+    const feedUrl = actionFeedUrl(it);
+    if (!feedUrl) return;
     const k = askKey(it);
     const askState = askByItem[k] || { used: 0, remaining: 5, draft: '', pending: false };
     const question = String(askState.draft || '').trim().slice(0, COLUMN_LAYOUT_TOKENS.askQuestionMaxLength);
@@ -269,7 +337,7 @@ export function useNewsItemActions({
 
     const usedBefore = askState.used;
     const remainingBefore = askState.remaining;
-    dispatch(enqueueAskQuestion({ id: it.id, feedUrl: it.feedUrl, question }));
+    dispatch(enqueueAskQuestion({ id: it.id, feedUrl, question }));
     if (askTimeoutsRef.current[k]) {
       window.clearTimeout(askTimeoutsRef.current[k]);
       delete askTimeoutsRef.current[k];
@@ -278,14 +346,14 @@ export function useNewsItemActions({
     const ok = sendWsMessage({
       type: 'ask_agent_item',
       id: it.id,
-      feedUrl: it.feedUrl,
+      feedUrl,
       question,
-      researchMode: 'auto'
+      researchMode: 'reuse'
     });
     if (!ok) {
       dispatch(receiveAskReply({
         id: it.id,
-        feedUrl: it.feedUrl,
+        feedUrl,
         question,
         error: 'Socket unavailable. Try again.',
         used: usedBefore,
@@ -297,7 +365,7 @@ export function useNewsItemActions({
     askTimeoutsRef.current[k] = window.setTimeout(() => {
       dispatch(receiveAskReply({
         id: it.id,
-        feedUrl: it.feedUrl,
+        feedUrl,
         question,
         error: 'Ask Agent timed out. Please try again.',
         used: usedBefore,
@@ -311,6 +379,7 @@ export function useNewsItemActions({
     requestSummary,
     requestTitleTranslation,
     requestResearch,
+    requestAutoActions,
     hideItem,
     copyLink,
     shareNews,

@@ -141,9 +141,6 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
         if (parsed.researchLang === 'bg' || parsed.researchLang === 'en') {
           sent.push(sendWsMessage({ type: 'set_research_lang', lang: parsed.researchLang }));
         }
-        if (typeof parsed.titleDisplayLanguage === 'string' && parsed.titleDisplayLanguage !== 'original') {
-          sent.push(sendWsMessage({ type: 'run_title_translate_backfill', max: 700 }));
-        }
         if (parsed.aiProvider === 'openai' || parsed.aiProvider === 'claude' || parsed.aiProvider === 'openrouter') {
           sent.push(sendWsMessage({ type: 'set_ai_provider', provider: parsed.aiProvider }));
         }

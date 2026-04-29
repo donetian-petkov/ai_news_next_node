@@ -85,6 +85,24 @@ describe('shared clientMsgSchema', () => {
     }).success).toBe(true);
   });
 
+  it('accepts viewport-triggered auto item requests', () => {
+    const ok = clientMsgSchema.safeParse({
+      type: 'run_item_auto',
+      id: 'n1',
+      feedUrl: 'https://feed',
+      summary: true,
+      research: true,
+      titleTranslate: true
+    });
+    const bad = clientMsgSchema.safeParse({
+      type: 'run_item_auto',
+      id: 'n1',
+      feedUrl: 'https://feed'
+    });
+    expect(ok.success).toBe(true);
+    expect(bad.success).toBe(true);
+  });
+
   it('accepts ask-agent research modes and rejects invalid mode', () => {
     const ok = clientMsgSchema.safeParse({
       type: 'ask_agent_item',

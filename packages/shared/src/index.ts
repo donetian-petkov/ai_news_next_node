@@ -67,6 +67,16 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('run_research_item'), id: z.string(), feedUrl: z.string() }),
   z.object({ type: z.literal('run_summary_item'), id: z.string(), feedUrl: z.string() }),
   z.object({
+    type: z.literal('run_item_auto'),
+    id: z.string(),
+    feedUrl: z.string(),
+    summary: z.boolean().optional(),
+    research: z.boolean().optional(),
+    titleTranslate: z.boolean().optional(),
+    mood: z.boolean().optional(),
+    newsType: z.boolean().optional()
+  }),
+  z.object({
     type: z.literal('generate_daily_briefing'),
     delivery: briefingDeliverySchema.optional(),
     email: z.string().trim().max(200).optional(),

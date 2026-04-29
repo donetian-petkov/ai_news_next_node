@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Button, Skeleton, Stack } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { NewsMoodFilterValue, NewsTypeFilterValue, type NewsItem } from '../../../store/types';
 import type { BodyMode, FeedAskState } from '../reactColumns.types';
 import { collapseText, compactResearch, extractConfidence } from '../reactColumns.utils';
 import { NewsCard } from '../NewsCard';
@@ -11,16 +12,91 @@ import { useFeedColumnContext } from './context/useFeedColumnContext';
 import { COLUMN_COLOR_TOKENS, COLUMN_LAYOUT_TOKENS } from '../designTokens';
 import { getDefaultVisibleCount, getShowMoreStep } from '../storyVisibility';
 import type { NewsCardHandlers, NewsCardStateModel, NewsCardViewModel } from '../news-card/newsCard.types';
-import { askKey, bodyKey, cssEscape, getDefaultAskState, type PendingScrollTarget } from './feedColumnItems.utils';
+import { askKey, bodyKey, cssEscape, getDefaultAskState, itemActionFeedUrl, type PendingScrollTarget } from './feedColumnItems.utils';
+
+const AUTO_ACTION_RETRY_MS = 45_000;
+const AUTO_CLASSIFICATION_BATCH = 12;
+
+type AutoActionRequest = {
+  summary?: boolean;
+  research?: boolean;
+  titleTranslate?: boolean;
+  mood?: boolean;
+  newsType?: boolean;
+};
+
+type AutoActionSentinelProps = {
+  enabled: boolean;
+  immediate: boolean;
+  watchKey: string;
+  onVisible: () => void;
+  children: ReactNode;
+};
 
 function pendingKey(feedUrl: string, id: string): string {
   return `${feedUrl}::${id}`;
 }
 
+function needsDisplayedTitleTranslation(item: NewsItem, displayLanguage: 'original' | 'bg' | 'en'): boolean {
+  if (displayLanguage === 'original') return false;
+  const originalTitle = String(item.title || '').trim();
+  const bgTitle = String(item.titleBg || '').trim();
+  const enTitle = String(item.titleEn || '').trim();
+  if (displayLanguage === 'bg') return !bgTitle || bgTitle === originalTitle;
+  return !enTitle || enTitle === originalTitle;
+}
+
+function hasAutoActionRequest(request: AutoActionRequest): boolean {
+  return !!(request.summary || request.research || request.titleTranslate || request.mood || request.newsType);
+}
+
+function AutoActionSentinel({
+  enabled,
+  immediate,
+  watchKey,
+  onVisible,
+  children
+}: AutoActionSentinelProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (immediate) {
+      onVisible();
+      return;
+    }
+
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      onVisible();
+      return;
+    }
+
+    let fired = false;
+    const observer = new IntersectionObserver((entries) => {
+      if (fired) return;
+      const seen = entries.some(entry => entry.isIntersecting || entry.intersectionRatio > 0.1);
+      if (!seen) return;
+      fired = true;
+      observer.disconnect();
+      onVisible();
+    }, {
+      root: null,
+      rootMargin: '220px 0px',
+      threshold: 0.1
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [enabled, immediate, onVisible, watchKey]);
+
+  return <div ref={ref}>{children}</div>;
+}
+
 export function FeedColumnItemsList() {
   const { t } = useTranslation();
   const { feed, items, itemsVisible, shownItems, isMatchColumn, accent, soft } = useFeedColumnContext();
-  const { view, state, handlers } = useFeedColumnsContext();
+  const { view, state, handlers, autoActionBypassFeedUrls } = useFeedColumnsContext();
 
   const {
     aiAvailable,
@@ -66,6 +142,7 @@ export function FeedColumnItemsList() {
     onRequestSummary,
     onRequestTitleTranslation,
     onRequestResearch,
+    onRequestAutoActions,
     onToggleAsk,
     onSetAskDraft,
     onAskSubmit,
@@ -74,10 +151,16 @@ export function FeedColumnItemsList() {
   } = handlers;
 
   const pendingScrollRef = useRef<PendingScrollTarget | null>(null);
+  const autoActionRequestAtRef = useRef<Record<string, number>>({});
+  const columnRootRef = useRef<HTMLDivElement | null>(null);
+  const [isColumnVisible, setIsColumnVisible] = useState(false);
   const resetVisibleCount = getDefaultVisibleCount(storiesPerColumn);
   const showMoreCount = getShowMoreStep(shownItems.length, storiesPerColumn);
   const canShowMore = itemsVisible.length > shownItems.length;
   const canReset = shownItems.length > resetVisibleCount;
+  const bypassViewportAuto = autoActionBypassFeedUrls.includes(feed.url);
+  const moodFilterActive = !performanceMode && view.moodFilter !== NewsMoodFilterValue.All;
+  const typeFilterActive = !performanceMode && view.typeFilter !== NewsTypeFilterValue.All;
 
   useEffect(() => {
     const pending = pendingScrollRef.current;
@@ -104,6 +187,31 @@ export function FeedColumnItemsList() {
       });
     });
   }, [feed.url, shownItems]);
+
+  useEffect(() => {
+    if (bypassViewportAuto) {
+      setIsColumnVisible(true);
+      return;
+    }
+
+    const node = columnRootRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      setIsColumnVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.some(entry => entry.isIntersecting || entry.intersectionRatio > 0.05);
+      setIsColumnVisible(visible);
+    }, {
+      root: null,
+      rootMargin: '220px 0px',
+      threshold: 0.05
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [bypassViewportAuto, feed.url]);
 
   const sharedCardView = useMemo<NewsCardViewModel>(() => ({
     labels: cardLabels,
@@ -146,6 +254,57 @@ export function FeedColumnItemsList() {
     onSetResearchMode: () => {}
   }), [onAskSubmit, onCopyLink, onCopyNewsPayload, onHideItem, onRequestResearch, onRequestSummary, onRequestTitleTranslation, onSetAskDraft, onShareNews, onToggleAsk, onTogglePinnedNews]);
 
+  const requestAutoActionsForItem = useCallback((item: NewsItem, request: AutoActionRequest) => {
+    const feedUrl = itemActionFeedUrl(item);
+    if (!feedUrl) return;
+    const now = Date.now();
+    const next: AutoActionRequest = {};
+
+    const maybeAdd = (kind: keyof AutoActionRequest) => {
+      if (!request[kind]) return;
+      const requestKey = `${kind}:${feedUrl}::${item.id}`;
+      const lastAt = autoActionRequestAtRef.current[requestKey] || 0;
+      if (now - lastAt < AUTO_ACTION_RETRY_MS) return;
+      next[kind] = true;
+    };
+
+    maybeAdd('summary');
+    maybeAdd('research');
+    maybeAdd('titleTranslate');
+    maybeAdd('mood');
+    maybeAdd('newsType');
+    if (!hasAutoActionRequest(next)) return;
+
+    const ok = onRequestAutoActions(item, next);
+    if (!ok) return;
+
+    (Object.keys(next) as Array<keyof AutoActionRequest>).forEach(kind => {
+      if (!next[kind]) return;
+      autoActionRequestAtRef.current[`${kind}:${feedUrl}::${item.id}`] = now;
+    });
+  }, [onRequestAutoActions]);
+
+  const classificationTargets = useMemo(() => {
+    if (!moodFilterActive && !typeFilterActive) return [] as NewsItem[];
+    const batchSize = Math.max(resetVisibleCount, shownItems.length, 1, AUTO_CLASSIFICATION_BATCH);
+    return items
+      .slice(0, batchSize)
+      .filter(item => (moodFilterActive && !item.mood) || (typeFilterActive && !item.newsType))
+      .slice(0, AUTO_CLASSIFICATION_BATCH);
+  }, [items, moodFilterActive, resetVisibleCount, shownItems.length, typeFilterActive]);
+
+  useEffect(() => {
+    if (!isColumnVisible) return;
+    if (!classificationTargets.length) return;
+
+    classificationTargets.forEach(item => {
+      requestAutoActionsForItem(item, {
+        ...(moodFilterActive && !item.mood ? { mood: true } : {}),
+        ...(typeFilterActive && !item.newsType ? { newsType: true } : {})
+      });
+    });
+  }, [classificationTargets, isColumnVisible, moodFilterActive, requestAutoActionsForItem, typeFilterActive]);
+
   if (!isHydrated) {
     return (
       <Stack spacing={1.2} sx={{ py: 0.6 }}>
@@ -157,14 +316,14 @@ export function FeedColumnItemsList() {
   }
 
   return (
-    <Stack spacing={1.2}>
+    <Stack ref={columnRootRef} spacing={1.2}>
       {itemsVisible.length === 0 ? (
         <Alert severity="info" variant="outlined">
           {items.length === 0 ? (isMatchColumn ? labels.waitingMatches : labels.waiting) : labels.noMatches}
         </Alert>
       ) : shownItems.map(it => {
         const askState: FeedAskState = askByItem[askKey(it)] || getDefaultAskState();
-        const pendingLookupKey = pendingKey(it.feedUrl, it.id);
+        const pendingLookupKey = pendingKey(itemActionFeedUrl(it), it.id);
         const summaryKey = bodyKey(it, 'summary');
         const researchKey = bodyKey(it, 'research');
         const summaryResearchHidden = hideAllResearch || bodyModes[researchKey] === 'hidden';
@@ -208,17 +367,62 @@ export function FeedColumnItemsList() {
 
         const cardHandlers: NewsCardHandlers = {
           ...sharedCardHandlers,
+          onToggleAsk: () => onToggleAsk(it.id, itemActionFeedUrl(it)),
+          onAskDraft: (_id, _feedUrl, draft) => onSetAskDraft(it.id, itemActionFeedUrl(it), draft),
           onSetSummaryMode: (mode: BodyMode) => setBodyMode(summaryKey, mode),
           onSetResearchMode: (mode: BodyMode) => setBodyMode(researchKey, mode)
         };
+        const autoActionRequest: AutoActionRequest = {
+          ...(aiAvailable
+            && aiEnabled
+            && !performanceMode
+            && !hideAllSummaries
+            && feed.summaryEnabled
+            && it.summaryEligible !== false
+            && !String(it.summary || '').trim()
+            && !summaryPendingById[pendingLookupKey]
+            ? { summary: true }
+            : {}),
+          ...(aiAvailable
+            && aiEnabled
+            && !performanceMode
+            && !hideAllResearch
+            && feed.researchEnabled
+            && !String(it.research || '').trim()
+            && !researchPendingById[pendingLookupKey]
+            ? { research: true }
+            : {}),
+          ...(aiAvailable
+            && aiEnabled
+            && !performanceMode
+            && feed.translationEnabled
+            && needsDisplayedTitleTranslation(it, view.titleDisplayLanguage)
+            ? { titleTranslate: true }
+            : {})
+        };
+        const shouldObserveCard = hasAutoActionRequest(autoActionRequest);
+        const autoWatchKey = [
+          itemActionFeedUrl(it),
+          it.id,
+          autoActionRequest.summary ? 'summary' : '',
+          autoActionRequest.research ? 'research' : '',
+          autoActionRequest.titleTranslate ? 'title' : ''
+        ].join(':');
 
         return (
-          <NewsCard
+          <AutoActionSentinel
             key={it.id}
-            view={sharedCardView}
-            state={cardState}
-            handlers={cardHandlers}
-          />
+            enabled={shouldObserveCard}
+            immediate={bypassViewportAuto}
+            watchKey={autoWatchKey}
+            onVisible={() => requestAutoActionsForItem(it, autoActionRequest)}
+          >
+            <NewsCard
+              view={sharedCardView}
+              state={cardState}
+              handlers={cardHandlers}
+            />
+          </AutoActionSentinel>
         );
       })}
       {itemsVisible.length > 0 ? (

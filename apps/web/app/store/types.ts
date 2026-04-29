@@ -201,6 +201,7 @@ export type NewsItem = {
   title: string;
   titleBg?: string;
   titleEn?: string;
+  originFeedUrl?: string;
   coverUrl?: string;
   source?: string;
   link: string;
@@ -211,6 +212,7 @@ export type NewsItem = {
   summaryEligible?: boolean;
   summaryPending?: boolean;
   research?: string;
+  researchPending?: boolean;
   insightStatus?: InsightStatus;
   insights?: NewsInsights;
   topicHits?: string[];

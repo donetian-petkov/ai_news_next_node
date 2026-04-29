@@ -268,7 +268,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
           if (recencyDiff) return recencyDiff;
           return Number(b.research ? 1 : 0) - Number(a.research ? 1 : 0);
         })
-        .map(item => ({ ...item, feedUrl: EMERGING_FEED_URL, isMatch: false })),
+        .map(item => ({ ...item, originFeedUrl: item.originFeedUrl || item.feedUrl, feedUrl: EMERGING_FEED_URL, isMatch: false })),
       { maxTimeDeltaMs: EMERGING_MAX_AGE_MS, prefer: emergingRepresentativePreferred }
     ).slice(0, 30);
   }, [filteredColumnItems, ui.insightFeatures.emergingStoryDetector, ui.showEmergingColumn]);
@@ -340,6 +340,23 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     columnNodesRef
   });
 
+  const autoActionBypassFeedUrls = useMemo(() => {
+    const bypass = new Set<string>();
+    renderedFeeds.forEach(feed => {
+      if (feed.url === FILTERED_FEED_URL || feed.url === EMERGING_FEED_URL) {
+        bypass.add(feed.url);
+      }
+    });
+    let regularCount = 0;
+    for (const feed of renderedFeeds) {
+      if (feed.url === FILTERED_FEED_URL || feed.url === EMERGING_FEED_URL) continue;
+      bypass.add(feed.url);
+      regularCount += 1;
+      if (regularCount >= 3) break;
+    }
+    return Array.from(bypass);
+  }, [renderedFeeds]);
+
   const moveFeedToTop = (feedUrl: string) => {
     const targetFeedUrl = String(feedUrl || '').trim();
     if (!targetFeedUrl || targetFeedUrl === FILTERED_FEED_URL || targetFeedUrl === EMERGING_FEED_URL) {
@@ -358,6 +375,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     requestSummary,
     requestTitleTranslation,
     requestResearch,
+    requestAutoActions,
     hideItem,
     copyLink,
     shareNews,
@@ -458,6 +476,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     requestSummary,
     requestTitleTranslation,
     requestResearch,
+    requestAutoActions,
     requestAsk
   });
 
@@ -483,11 +502,12 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       state: stateModel,
       handlers: handlersModel,
       renderedFeeds,
+      autoActionBypassFeedUrls,
       onGridDragOver,
       onGridDrop,
       buildDragState
     }),
-    [buildDragState, clipboardNotice, clipboardNoticeOpen, connected, handlersModel, labels.disconnected, labels.linkCopied, labels.live, labels.previewTitle, labels.summariesLoading, onGridDragOver, onGridDrop, renderedFeeds, stateModel, status, summariesLoading.count, summariesLoading.items, summariesLoading.stalledCount, viewModel]
+    [autoActionBypassFeedUrls, buildDragState, clipboardNotice, clipboardNoticeOpen, connected, handlersModel, labels.disconnected, labels.linkCopied, labels.live, labels.previewTitle, labels.summariesLoading, onGridDragOver, onGridDrop, renderedFeeds, stateModel, status, summariesLoading.count, summariesLoading.items, summariesLoading.stalledCount, viewModel]
   );
 
   return {
