@@ -17,6 +17,7 @@ import { useFeedUiPersistence } from './useFeedUiPersistence';
 import { useDesktopNewsNotifications } from './useDesktopNewsNotifications';
 import { useAllColumnControlsSync } from './useAllColumnControlsSync';
 import { useColumnHydration } from './useColumnHydration';
+import { useExemptColumnExistingItemRefresh } from './useExemptColumnExistingItemRefresh';
 import { useFeedColumnActions } from './useFeedColumnActions';
 import { useNewsItemActions } from './useNewsItemActions';
 import { useNewsBodyModes } from './useNewsBodyModes';
@@ -215,7 +216,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       if (Number.isFinite(it.publishedMs) && Number(it.publishedMs) < filteredCutoffMs) return;
       const prev = map.get(it.id);
       if (!prev || Number(it.publishedMs || 0) > Number(prev.publishedMs || 0)) {
-        map.set(it.id, { ...it, feedUrl: FILTERED_FEED_URL });
+        map.set(it.id, { ...it, originFeedUrl: it.originFeedUrl || it.feedUrl, feedUrl: FILTERED_FEED_URL });
       }
     });
 
@@ -409,6 +410,22 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   });
 
   const { bodyModes, getBodyMode, getDefaultBodyMode, setBodyMode } = useNewsBodyModes();
+
+  useExemptColumnExistingItemRefresh({
+    connected,
+    aiEnabled: ui.aiEnabled,
+    aiAvailable: ui.aiAvailable,
+    summaryLang: ui.summaryLang,
+    researchLang: ui.researchLang,
+    titleDisplayLanguage: ui.titleDisplayLanguage,
+    renderedFeeds,
+    autoActionBypassFeedUrls,
+    itemsByFeed: itemsByFeedForPresentation,
+    filteredColumnItems,
+    requestSummary,
+    requestResearch,
+    requestTitleTranslation
+  });
 
   const { viewModel, stateModel, handlersModel } = useColumnsPresentation({
     dispatch,
