@@ -41,29 +41,29 @@
 }
 
 .topbarInner {
-  max-width: 1860px;
+  max-width: 1980px;
   margin: 0 auto;
   padding: 14px 18px;
 }
 
 .headerRow {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto minmax(0, 1.45fr);
   align-items: flex-start;
-  gap: 14px;
+  column-gap: 14px;
+  row-gap: 12px;
 }
 
 .headerLeft {
-  flex: 1 1 0;
-  min-width: 320px;
+  min-width: 0;
 }
 
 .headerCenter {
-  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 2px;
+  justify-self: center;
 }
 
 .headerTitleRow {
@@ -116,6 +116,42 @@
 .headerRight {
   flex: 1;
   justify-content: flex-end;
+}
+
+.headerRightDesktop {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.headerRightDesktop::-webkit-scrollbar {
+  display: none;
+}
+
+.headerStatusGroup,
+.headerActionGroup {
+  min-width: 0;
+  flex-wrap: nowrap !important;
+}
+
+.headerRightDesktop > .topQuickLabel {
+  flex: 0 0 auto;
+  width: clamp(180px, 14vw, 240px);
+}
+
+.headerRightDesktop .topMenuSelectTrigger {
+  min-width: 0;
+}
+
+.headerRightDesktop .topMenuSelectTriggerContent {
+  gap: 10px;
 }
 
 .viewportScrollDock {
@@ -986,6 +1022,7 @@
 
   .headerRow {
     flex-direction: column;
+    display: flex;
     align-items: flex-start;
     gap: 10px;
   }

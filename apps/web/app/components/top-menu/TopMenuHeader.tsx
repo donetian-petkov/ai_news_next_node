@@ -120,17 +120,21 @@ export function TopMenuHeader() {
           </Stack>
         </Stack>
       ) : (
-        <Stack className="headerRight" direction="row" flexWrap="wrap" gap={1.1} alignItems="center">
-          <StatusPills />
+        <Box className="headerRightDesktop">
+          <Stack className="headerStatusGroup" direction="row" spacing={0.8} alignItems="center">
+            <StatusPills />
+          </Stack>
           <QuickVibeSelect />
-          <TopMenuActionButton id="notificationsToggle" label={notificationsLabel} badgeContent={notificationCount} icon={<NotificationsOutlinedIcon fontSize="small" />} onClick={notifications.onOpen} />
-          <TopMenuActionButton id="quickSearchBtn" label={searchLabel} icon={<SearchIcon fontSize="small" />} onClick={onToggleSearch} />
-          <TopMenuActionButton id="quickAddStreamBtn" label={addStreamLabel} icon={<AddIcon fontSize="small" />} onClick={onToggleAddStream} />
-          <TopMenuActionButton id="allColControlsToggle" label={allColumnLabel} icon={<GridViewIcon fontSize="small" />} onClick={onToggleAllColumnControls} />
-          <TopMenuActionButton id="hideAllResearchBtn" label={hideAllResearchLabel} icon={<AutoAwesomeIcon fontSize="small" />} onClick={onToggleHideAllResearch} />
-          <TopMenuActionButton id="hideAllSummariesBtn" label={hideAllSummariesLabel} icon={<SummarizeIcon fontSize="small" />} onClick={onToggleHideAllSummaries} />
-          <TopMenuActionButton id="menuToggle" label={menuLabel} icon={<MenuIcon fontSize="small" />} onClick={onToggleMenu} />
-        </Stack>
+          <Stack className="headerActionGroup" direction="row" spacing={0.8} alignItems="center">
+            <TopMenuActionButton id="notificationsToggle" label={notificationsLabel} badgeContent={notificationCount} icon={<NotificationsOutlinedIcon fontSize="small" />} onClick={notifications.onOpen} />
+            <TopMenuActionButton id="quickSearchBtn" label={searchLabel} icon={<SearchIcon fontSize="small" />} onClick={onToggleSearch} />
+            <TopMenuActionButton id="quickAddStreamBtn" label={addStreamLabel} icon={<AddIcon fontSize="small" />} onClick={onToggleAddStream} />
+            <TopMenuActionButton id="allColControlsToggle" label={allColumnLabel} icon={<GridViewIcon fontSize="small" />} onClick={onToggleAllColumnControls} />
+            <TopMenuActionButton id="hideAllResearchBtn" label={hideAllResearchLabel} icon={<AutoAwesomeIcon fontSize="small" />} onClick={onToggleHideAllResearch} />
+            <TopMenuActionButton id="hideAllSummariesBtn" label={hideAllSummariesLabel} icon={<SummarizeIcon fontSize="small" />} onClick={onToggleHideAllSummaries} />
+            <TopMenuActionButton id="menuToggle" label={menuLabel} icon={<MenuIcon fontSize="small" />} onClick={onToggleMenu} />
+          </Stack>
+        </Box>
       )}
     </div>
   );
