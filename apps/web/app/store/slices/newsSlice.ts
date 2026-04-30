@@ -1,5 +1,4 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { MAX_ITEMS_PER_COLUMN } from '../constants';
 import type { NewsItem } from '../types';
 import { isNumber } from '../valueEnums';
 
@@ -18,8 +17,21 @@ type AskItemState = {
   messages: AskMessage[];
 };
 
+type FeedPageCursor = {
+  beforePublishedMs: number;
+  beforeId: string;
+};
+
+type FeedPageState = {
+  hasMore: boolean;
+  nextCursor?: FeedPageCursor;
+  loading: boolean;
+  loaded: boolean;
+};
+
 type NewsState = {
   itemsByFeed: Record<string, NewsItem[]>;
+  pageInfoByFeed: Record<string, FeedPageState>;
   hiddenIds: string[];
   summaryPendingById: Record<string, true>;
   researchPendingById: Record<string, true>;
@@ -29,6 +41,7 @@ type NewsState = {
 
 const initialState: NewsState = {
   itemsByFeed: {},
+  pageInfoByFeed: {},
   hiddenIds: [],
   summaryPendingById: {},
   researchPendingById: {},
@@ -101,9 +114,6 @@ function applyNewsBatch(state: NewsState, items: NewsItem[]) {
       if (aPinned !== bPinned) return aPinned ? -1 : 1;
       return b.publishedMs - a.publishedMs;
     });
-    if (list.length > MAX_ITEMS_PER_COLUMN) {
-      list.length = MAX_ITEMS_PER_COLUMN;
-    }
   });
 }
 
@@ -160,6 +170,9 @@ const newsSlice = createSlice({
   name: 'news',
   initialState,
   reducers: {
+    resetNewsState() {
+      return { ...initialState };
+    },
     setHiddenIds(state, action: PayloadAction<string[]>) {
       state.hiddenIds = action.payload;
     },
@@ -185,7 +198,50 @@ const newsSlice = createSlice({
         const list = Array.isArray(state.itemsByFeed[feedUrl]) ? [...state.itemsByFeed[feedUrl]] : [];
         list.sort((a, b) => b.publishedMs - a.publishedMs);
         state.itemsByFeed[feedUrl] = list.slice(0, limit);
+        state.pageInfoByFeed[feedUrl] = {
+          hasMore: state.pageInfoByFeed[feedUrl]?.hasMore ?? true,
+          loading: false,
+          loaded: false
+        };
       });
+    },
+    setFeedPageLoading(state, action: PayloadAction<string>) {
+      const feedUrl = String(action.payload || '').trim();
+      if (!feedUrl) return;
+      const prev = state.pageInfoByFeed[feedUrl];
+      state.pageInfoByFeed[feedUrl] = {
+        hasMore: prev?.hasMore ?? true,
+        nextCursor: prev?.nextCursor,
+        loading: true,
+        loaded: prev?.loaded ?? false
+      };
+    },
+    receiveFeedPage(state, action: PayloadAction<{
+      feedUrl: string;
+      items: NewsItem[];
+      hasMore: boolean;
+      nextCursor?: FeedPageCursor;
+      replace?: boolean;
+    }>) {
+      const { feedUrl, items, hasMore, nextCursor, replace } = action.payload;
+      const normalizedFeedUrl = String(feedUrl || '').trim();
+      if (!normalizedFeedUrl) return;
+
+      if (replace) {
+        state.itemsByFeed[normalizedFeedUrl] = [];
+      }
+
+      applyNewsBatch(state, items);
+      if (replace && (!Array.isArray(items) || !items.length)) {
+        state.itemsByFeed[normalizedFeedUrl] = [];
+      }
+
+      state.pageInfoByFeed[normalizedFeedUrl] = {
+        hasMore: !!hasMore,
+        nextCursor,
+        loading: false,
+        loaded: true
+      };
     },
     upsertNewsItem(state, action: PayloadAction<NewsItem>) {
       applyNewsBatch(state, [action.payload]);
@@ -298,10 +354,13 @@ const newsSlice = createSlice({
 });
 
 export const {
+  resetNewsState,
   setHiddenIds,
   hideItemLocally,
   removeOldItemsInFeed,
   resetAllToNewestLimit,
+  setFeedPageLoading,
+  receiveFeedPage,
   upsertNewsItem,
   upsertNewsBatch,
   setSummaryPending,

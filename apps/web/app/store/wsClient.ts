@@ -35,7 +35,7 @@ import {
 } from './valueEnums';
 import { setStatus } from './slices/connectionSlice';
 import { setFeeds } from './slices/feedsSlice';
-import { receiveAskReply, setHiddenIds, upsertNewsBatch } from './slices/newsSlice';
+import { receiveAskReply, receiveFeedPage, resetNewsState, setHiddenIds, upsertNewsBatch } from './slices/newsSlice';
 import { setUsage } from './slices/aiUsageSlice';
 import { enqueueToast, setAiSettings, setKeywords } from './slices/uiSlice';
 import { failBriefing, receiveBriefing } from './slices/briefingSlice';
@@ -459,6 +459,31 @@ function parseNews(v: unknown): NewsItem | null {
   };
 }
 
+function parseFeedPageMessage(raw: Record<string, unknown>) {
+  if (raw.type !== WsMessageType.FeedPage) return null;
+  const feedUrl = isString(raw.feedUrl) ? raw.feedUrl.trim() : '';
+  if (!feedUrl) return null;
+  const items = Array.isArray(raw.items)
+    ? raw.items.map(item => parseNews(item)).filter((item): item is NewsItem => !!item)
+    : [];
+  const cursorRaw = isRecord(raw.nextCursor) ? raw.nextCursor : null;
+  const cursor = cursorRaw
+    && isNumber(cursorRaw.beforePublishedMs)
+    && isString(cursorRaw.beforeId)
+      ? {
+          beforePublishedMs: cursorRaw.beforePublishedMs,
+          beforeId: cursorRaw.beforeId
+        }
+      : undefined;
+  return {
+    feedUrl,
+    items,
+    hasMore: !!raw.hasMore,
+    nextCursor: cursor,
+    replace: !!raw.replace
+  };
+}
+
 function resolveWsUrl(explicitUrl: string): string {
   if (explicitUrl && explicitUrl.trim()) return explicitUrl.trim();
   if (typeof window !== 'undefined') {
@@ -532,6 +557,7 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
     reconnectAttempt = 0;
   }
   wsUrlCurrent = nextUrl;
+  dispatch(resetNewsState());
   const socket = new WebSocket(nextUrl);
   ws = socket;
   dispatch(setStatus('connecting'));
@@ -613,6 +639,12 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
         byKind: parseAiUsageByKind(msg.aiUsageByKind),
         recent: parseAiUsageRecent(msg.aiUsageRecent)
       }));
+      return;
+    }
+
+    const page = parseFeedPageMessage(msg);
+    if (page) {
+      dispatch(receiveFeedPage(page));
       return;
     }
 
@@ -746,4 +778,19 @@ export function sendWsMessage(payload: unknown): boolean {
   if (!ws || ws.readyState !== WebSocket.OPEN) return false;
   ws.send(JSON.stringify(payload));
   return true;
+}
+
+export function requestFeedPage(
+  feedUrl: string,
+  limit: number,
+  cursor?: { beforePublishedMs: number; beforeId: string },
+  replace = false
+): boolean {
+  return sendWsMessage({
+    type: 'load_feed_page',
+    feedUrl,
+    limit,
+    ...(cursor ? { cursor } : {}),
+    ...(replace ? { replace: true } : {})
+  });
 }

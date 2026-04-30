@@ -6,7 +6,8 @@ import { useAppDispatch } from '../../../store/hooks';
 import { EMERGING_FEED_URL, FILTERED_FEED_URL } from '../../../store/constants';
 import type { NewsItem } from '../../../store/types';
 import { reorderFeeds } from '../../../store/slices/feedsSlice';
-import { startWsConnection, stopWsConnection } from '../../../store/wsClient';
+import { setFeedPageLoading } from '../../../store/slices/newsSlice';
+import { requestFeedPage, startWsConnection, stopWsConnection } from '../../../store/wsClient';
 import {
   type SchemeValue,
   type VibeValue
@@ -34,16 +35,24 @@ const DUPLICATE_MATCH_TIME_WINDOW_MS = 12 * 60 * 60 * 1000;
 const EMERGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SUMMARY_STALL_THRESHOLD_MS = 90_000;
 const SUMMARY_STATUS_REFRESH_MS = 15_000;
+
+function normalizePageLimit(value: number): number {
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 1) return 10;
+  return Math.max(1, Math.min(200, parsed));
+}
+
 export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { connection, ui, feeds: feedsState, news: newsState } = useReactColumnsState();
   const { connected, status } = connection;
   const { feeds, pinnedByUrl, controlsOpenByUrl, deleteAgeByUrl, orderByUrl } = feedsState;
-  const { itemsByFeed, summaryPendingById, researchPendingById, pinnedNewsById, askByItem } = newsState;
+  const { itemsByFeed, pageInfoByFeed, summaryPendingById, researchPendingById, pinnedNewsById, askByItem } = newsState;
 
   const hydratedFeedUiRef = useRef(false);
   const summaryActiveSinceRef = useRef<Record<string, number>>({});
+  const pageRequestInFlightRef = useRef<Record<string, true>>({});
   const [advancedControlsByUrl, setAdvancedControlsByUrl] = useState<Record<string, boolean>>({});
   const [summaryStatusTick, setSummaryStatusTick] = useState(0);
   const labels = useMemo(
@@ -358,6 +367,76 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     return Array.from(bypass);
   }, [renderedFeeds]);
 
+  useEffect(() => {
+    Object.keys(pageRequestInFlightRef.current).forEach(feedUrl => {
+      if (!pageInfoByFeed[feedUrl]?.loading) {
+        delete pageRequestInFlightRef.current[feedUrl];
+      }
+    });
+  }, [pageInfoByFeed]);
+
+  useEffect(() => {
+    if (!connected || !feeds.length) return;
+
+    feeds.forEach(feed => {
+      if (feed.url === FILTERED_FEED_URL || feed.url === EMERGING_FEED_URL) return;
+      const page = pageInfoByFeed[feed.url];
+      const loadedCount = Array.isArray(itemsByFeed[feed.url]) ? itemsByFeed[feed.url].length : 0;
+      const visibleTarget = normalizePageLimit(visibleByFeed[feed.url] || ui.storiesPerColumn);
+
+      if (page?.loading || pageRequestInFlightRef.current[feed.url]) return;
+
+      if (!page?.loaded) {
+        if (requestFeedPage(feed.url, visibleTarget, undefined, true)) {
+          pageRequestInFlightRef.current[feed.url] = true;
+          dispatch(setFeedPageLoading(feed.url));
+        }
+        return;
+      }
+
+      if (!page.hasMore || loadedCount >= visibleTarget) return;
+
+      const nextLimit = normalizePageLimit(Math.max(ui.storiesPerColumn, visibleTarget - loadedCount));
+      if (requestFeedPage(feed.url, nextLimit, page.nextCursor, false)) {
+        pageRequestInFlightRef.current[feed.url] = true;
+        dispatch(setFeedPageLoading(feed.url));
+      }
+    });
+  }, [connected, dispatch, feeds, itemsByFeed, pageInfoByFeed, ui.storiesPerColumn, visibleByFeed]);
+
+  useEffect(() => {
+    if (!connected) return;
+
+    const filteredNeedsMore = ui.showFilteredColumn
+      && (visibleByFeed[FILTERED_FEED_URL] || ui.storiesPerColumn) > filteredColumnItems.length;
+    const emergingNeedsMore = ui.showEmergingColumn
+      && ui.insightFeatures.emergingStoryDetector
+      && (visibleByFeed[EMERGING_FEED_URL] || ui.storiesPerColumn) > emergingColumnItems.length;
+    if (!filteredNeedsMore && !emergingNeedsMore) return;
+
+    feeds.forEach(feed => {
+      if (feed.url === FILTERED_FEED_URL || feed.url === EMERGING_FEED_URL) return;
+      const page = pageInfoByFeed[feed.url];
+      if (!page?.loaded || page.loading || !page.hasMore || pageRequestInFlightRef.current[feed.url]) return;
+      if (requestFeedPage(feed.url, normalizePageLimit(ui.storiesPerColumn), page.nextCursor, false)) {
+        pageRequestInFlightRef.current[feed.url] = true;
+        dispatch(setFeedPageLoading(feed.url));
+      }
+    });
+  }, [
+    connected,
+    dispatch,
+    emergingColumnItems.length,
+    feeds,
+    filteredColumnItems.length,
+    pageInfoByFeed,
+    ui.insightFeatures.emergingStoryDetector,
+    ui.showEmergingColumn,
+    ui.showFilteredColumn,
+    ui.storiesPerColumn,
+    visibleByFeed
+  ]);
+
   const moveFeedToTop = (feedUrl: string) => {
     const targetFeedUrl = String(feedUrl || '').trim();
     if (!targetFeedUrl || targetFeedUrl === FILTERED_FEED_URL || targetFeedUrl === EMERGING_FEED_URL) {
@@ -459,6 +538,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     filteredColumnItems,
     duplicateMatchById,
     itemsByFeed: itemsByFeedForPresentation,
+    pageInfoByFeed,
     visibleByFeed,
     hydratedColumns,
     pinnedByUrl,

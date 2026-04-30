@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type Prisma } from '@prisma/client';
 import { aiProviderSchema, clientMsgSchema, type ClientMsg } from '@ai-news/shared';
 import { z } from 'zod';
 
@@ -345,6 +345,20 @@ type AskAgentReply = {
   error?: string;
   used: number;
   remaining: number;
+};
+
+type FeedPageCursor = {
+  beforePublishedMs: number;
+  beforeId: string;
+};
+
+type FeedPagePayload = {
+  type: 'feed_page';
+  feedUrl: string;
+  items: News[];
+  hasMore: boolean;
+  nextCursor?: FeedPageCursor;
+  replace?: boolean;
 };
 
 const parser: Parser = new Parser({
@@ -920,8 +934,102 @@ type PersistedState = {
   feedSettings: Record<string, FeedSettings>;
   hiddenIds: string[];
   feedRuntime: Record<string, FeedRuntime>;
-  recent: NewsInternal[];
+  recent?: NewsInternal[];
 };
+
+type PersistedNewsRow = Prisma.NewsItemRecordGetPayload<Record<string, never>>;
+
+const NEWS_PAGE_LIMIT_DEFAULT = 10;
+const NEWS_PAGE_LIMIT_MAX = 200;
+const NEWS_ARCHIVE_RETENTION_DAYS = Math.max(1, Math.floor(Number(process.env.NEWS_ARCHIVE_RETENTION_DAYS || 90)));
+const NEWS_ARCHIVE_MAX_ITEMS_PER_FEED = Math.max(200, Math.floor(Number(process.env.NEWS_ARCHIVE_MAX_ITEMS_PER_FEED || 5000)));
+const NEWS_ARCHIVE_PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+function newsRecordKey(feedUrl: string, itemId: string): string {
+  return `${String(feedUrl || '').trim()}::${String(itemId || '').trim()}`;
+}
+
+function safeJsonStringify(value: unknown): string | undefined {
+  if (typeof value === 'undefined') return undefined;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function safeJsonParseString<T>(value: string | null | undefined): T | undefined {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizePersistedMs(value: number): bigint {
+  const parsed = Math.floor(Number(value));
+  const safeValue = Number.isFinite(parsed) && parsed > 0 ? parsed : Date.now();
+  return BigInt(safeValue);
+}
+
+function newsFromPersistedRow(row: PersistedNewsRow): NewsInternal {
+  return {
+    type: 'news',
+    id: row.itemId,
+    title: row.title,
+    titleBg: row.titleBg || undefined,
+    titleEn: row.titleEn || undefined,
+    coverUrl: row.coverUrl || undefined,
+    link: row.link,
+    source: row.source,
+    published: row.published || undefined,
+    publishedMs: Number(row.publishedMs),
+    feedUrl: row.feedUrl,
+    isMatch: row.isMatch,
+    matchScore: Number(row.matchScore || 0),
+    filteredOk: row.filteredOk,
+    summary: row.summary || undefined,
+    research: row.research || undefined,
+    insightStatus: (row.insightStatus as InsightStatus | null) || undefined,
+    insights: safeJsonParseString<NewsInsights>(row.insightsJson),
+    topicHits: safeJsonParseString<string[]>(row.topicHitsJson),
+    emergingSignal: safeJsonParseString<EmergingStorySignal>(row.emergingSignalJson),
+    mood: (row.mood as Mood | null) || undefined,
+    newsType: (row.newsType as NewsType | null) || undefined,
+    __ctx: row.contextText || undefined,
+    __linkText: row.linkText || undefined
+  };
+}
+
+function buildPersistedNewsUpdate(it: NewsInternal): Prisma.NewsItemRecordUncheckedCreateInput {
+  return {
+    key: newsRecordKey(it.feedUrl, it.id),
+    feedUrl: it.feedUrl,
+    itemId: it.id,
+    title: it.title,
+    titleBg: it.titleBg || undefined,
+    titleEn: it.titleEn || undefined,
+    coverUrl: it.coverUrl || undefined,
+    link: it.link,
+    source: it.source,
+    published: it.published || undefined,
+    publishedMs: normalizePersistedMs(it.publishedMs),
+    isMatch: !!it.isMatch,
+    matchScore: Number.isFinite(it.matchScore) ? it.matchScore : 0,
+    filteredOk: it.filteredOk !== false,
+    summary: it.summary || undefined,
+    research: it.research || undefined,
+    insightStatus: it.insightStatus || undefined,
+    insightsJson: safeJsonStringify(it.insights),
+    topicHitsJson: safeJsonStringify(it.topicHits),
+    emergingSignalJson: safeJsonStringify(it.emergingSignal),
+    mood: it.mood || undefined,
+    newsType: it.newsType || undefined,
+    contextText: it.__ctx || undefined,
+    linkText: it.__linkText || undefined
+  };
+}
 
 function migratedDefaultFeedUrlsForVersion(version: number): Set<string> {
   const urls = new Set<string>();
@@ -998,6 +1106,181 @@ async function readStateFromDb(): Promise<PersistedState | null> {
   }
 }
 
+async function upsertPersistedNewsItem(it: NewsInternal) {
+  try {
+    const data = buildPersistedNewsUpdate(it);
+    await prisma.newsItemRecord.upsert({
+      where: { key: data.key },
+      create: data,
+      update: data
+    });
+  } catch (e) {
+    console.error('Failed to persist news item:', (e as Error).message);
+  }
+}
+
+async function hasPersistedNewsArchive(): Promise<boolean> {
+  try {
+    const first = await prisma.newsItemRecord.findFirst({ select: { key: true } });
+    return !!first?.key;
+  } catch {
+    return false;
+  }
+}
+
+async function loadRecentFromDb(limit = MAX_RECENT_ITEMS) {
+  try {
+    const rows = await prisma.newsItemRecord.findMany({
+      orderBy: [
+        { publishedMs: 'desc' },
+        { itemId: 'desc' }
+      ],
+      take: Math.max(1, Math.min(MAX_RECENT_ITEMS, Math.floor(limit || MAX_RECENT_ITEMS)))
+    });
+
+    recent.length = 0;
+    seen = new Set<string>();
+
+    rows.reverse().forEach(row => {
+      const item = newsFromPersistedRow(row);
+      recent.push(item);
+      seen.add(newsRecordKey(item.feedUrl, item.id));
+      refreshDerivedDataForItem(item);
+    });
+  } catch (e) {
+    console.error('Failed to load persisted news archive:', (e as Error).message);
+  }
+}
+
+async function migrateLegacyRecentToDb(items: NewsInternal[]) {
+  for (const item of items) {
+    if (!item?.id || !item.feedUrl) continue;
+    await upsertPersistedNewsItem(item);
+  }
+}
+
+async function readFeedPageFromDb(
+  feedUrl: string,
+  limitRaw: number,
+  cursor?: FeedPageCursor
+): Promise<{ items: NewsInternal[]; hasMore: boolean; nextCursor?: FeedPageCursor }> {
+  const feedUrlTrimmed = String(feedUrl || '').trim();
+  if (!feedUrlTrimmed) return { items: [], hasMore: false };
+
+  const limit = Math.max(1, Math.min(NEWS_PAGE_LIMIT_MAX, Math.floor(limitRaw || NEWS_PAGE_LIMIT_DEFAULT)));
+  const visibleRows: PersistedNewsRow[] = [];
+  const seenKeys = new Set<string>();
+  let currentCursor = cursor;
+  let exhausted = false;
+
+  while (visibleRows.length < limit + 1 && !exhausted) {
+    const where: Prisma.NewsItemRecordWhereInput = { feedUrl: feedUrlTrimmed };
+    if (currentCursor?.beforeId && Number.isFinite(currentCursor.beforePublishedMs)) {
+      where.OR = [
+        { publishedMs: { lt: BigInt(Math.floor(currentCursor.beforePublishedMs)) } },
+        {
+          publishedMs: BigInt(Math.floor(currentCursor.beforePublishedMs)),
+          itemId: { lt: currentCursor.beforeId }
+        }
+      ];
+    }
+
+    const batch = await prisma.newsItemRecord.findMany({
+      where,
+      orderBy: [
+        { publishedMs: 'desc' },
+        { itemId: 'desc' }
+      ],
+      take: limit + 1
+    });
+
+    if (!batch.length) {
+      exhausted = true;
+      break;
+    }
+
+    const lastBatchRow = batch[batch.length - 1];
+    currentCursor = {
+      beforePublishedMs: Number(lastBatchRow.publishedMs),
+      beforeId: lastBatchRow.itemId
+    };
+
+    batch.forEach(row => {
+      if (hiddenIds.has(row.itemId)) return;
+      if (seenKeys.has(row.key)) return;
+      seenKeys.add(row.key);
+      visibleRows.push(row);
+    });
+
+    exhausted = batch.length < limit + 1;
+  }
+
+  const pageRows = visibleRows.slice(0, limit);
+  const items = pageRows.map(newsFromPersistedRow);
+  const hasMore = visibleRows.length > limit || !exhausted;
+  const lastVisibleRow = pageRows[pageRows.length - 1];
+
+  return {
+    items,
+    hasMore,
+    nextCursor: hasMore && lastVisibleRow
+      ? {
+          beforePublishedMs: Number(lastVisibleRow.publishedMs),
+          beforeId: lastVisibleRow.itemId
+        }
+      : undefined
+  };
+}
+
+let lastNewsArchivePruneAtMs = 0;
+
+async function prunePersistedNewsArchive(nowMs = Date.now()) {
+  if (nowMs - lastNewsArchivePruneAtMs < NEWS_ARCHIVE_PRUNE_INTERVAL_MS) return;
+  lastNewsArchivePruneAtMs = nowMs;
+
+  const retentionCutoffMs = nowMs - (NEWS_ARCHIVE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+  try {
+    await prisma.newsItemRecord.deleteMany({
+      where: {
+        publishedMs: { lt: BigInt(retentionCutoffMs) }
+      }
+    });
+
+    const feedUrls = await prisma.newsItemRecord.findMany({
+      distinct: ['feedUrl'],
+      select: { feedUrl: true }
+    });
+
+    for (const entry of feedUrls) {
+      while (true) {
+        const overflowRows = await prisma.newsItemRecord.findMany({
+          where: { feedUrl: entry.feedUrl },
+          orderBy: [
+            { publishedMs: 'desc' },
+            { itemId: 'desc' }
+          ],
+          skip: NEWS_ARCHIVE_MAX_ITEMS_PER_FEED,
+          take: 250,
+          select: { key: true }
+        });
+
+        if (!overflowRows.length) break;
+
+        await prisma.newsItemRecord.deleteMany({
+          where: {
+            key: { in: overflowRows.map(row => row.key) }
+          }
+        });
+
+        if (overflowRows.length < 250) break;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to prune persisted news archive:', (e as Error).message);
+  }
+}
+
 function saveStateNow() {
   if (!persistDirty) return;
   persistDirty = false;
@@ -1012,8 +1295,7 @@ function saveStateNow() {
     feeds: feedsList,
     feedSettings: feedSettingsObj(),
     hiddenIds: Array.from(hiddenIds),
-    feedRuntime: feedRuntimeObj(),
-    recent: recent.slice(-PERSISTED_RECENT_ITEMS) // bounded
+    feedRuntime: feedRuntimeObj()
   };
 
   try {
@@ -1295,6 +1577,7 @@ async function refreshMatchStateForRecent() {
     it.matchScore = matchScore;
     it.filteredOk = filteredOk;
     refreshDerivedDataForItem(it);
+    await upsertPersistedNewsItem(it);
   }
 
   for (const it of sorted) {
@@ -2406,9 +2689,10 @@ function refreshDerivedDataForItem(item: NewsInternal) {
   item.emergingSignal = emergingSignalForItem(item);
 }
 
-function reprocessCachedItems(broadcast = false) {
+function reprocessCachedItems(broadcast = false, persist = true) {
   recent.forEach(item => {
     refreshDerivedDataForItem(item);
+    if (persist) void upsertPersistedNewsItem(item);
     if (broadcast) broadcastNewsUpdate(item);
   });
 }
@@ -3175,10 +3459,8 @@ function broadcastConfig() {
   });
 }
 
-function broadcastNewsUpdate(it: NewsInternal) {
-  if (hiddenIds.has(it.id)) return;
-
-  const payload = JSON.stringify({
+function toNewsWire(it: NewsInternal): News {
+  return {
     type: 'news',
     id: it.id,
     title: it.title,
@@ -3204,11 +3486,29 @@ function broadcastNewsUpdate(it: NewsInternal) {
     emergingSignal: it.emergingSignal,
     mood: it.mood,
     newsType: it.newsType
-  } satisfies News);
+  };
+}
+
+function broadcastNewsUpdate(it: NewsInternal) {
+  if (hiddenIds.has(it.id)) return;
+
+  const payload = JSON.stringify(toNewsWire(it));
 
   wss.clients.forEach((c: WebSocket) => {
     if (c.readyState === WebSocket.OPEN) c.send(payload);
   });
+}
+
+function sendFeedPage(ws: WebSocket, feedUrl: string, items: NewsInternal[], hasMore: boolean, nextCursor?: FeedPageCursor, replace = false) {
+  const payload: FeedPagePayload = {
+    type: 'feed_page',
+    feedUrl,
+    items: items.map(toNewsWire),
+    hasMore,
+    replace,
+    ...(nextCursor ? { nextCursor } : {})
+  };
+  ws.send(JSON.stringify(payload));
 }
 
 function broadcastFeedError(fi: FeedInfo, error: string) {
@@ -3551,6 +3851,7 @@ async function runOneJob(job: AiJob) {
       if (text) {
         it.summary = text;
         refreshDerivedDataForItem(it);
+        await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         summaryRetryCooldownUntilMs.delete(summaryItemKey(it.id, it.feedUrl));
@@ -3574,6 +3875,7 @@ async function runOneJob(job: AiJob) {
         it.titleBg = translated.bg;
         it.titleEn = translated.en;
         refreshDerivedDataForItem(it);
+        await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -3599,6 +3901,7 @@ async function runOneJob(job: AiJob) {
       if (mood) {
         it.mood = mood;
         refreshDerivedDataForItem(it);
+        await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -3624,6 +3927,7 @@ async function runOneJob(job: AiJob) {
       if (newsType) {
         it.newsType = newsType;
         refreshDerivedDataForItem(it);
+        await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -3670,6 +3974,7 @@ async function runOneJob(job: AiJob) {
       if (text) {
         it.research = text;
         refreshDerivedDataForItem(it);
+        await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
         didBroadcastUpdate = true;
         markDirty();
@@ -3869,9 +4174,10 @@ async function processFeed(fi: FeedInfo) {
     for (const item of feed.items) {
       const id = String(item.guid ?? item.link ?? item.title ?? '');
       const link = String(item.link ?? item.guid ?? '#');
+      const seenKey = newsRecordKey(fi.url, id);
 
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
+      if (!id || seen.has(seenKey)) continue;
+      seen.add(seenKey);
 
       if (seen.size > MAX_SEEN_IDS) {
         seen = new Set(Array.from(seen).slice(-SEEN_TRIM_TO));
@@ -3940,6 +4246,7 @@ async function processFeed(fi: FeedInfo) {
       recent.push(pkt);
       if (recent.length > MAX_RECENT_ITEMS) recent.shift();
       refreshDerivedDataForItem(pkt);
+      await upsertPersistedNewsItem(pkt);
 
       broadcastNewsUpdate(pkt);
     }
@@ -3960,6 +4267,7 @@ async function schedulerTick() {
   try { await tickAiQueue(); } catch {}
 
   const now = Date.now();
+  await prunePersistedNewsArchive(now);
   for (const fi of feedsList) {
     // skip filtered pseudo-feed
     if (fi.url === FILTERED_FEED_URL) continue;
@@ -3989,8 +4297,12 @@ function startScheduler() {
 // ---------------------------------------------------------------
 
 // ---------------- Load persisted state ----------------
-function applyLoadedState(st: PersistedState | null) {
-  if (!st || typeof st.version !== 'number' || st.version < 1 || st.version > CURRENT_STATE_VERSION) return;
+async function applyLoadedState(st: PersistedState | null) {
+  if (!st || typeof st.version !== 'number' || st.version < 1 || st.version > CURRENT_STATE_VERSION) {
+    await loadRecentFromDb();
+    reprocessCachedItems(false, false);
+    return;
+  }
 
   if (Array.isArray(st.keywords)) {
     keywords = normalizeKeywordList(st.keywords);
@@ -4033,16 +4345,9 @@ function applyLoadedState(st: PersistedState | null) {
     for (const id of st.hiddenIds) hiddenIds.add(id);
   }
 
-  if (Array.isArray(st.recent)) {
-    // restore recent items
-    for (const it of st.recent) {
-      if (it && it.id && it.title) {
-        recent.push(it);
-        refreshDerivedDataForItem(it);
-      }
-      if (it?.id) seen.add(it.id);
-    }
-  }
+  const legacyRecent = Array.isArray(st.recent)
+    ? st.recent.filter((it): it is NewsInternal => !!it?.id && !!it?.feedUrl && !!it?.title)
+    : [];
 
   // ensure settings for all feeds
   for (const fi of feedsList) ensureFeedSettings(fi);
@@ -4066,18 +4371,30 @@ function applyLoadedState(st: PersistedState | null) {
     }));
   }
 
-  reprocessCachedItems(false);
+  if (!(await hasPersistedNewsArchive()) && legacyRecent.length) {
+    legacyRecent.forEach(item => refreshDerivedDataForItem(item));
+    await migrateLegacyRecentToDb(legacyRecent);
+  }
+
+  await loadRecentFromDb();
+  reprocessCachedItems(false, false);
+  markDirty();
 }
 
 async function loadState() {
   ensureDataDir();
   const dbState = await readStateFromDb();
   if (dbState) {
-    applyLoadedState(dbState);
+    await applyLoadedState(dbState);
     return;
   }
   const fileState = safeReadJson<PersistedState>(STATE_PATH);
-  applyLoadedState(fileState);
+  if (fileState) {
+    await applyLoadedState(fileState);
+    return;
+  }
+  await loadRecentFromDb();
+  reprocessCachedItems(false, false);
 }
 // ------------------------------------------------------
 
@@ -4135,14 +4452,6 @@ wss.on('connection', (ws: WebSocket) => {
     ...buildAiUsagePayload()
   } satisfies Config));
 
-  reprocessCachedItems(false);
-
-  // Send snapshot (newest first)
-  const snapshot = recent.slice().sort((a, b) => b.publishedMs - a.publishedMs);
-  snapshot.forEach(item => {
-    if (!hiddenIds.has(item.id)) ws.send(JSON.stringify(item));
-  });
-
   ws.on('message', async data => {
     let raw: unknown;
     try { raw = JSON.parse(String(data)); } catch { return; }
@@ -4198,6 +4507,27 @@ wss.on('connection', (ws: WebSocket) => {
         manual: true
       });
       ws.send(JSON.stringify({ type: 'ok', message: `Queued ${done} title translations.` }));
+      return;
+    }
+
+    if (raw && typeof raw === 'object' && (raw as { type?: unknown }).type === 'load_feed_page') {
+      const feedUrl = String((raw as { feedUrl?: unknown }).feedUrl || '').trim();
+      const limitRaw = Number((raw as { limit?: unknown }).limit);
+      const limit = Number.isFinite(limitRaw) ? limitRaw : NEWS_PAGE_LIMIT_DEFAULT;
+      const cursorRaw = (raw as { cursor?: unknown }).cursor;
+      const cursor = cursorRaw && typeof cursorRaw === 'object'
+        ? {
+            beforePublishedMs: Number((cursorRaw as { beforePublishedMs?: unknown }).beforePublishedMs),
+            beforeId: String((cursorRaw as { beforeId?: unknown }).beforeId || '').trim()
+          }
+        : undefined;
+      const validCursor = cursor && Number.isFinite(cursor.beforePublishedMs) && cursor.beforeId
+        ? cursor
+        : undefined;
+      const replace = !!(raw as { replace?: unknown }).replace;
+      if (!feedUrl) return;
+      const page = await readFeedPageFromDb(feedUrl, limit, validCursor);
+      sendFeedPage(ws, feedUrl, page.items, page.hasMore, page.nextCursor, replace);
       return;
     }
 
@@ -4486,6 +4816,7 @@ wss.on('connection', (ws: WebSocket) => {
       recent.forEach(it => {
         if (!eligibleForFeed(it, feedUrl)) return;
         refreshDerivedDataForItem(it);
+        void upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
       });
 
@@ -4511,6 +4842,7 @@ wss.on('connection', (ws: WebSocket) => {
 
       recent.forEach(it => {
         refreshDerivedDataForItem(it);
+        void upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
       });
 
@@ -4597,6 +4929,7 @@ wss.on('connection', (ws: WebSocket) => {
       const it = recent.find(x => x.id === id && x.feedUrl === String(msg.feedUrl || '').trim()) || recent.find(x => x.id === id);
       if (!it) return;
       it.research = '';
+      void upsertPersistedNewsItem(it);
       broadcastNewsUpdate(it);
       markDirty();
 
@@ -4612,6 +4945,7 @@ wss.on('connection', (ws: WebSocket) => {
       const it = recent.find(x => x.id === id && x.feedUrl === String(msg.feedUrl || '').trim()) || recent.find(x => x.id === id);
       if (!it) return;
       it.summary = '';
+      void upsertPersistedNewsItem(it);
       enqueueJob({ kind: 'summary', id: it.id, feedUrl: it.feedUrl, manual: true });
       broadcastNewsUpdate(it);
       markDirty();
@@ -4854,6 +5188,9 @@ wss.on('connection', (ws: WebSocket) => {
       for (let i = recent.length - 1; i >= 0; i--) {
         if (recent[i].feedUrl === feedUrl) recent.splice(i, 1);
       }
+      void prisma.newsItemRecord.deleteMany({ where: { feedUrl } }).catch(err => {
+        console.error(`Failed to delete archived news for removed feed ${feedUrl}:`, (err as Error).message);
+      });
 
       broadcastConfig();
       ws.send(JSON.stringify({ type: 'ok', message: `Removed feed` }));

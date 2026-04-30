@@ -38,6 +38,7 @@ type Args = {
   filteredColumnItems: FeedColumnStateModel['filteredColumnItems'];
   duplicateMatchById: FeedColumnStateModel['duplicateMatchById'];
   itemsByFeed: FeedColumnStateModel['itemsByFeed'];
+  pageInfoByFeed: FeedColumnStateModel['pageInfoByFeed'];
   visibleByFeed: FeedColumnStateModel['visibleByFeed'];
   hydratedColumns: FeedColumnStateModel['hydratedColumns'];
   pinnedByUrl: FeedColumnStateModel['pinnedByUrl'];
@@ -85,6 +86,7 @@ export function useColumnsPresentation({
   filteredColumnItems,
   duplicateMatchById,
   itemsByFeed,
+  pageInfoByFeed,
   visibleByFeed,
   hydratedColumns,
   pinnedByUrl,
@@ -128,6 +130,7 @@ export function useColumnsPresentation({
     filteredColumnItems,
     duplicateMatchById,
     itemsByFeed,
+    pageInfoByFeed,
     visibleByFeed,
     hydratedColumns,
     pinnedByUrl,

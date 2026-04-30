@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_ITEMS_PER_COLUMN } from '../constants';
 import type { NewsItem } from '../types';
 import newsReducer, {
   enqueueAskQuestion,
   hideItemLocally,
+  receiveFeedPage,
   receiveAskReply,
   removeOldItemsInFeed,
+  resetAllToNewestLimit,
   setResearchPending,
   setSummaryPending,
   upsertNewsItem
@@ -22,17 +23,63 @@ const makeItem = (id: string, feedUrl: string, publishedMs: number, partial: Par
 });
 
 describe('newsSlice', () => {
-  it('upserts items sorted by published time and keeps max items per column', () => {
+  it('upserts items sorted by published time without trimming the loaded archive', () => {
     let state = newsReducer(undefined, { type: '@@INIT' });
 
-    for (let i = 1; i <= MAX_ITEMS_PER_COLUMN + 2; i++) {
+    for (let i = 1; i <= 30; i++) {
       state = newsReducer(state, upsertNewsItem(makeItem(String(i), 'feed-a', i * 1000)));
     }
 
     const list = state.itemsByFeed['feed-a'];
-    expect(list).toHaveLength(MAX_ITEMS_PER_COLUMN);
-    expect(list[0].id).toBe(String(MAX_ITEMS_PER_COLUMN + 2));
-    expect(list[list.length - 1].id).toBe('3');
+    expect(list).toHaveLength(30);
+    expect(list[0].id).toBe('30');
+    expect(list[list.length - 1].id).toBe('1');
+  });
+
+  it('receiveFeedPage replaces a feed page and stores paging metadata', () => {
+    let state = newsReducer(undefined, upsertNewsItem(makeItem('stale', 'feed-a', 1)));
+
+    state = newsReducer(state, receiveFeedPage({
+      feedUrl: 'feed-a',
+      replace: true,
+      hasMore: true,
+      nextCursor: { beforePublishedMs: 1200, beforeId: 'b' },
+      items: [
+        makeItem('b', 'feed-a', 2000),
+        makeItem('a', 'feed-a', 1000)
+      ]
+    }));
+
+    expect(state.itemsByFeed['feed-a'].map(x => x.id)).toEqual(['b', 'a']);
+    expect(state.pageInfoByFeed['feed-a']).toEqual({
+      hasMore: true,
+      nextCursor: { beforePublishedMs: 1200, beforeId: 'b' },
+      loading: false,
+      loaded: true
+    });
+  });
+
+  it('resetAllToNewestLimit marks feeds for a fresh page reload', () => {
+    let state = newsReducer(undefined, receiveFeedPage({
+      feedUrl: 'feed-a',
+      replace: true,
+      hasMore: true,
+      nextCursor: { beforePublishedMs: 500, beforeId: '1' },
+      items: [
+        makeItem('3', 'feed-a', 3000),
+        makeItem('2', 'feed-a', 2000),
+        makeItem('1', 'feed-a', 1000)
+      ]
+    }));
+
+    state = newsReducer(state, resetAllToNewestLimit(2));
+
+    expect(state.itemsByFeed['feed-a'].map(x => x.id)).toEqual(['3', '2']);
+    expect(state.pageInfoByFeed['feed-a']).toEqual({
+      hasMore: true,
+      loading: false,
+      loaded: false
+    });
   });
 
   it('hideItemLocally removes news from all feeds and clears pending flags', () => {

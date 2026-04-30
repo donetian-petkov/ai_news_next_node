@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Alert, Button, Skeleton, Stack } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { NewsMoodFilterValue, NewsTypeFilterValue, type NewsItem } from '../../../store/types';
+import { EMERGING_FEED_URL, FILTERED_FEED_URL } from '../../../store/constants';
 import type { BodyMode, FeedAskState } from '../reactColumns.types';
 import { collapseText, compactResearch, extractConfidence } from '../reactColumns.utils';
 import { NewsCard } from '../NewsCard';
@@ -121,6 +122,7 @@ export function FeedColumnItemsList() {
 
   const {
     duplicateMatchById,
+    pageInfoByFeed,
     summaryPendingById,
     researchPendingById,
     pinnedNewsById,
@@ -156,8 +158,16 @@ export function FeedColumnItemsList() {
   const [isColumnVisible, setIsColumnVisible] = useState(false);
   const resetVisibleCount = getDefaultVisibleCount(storiesPerColumn);
   const showMoreCount = getShowMoreStep(shownItems.length, storiesPerColumn);
-  const canShowMore = itemsVisible.length > shownItems.length;
-  const canReset = shownItems.length > resetVisibleCount;
+  const regularFeedsHaveMore = useMemo(() => Object.entries(pageInfoByFeed).some(([feedUrl, page]) => (
+    feedUrl !== FILTERED_FEED_URL
+    && feedUrl !== EMERGING_FEED_URL
+    && !!page?.hasMore
+  )), [pageInfoByFeed]);
+  const canShowMore = itemsVisible.length > shownItems.length
+    || (feed.url === FILTERED_FEED_URL || feed.url === EMERGING_FEED_URL
+      ? regularFeedsHaveMore
+      : !!pageInfoByFeed[feed.url]?.hasMore);
+  const canReset = (state.visibleByFeed[feed.url] || resetVisibleCount) > resetVisibleCount;
   const bypassViewportAuto = autoActionBypassFeedUrls.includes(feed.url);
   const moodFilterActive = !performanceMode && view.moodFilter !== NewsMoodFilterValue.All;
   const typeFilterActive = !performanceMode && view.typeFilter !== NewsTypeFilterValue.All;

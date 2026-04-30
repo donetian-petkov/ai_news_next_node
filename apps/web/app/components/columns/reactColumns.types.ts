@@ -147,6 +147,16 @@ export type FeedAskState = {
   messages: Array<{ q: string; a?: string; error?: string }>;
 };
 
+export type FeedPageInfo = {
+  hasMore: boolean;
+  nextCursor?: {
+    beforePublishedMs: number;
+    beforeId: string;
+  };
+  loading: boolean;
+  loaded: boolean;
+};
+
 export type FeedColumnViewModel = {
   palette: ColumnPalette;
   performanceMode: boolean;
@@ -182,6 +192,7 @@ export type FeedColumnStateModel = {
   filteredColumnItems: NewsItem[];
   duplicateMatchById: Record<string, true>;
   itemsByFeed: Record<string, NewsItem[]>;
+  pageInfoByFeed: Record<string, FeedPageInfo>;
   visibleByFeed: Record<string, number>;
   hydratedColumns: Record<string, true>;
   pinnedByUrl: Record<string, boolean>;

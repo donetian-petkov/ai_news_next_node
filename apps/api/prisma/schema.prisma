@@ -21,3 +21,36 @@ model AiUsageSnapshot {
   totalTokens  Int
   createdAt    DateTime @default(now())
 }
+
+model NewsItemRecord {
+  key                String   @id
+  feedUrl            String
+  itemId             String
+  title              String
+  titleBg            String?
+  titleEn            String?
+  coverUrl           String?
+  link               String
+  source             String
+  published          String?
+  publishedMs        BigInt
+  isMatch            Boolean
+  matchScore         Float
+  filteredOk         Boolean
+  summary            String?
+  research           String?
+  insightStatus      String?
+  insightsJson       String?
+  topicHitsJson      String?
+  emergingSignalJson String?
+  mood               String?
+  newsType           String?
+  contextText        String?
+  linkText           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([feedUrl, itemId])
+  @@index([feedUrl, publishedMs, itemId])
+  @@index([publishedMs, itemId])
+}

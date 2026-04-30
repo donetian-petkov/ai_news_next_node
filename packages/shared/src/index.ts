@@ -29,6 +29,11 @@ export const columnFiltersSchema = z.object({
   onlySummaries: z.boolean(),
 });
 
+export const feedPageCursorSchema = z.object({
+  beforePublishedMs: z.number(),
+  beforeId: z.string().trim().min(1)
+});
+
 export const clientMsgSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('toggle_ai'), enabled: z.boolean() }),
   z.object({ type: z.literal('set_ai_provider'), provider: aiProviderSchema, apiKey: z.string().optional() }),
@@ -66,6 +71,13 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('unhide_item'), id: z.string() }),
   z.object({ type: z.literal('run_research_item'), id: z.string(), feedUrl: z.string() }),
   z.object({ type: z.literal('run_summary_item'), id: z.string(), feedUrl: z.string() }),
+  z.object({
+    type: z.literal('load_feed_page'),
+    feedUrl: z.string(),
+    limit: z.number().optional(),
+    cursor: feedPageCursorSchema.optional(),
+    replace: z.boolean().optional()
+  }),
   z.object({
     type: z.literal('run_item_auto'),
     id: z.string(),

@@ -21,6 +21,7 @@ export enum PrimitiveType {
 
 export enum WsMessageType {
   News = 'news',
+  FeedPage = 'feed_page',
   Config = 'config',
   AiUsage = 'ai_usage',
   DailyBriefing = 'daily_briefing',
