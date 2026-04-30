@@ -421,10 +421,19 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 // ---------------------------------------------------------------------------
 
 const FILTERED_FEED_URL = '__filtered__';
-const CURRENT_STATE_VERSION = 2;
+const CURRENT_STATE_VERSION = 3;
 const IGN_FEED_URL = 'https://www.ign.com/rss/v2/articles/feed?categories=news';
+const LEGACY_SVOBODNA_EVROPA_FEED_URL = 'https://www.svobodnaevropa.bg/api/epiqq';
+const SVOBODNA_TOCHKA_FEED_URL = 'https://svobodnatochka.bg/feed/';
+const SVOBODNA_TOCHKA_DEFAULT_FEED: FeedInfo = {
+  url: SVOBODNA_TOCHKA_FEED_URL,
+  label: 'Svobodna Tochka',
+  kind: 'rss',
+  intervalSec: 180
+};
 const DEFAULT_FEED_MIGRATIONS: Record<number, string[]> = {
-  2: [IGN_FEED_URL]
+  2: [IGN_FEED_URL],
+  3: [SVOBODNA_TOCHKA_FEED_URL]
 };
 
 // ✅ Default feeds — ORDER MATTERS
@@ -447,7 +456,7 @@ const defaultFeeds: FeedInfo[] = [
   { url: 'https://feeds.feedburner.com/variety/headlines', label: 'Variety', kind: 'rss', intervalSec: 180 },
   { url: 'https://www.rollingstone.com/music/music-news/feed/', label: 'Rolling Stone', kind: 'rss', intervalSec: 180 },
   { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml', label: 'NYT Movies', kind: 'rss', intervalSec: 180 },
-  { url: 'https://www.svobodnaevropa.bg/api/epiqq', label: 'SvobodnaEvropa', kind: 'rss', intervalSec: 180 }
+  SVOBODNA_TOCHKA_DEFAULT_FEED
 ];
 
 function normalizeKeywordList(input: string[]): string[] {
@@ -1041,11 +1050,33 @@ function migratedDefaultFeedUrlsForVersion(version: number): Set<string> {
   return urls;
 }
 
+function rewriteLegacySvobodnaFeed(feed: FeedInfo): FeedInfo {
+  if (feed.url !== LEGACY_SVOBODNA_EVROPA_FEED_URL) return feed;
+  return {
+    ...feed,
+    url: SVOBODNA_TOCHKA_FEED_URL,
+    label: SVOBODNA_TOCHKA_DEFAULT_FEED.label,
+    kind: 'rss'
+  };
+}
+
 function mergeLoadedFeedsWithDefaultMigrations(version: number, loadedFeeds: FeedInfo[]): FeedInfo[] {
   const migratedUrls = migratedDefaultFeedUrlsForVersion(version);
-  if (!migratedUrls.size) return loadedFeeds;
+  if (!migratedUrls.size) {
+    const result: FeedInfo[] = [];
+    const seen = new Set<string>();
+    for (const feed of loadedFeeds.map(rewriteLegacySvobodnaFeed)) {
+      if (seen.has(feed.url)) continue;
+      seen.add(feed.url);
+      result.push(feed);
+    }
+    return result;
+  }
 
-  const loadedByUrl = new Map(loadedFeeds.map(feed => [feed.url, feed] as const));
+  const loadedByUrl = new Map(loadedFeeds.map(feed => {
+    const normalized = rewriteLegacySvobodnaFeed(feed);
+    return [normalized.url, normalized] as const;
+  }));
   const result: FeedInfo[] = [];
   const seen = new Set<string>();
 
@@ -1056,7 +1087,7 @@ function mergeLoadedFeedsWithDefaultMigrations(version: number, loadedFeeds: Fee
     seen.add(defaultFeed.url);
   }
 
-  for (const feed of loadedFeeds) {
+  for (const feed of loadedFeeds.map(rewriteLegacySvobodnaFeed)) {
     if (seen.has(feed.url)) continue;
     result.push(feed);
     seen.add(feed.url);
@@ -4325,19 +4356,28 @@ async function applyLoadedState(st: PersistedState | null) {
 
   if (st.feedSettings && typeof st.feedSettings === 'object') {
     for (const [url, s] of Object.entries(st.feedSettings)) {
-      const feedInfo = feedsList.find(feed => feed.url === url) || {
-        url,
-        label: typeof s?.label === 'string' ? s.label : url,
+      const normalizedUrl = url === LEGACY_SVOBODNA_EVROPA_FEED_URL ? SVOBODNA_TOCHKA_FEED_URL : url;
+      const normalizedLabel = url === LEGACY_SVOBODNA_EVROPA_FEED_URL
+        ? SVOBODNA_TOCHKA_DEFAULT_FEED.label
+        : (typeof s?.label === 'string' ? s.label : url);
+      const feedInfo = feedsList.find(feed => feed.url === normalizedUrl) || {
+        url: normalizedUrl,
+        label: normalizedLabel,
         kind: s?.kind === 'reddit' || s?.kind === 'youtube' || s?.kind === 'rss' ? s.kind : 'rss',
         intervalSec: Math.max(0, Math.min(3600, Math.floor(Number(s?.intervalSec) || 120)))
       };
-      feedSettings.set(url, normalizeFeedSettings(s, feedInfo));
+      const normalizedSettings = normalizeFeedSettings(s, feedInfo);
+      if (url === LEGACY_SVOBODNA_EVROPA_FEED_URL) {
+        normalizedSettings.label = SVOBODNA_TOCHKA_DEFAULT_FEED.label;
+      }
+      feedSettings.set(normalizedUrl, normalizedSettings);
     }
   }
 
   if (st.feedRuntime && typeof st.feedRuntime === 'object') {
     for (const [url, rt] of Object.entries(st.feedRuntime)) {
-      feedRuntime.set(url, rt);
+      const normalizedUrl = url === LEGACY_SVOBODNA_EVROPA_FEED_URL ? SVOBODNA_TOCHKA_FEED_URL : url;
+      feedRuntime.set(normalizedUrl, rt);
     }
   }
 
@@ -4346,7 +4386,11 @@ async function applyLoadedState(st: PersistedState | null) {
   }
 
   const legacyRecent = Array.isArray(st.recent)
-    ? st.recent.filter((it): it is NewsInternal => !!it?.id && !!it?.feedUrl && !!it?.title)
+    ? st.recent
+      .filter((it): it is NewsInternal => !!it?.id && !!it?.feedUrl && !!it?.title)
+      .map(it => (it.feedUrl === LEGACY_SVOBODNA_EVROPA_FEED_URL
+        ? { ...it, feedUrl: SVOBODNA_TOCHKA_FEED_URL }
+        : it))
     : [];
 
   // ensure settings for all feeds
