@@ -1150,6 +1150,36 @@ async function upsertPersistedNewsItem(it: NewsInternal) {
   }
 }
 
+async function appendErrorLog(entry: {
+  category: string;
+  message: string;
+  feedUrl?: string;
+  feedLabel?: string;
+  attempt?: number;
+  maxAttempts?: number;
+  failCount?: number;
+  disabledUntilMs?: number;
+  details?: Record<string, unknown>;
+}) {
+  try {
+    await prisma.errorLogRecord.create({
+      data: {
+        category: entry.category,
+        feedUrl: entry.feedUrl?.trim() || null,
+        feedLabel: entry.feedLabel?.trim() || null,
+        attempt: Number.isFinite(entry.attempt) ? Math.floor(Number(entry.attempt)) : null,
+        maxAttempts: Number.isFinite(entry.maxAttempts) ? Math.floor(Number(entry.maxAttempts)) : null,
+        failCount: Number.isFinite(entry.failCount) ? Math.floor(Number(entry.failCount)) : null,
+        disabledUntilMs: Number.isFinite(entry.disabledUntilMs) ? BigInt(Math.floor(Number(entry.disabledUntilMs))) : null,
+        message: String(entry.message || '').trim().slice(0, 2000),
+        detailsJson: entry.details ? JSON.stringify(entry.details) : null
+      }
+    });
+  } catch (e) {
+    console.error('Failed to persist error log:', (e as Error).message);
+  }
+}
+
 async function hasPersistedNewsArchive(): Promise<boolean> {
   try {
     const first = await prisma.newsItemRecord.findFirst({ select: { key: true } });
@@ -4155,6 +4185,21 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
         `[feed-fetch] attempt ${attempt}/${maxAttempts} failed for ${fi.url}: ${message} ` +
         `(failCount=${rt.failCount}${waitMs ? `, breaker=${Math.round(waitMs / 1000)}s` : ''})`
       );
+      void appendErrorLog({
+        category: 'feed-fetch',
+        feedUrl: fi.url,
+        feedLabel: labelForFeed(fi),
+        attempt,
+        maxAttempts,
+        failCount: rt.failCount,
+        disabledUntilMs: waitMs ? now + waitMs : undefined,
+        message,
+        details: {
+          kind: fi.kind,
+          retrying: attempt < maxAttempts,
+          userAgent: headers['User-Agent']
+        }
+      });
 
       // circuit breaker: after 6 fails, pause longer
       if (rt.failCount >= 6) {
@@ -4295,6 +4340,16 @@ async function processFeed(fi: FeedInfo) {
     markDirty();
   } catch (err) {
     console.error(`✗ ${fi.url}`, (err as Error).message);
+    void appendErrorLog({
+      category: 'feed-process',
+      feedUrl: fi.url,
+      feedLabel: labelForFeed(fi),
+      message: (err as Error).message,
+      details: {
+        kind: fi.kind,
+        stage: 'processFeed'
+      }
+    });
     broadcastFeedError(fi, (err as Error).message);
     markDirty();
   }

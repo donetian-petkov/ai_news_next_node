@@ -54,3 +54,20 @@ model NewsItemRecord {
   @@index([feedUrl, publishedMs, itemId])
   @@index([publishedMs, itemId])
 }
+
+model ErrorLogRecord {
+  id              Int      @id @default(autoincrement())
+  category        String
+  feedUrl         String?
+  feedLabel       String?
+  attempt         Int?
+  maxAttempts     Int?
+  failCount       Int?
+  disabledUntilMs BigInt?
+  message         String
+  detailsJson     String?
+  createdAt       DateTime @default(now())
+
+  @@index([category, createdAt])
+  @@index([feedUrl, createdAt])
+}
