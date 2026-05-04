@@ -42,6 +42,7 @@ type UiNotification = {
   kind: UiToastKind;
   message: string;
   createdAt: number;
+  count?: number;
 };
 
 const MAX_ACTIVE_TOASTS = 8;
@@ -569,12 +570,23 @@ const uiSlice = createSlice({
       if (!message) return;
       const createdAt = Date.now();
       const id = `${createdAt}-${Math.random().toString(36).slice(2, 8)}`;
-      const nextNotification = { id, kind: action.payload.kind, message, createdAt };
-      state.toasts.push(nextNotification);
+      const nextToast = { id, kind: action.payload.kind, message, createdAt, count: 1 };
+      const existingToastIndex = state.toasts.findIndex(t => t.kind === nextToast.kind && t.message === nextToast.message);
+      if (existingToastIndex >= 0) {
+        const existingToast = state.toasts[existingToastIndex];
+        state.toasts.splice(existingToastIndex, 1);
+        state.toasts.push({
+          ...existingToast,
+          createdAt,
+          count: (existingToast.count ?? 1) + 1
+        });
+      } else {
+        state.toasts.push(nextToast);
+      }
       if (state.toasts.length > MAX_ACTIVE_TOASTS) {
         state.toasts.splice(0, state.toasts.length - MAX_ACTIVE_TOASTS);
       }
-      state.notificationInbox.push(nextNotification);
+      state.notificationInbox.push({ ...nextToast });
       if (state.notificationInbox.length > MAX_NOTIFICATION_HISTORY) {
         state.notificationInbox.splice(0, state.notificationInbox.length - MAX_NOTIFICATION_HISTORY);
       }

@@ -301,4 +301,16 @@ describe('uiSlice', () => {
     expect(state.notificationInbox).toEqual([]);
     expect(state.toasts).toEqual([]);
   });
+
+  it('stacks identical toasts into a single active toast with a count', () => {
+    let state = uiReducer(undefined, { type: '@@INIT' });
+    for (let i = 0; i < 4; i++) {
+      state = uiReducer(state, enqueueToast({ kind: 'success', message: 'Title translation queued.' }));
+    }
+
+    expect(state.toasts).toHaveLength(1);
+    expect(state.toasts[0]?.message).toBe('Title translation queued.');
+    expect(state.toasts[0]?.count).toBe(4);
+    expect(state.notificationInbox).toHaveLength(4);
+  });
 });

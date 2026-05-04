@@ -91,8 +91,40 @@ export function ToastStack() {
                 opacity: 1
               }
             }}
-          >
-            {t.message}
+            >
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  minWidth: 0
+                }}
+              >
+                <Box component="span" sx={{ minWidth: 0 }}>
+                  {t.message}
+                </Box>
+                {(t.count ?? 1) > 1 ? (
+                  <Box
+                    component="span"
+                    sx={{
+                      flexShrink: 0,
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 999,
+                      border: '1px solid rgba(255,255,255,0.42)',
+                      backgroundColor: 'rgba(255,255,255,0.12)',
+                      color: 'inherit',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.02em',
+                      lineHeight: 1
+                    }}
+                  >
+                    x{t.count}
+                  </Box>
+                ) : null}
+              </Box>
           </Alert>
         );
       })}

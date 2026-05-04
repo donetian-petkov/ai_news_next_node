@@ -10,6 +10,7 @@ type TopMenuToast = {
   kind: 'success' | 'error' | 'warning' | 'info';
   message: string;
   createdAt: number;
+  count?: number;
 };
 
 export type TopMenuContextValue = {
