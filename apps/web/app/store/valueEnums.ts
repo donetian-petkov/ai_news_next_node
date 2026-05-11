@@ -52,7 +52,8 @@ export enum SortModeValue {
 export enum AiProviderValue {
   OpenAI = 'openai',
   Claude = 'claude',
-  OpenRouter = 'openrouter'
+  OpenRouter = 'openrouter',
+  Local = 'local'
 }
 
 export enum SummaryLangValue {

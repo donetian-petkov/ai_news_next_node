@@ -75,6 +75,13 @@ export function useTopMenuAiActions({ dispatch, t, labels, feeds }: Args) {
   }, [dispatch, labels.noServerConnection, labels.providerKeyRequired, labels.providerKeySaved, labels.providerSwitchCancelled]);
 
   const changeAiProvider = useCallback((provider: TopMenuAiProvider) => {
+    if (provider === 'local') {
+      const ok = sendWsMessage({ type: 'set_ai_provider', provider });
+      if (!ok) {
+        dispatch(enqueueToast({ kind: 'error', message: labels.noServerConnection }));
+      }
+      return;
+    }
     let apiKey = getProviderKeyLocal(provider);
     if (!apiKey) {
       const keyLabel = getProviderKeyLabel(provider);

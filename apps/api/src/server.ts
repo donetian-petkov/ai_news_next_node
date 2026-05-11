@@ -317,6 +317,7 @@ type Config = {
   availableModels: ModelOptionsByProvider;
   aiFeatures: AiInsightFeatureSettings;
   localRegion: string;
+  localLlmBaseUrl: string;
   trackedTopics: string[];
 
   matchThreshold: number;
@@ -579,8 +580,10 @@ let aiProvider: AIProvider = aiProviderParsed.success ? aiProviderParsed.data : 
 const providerApiKeys: Record<AIProvider, string> = {
   openai: String(process.env.OPENAI_API_KEY || '').trim(),
   claude: String(process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY || '').trim(),
-  openrouter: String(process.env.OPENROUTER_API_KEY || '').trim()
+  openrouter: String(process.env.OPENROUTER_API_KEY || '').trim(),
+  local: ''
 };
+const DEFAULT_LOCAL_LLM_BASE_URL = String(process.env.LOCAL_LLM_BASE_URL || process.env.OPENAI_BASE_URL || 'http://localhost:11434/v1').trim();
 
 const EMBED_MODEL =
   process.env.OPENAI_EMBED_MODEL ||
@@ -631,6 +634,26 @@ const OPENROUTER_ASK_MODEL =
   process.env.OPENROUTER_ASK_MODEL ||
   process.env.ASK_MODEL ||
   'openai/gpt-4.1-mini';
+
+const LOCAL_SUMMARY_MODEL =
+  process.env.LOCAL_SUMMARY_MODEL ||
+  process.env.SUMMARY_MODEL ||
+  'llama3.1';
+
+const LOCAL_RESEARCH_MODEL =
+  process.env.LOCAL_RESEARCH_MODEL ||
+  process.env.RESEARCH_MODEL ||
+  LOCAL_SUMMARY_MODEL;
+
+const LOCAL_ASK_MODEL =
+  process.env.LOCAL_ASK_MODEL ||
+  process.env.ASK_MODEL ||
+  LOCAL_SUMMARY_MODEL;
+
+const LOCAL_EMBED_MODEL =
+  process.env.LOCAL_EMBED_MODEL ||
+  process.env.EMBED_MODEL ||
+  'nomic-embed-text';
 
 function parseModelCsv(raw: string | undefined): string[] {
   if (!raw) return [];
@@ -707,6 +730,20 @@ const modelOptionsByProvider: ModelOptionsByProvider = {
       parseModelCsv(process.env.OPENROUTER_ASK_MODEL_OPTIONS)
         .concat(['openai/gpt-4.1-mini', 'openai/gpt-4.1-nano', 'anthropic/claude-3.5-haiku'])
     )
+  },
+  local: {
+    summary: buildModelOptions(
+      LOCAL_SUMMARY_MODEL,
+      parseModelCsv(process.env.LOCAL_SUMMARY_MODEL_OPTIONS).concat([LOCAL_SUMMARY_MODEL])
+    ),
+    research: buildModelOptions(
+      LOCAL_RESEARCH_MODEL,
+      parseModelCsv(process.env.LOCAL_RESEARCH_MODEL_OPTIONS).concat([LOCAL_RESEARCH_MODEL])
+    ),
+    ask: buildModelOptions(
+      LOCAL_ASK_MODEL,
+      parseModelCsv(process.env.LOCAL_ASK_MODEL_OPTIONS).concat([LOCAL_ASK_MODEL])
+    )
   }
 };
 
@@ -725,6 +762,11 @@ const selectedModelsByProvider: Record<AIProvider, AiModelSelection> = {
     summary: modelOptionsByProvider.openrouter.summary[0] || OPENROUTER_SUMMARY_MODEL,
     research: modelOptionsByProvider.openrouter.research[0] || OPENROUTER_RESEARCH_MODEL,
     ask: modelOptionsByProvider.openrouter.ask[0] || OPENROUTER_ASK_MODEL
+  },
+  local: {
+    summary: modelOptionsByProvider.local.summary[0] || LOCAL_SUMMARY_MODEL,
+    research: modelOptionsByProvider.local.research[0] || LOCAL_RESEARCH_MODEL,
+    ask: modelOptionsByProvider.local.ask[0] || LOCAL_ASK_MODEL
   }
 };
 
@@ -758,6 +800,9 @@ const RESEARCH_DEFAULT_ALL =
 let openaiEmbeddingClient: OpenAI | null = null;
 let openaiGenerationClient: OpenAI | null = null;
 let openrouterGenerationClient: OpenAI | null = null;
+let localEmbeddingClient: OpenAI | null = null;
+let localGenerationClient: OpenAI | null = null;
+let localLlmBaseUrl = DEFAULT_LOCAL_LLM_BASE_URL;
 let aiAvailable: boolean = false;
 
 function activeModel(kind: AiModelKind): string {
@@ -765,6 +810,7 @@ function activeModel(kind: AiModelKind): string {
 }
 
 function providerSupportsModel(provider: AIProvider, kind: AiModelKind, model: string): boolean {
+  if (provider === 'local') return !!String(model || '').trim();
   return modelOptionsByProvider[provider][kind].includes(model);
 }
 
@@ -773,12 +819,19 @@ function currentModelSelection(provider: AIProvider): AiModelSelection {
 }
 
 function activeOpenAiLikeClient(): OpenAI | null {
+  if (aiProvider === 'local') return localGenerationClient;
   if (aiProvider === 'openrouter') return openrouterGenerationClient;
   if (aiProvider === 'openai') return openaiGenerationClient;
   return null;
 }
 
+function activeEmbeddingClient(): OpenAI | null {
+  if (aiProvider === 'local') return localEmbeddingClient;
+  return openaiEmbeddingClient;
+}
+
 function activeProviderHasKey(provider: AIProvider): boolean {
+  if (provider === 'local') return !!String(localLlmBaseUrl || '').trim();
   return provider === 'claude'
     ? !!providerApiKeys.claude
     : provider === 'openrouter'
@@ -787,6 +840,7 @@ function activeProviderHasKey(provider: AIProvider): boolean {
 }
 
 function refreshAiClients() {
+  const localBaseUrl = String(localLlmBaseUrl || '').trim();
   openaiEmbeddingClient = providerApiKeys.openai
     ? new OpenAI({ apiKey: providerApiKeys.openai })
     : null;
@@ -797,6 +851,18 @@ function refreshAiClients() {
     ? new OpenAI({
       apiKey: providerApiKeys.openrouter,
       baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
+    })
+    : null;
+  localEmbeddingClient = localBaseUrl
+    ? new OpenAI({
+      apiKey: process.env.LOCAL_LLM_API_KEY || 'local',
+      baseURL: localBaseUrl
+    })
+    : null;
+  localGenerationClient = localBaseUrl
+    ? new OpenAI({
+      apiKey: process.env.LOCAL_LLM_API_KEY || 'local',
+      baseURL: localBaseUrl
     })
     : null;
   aiAvailable = activeProviderHasKey(aiProvider);
@@ -938,6 +1004,7 @@ type PersistedState = {
   keywords?: string[];
   aiFeatures?: AiInsightFeatureSettings;
   localRegion?: string;
+  localLlmBaseUrl?: string;
   trackedTopics?: string[];
   feeds: FeedInfo[];
   feedSettings: Record<string, FeedSettings>;
@@ -1352,6 +1419,7 @@ function saveStateNow() {
     keywords,
     aiFeatures,
     localRegion,
+    localLlmBaseUrl,
     trackedTopics,
     feeds: feedsList,
     feedSettings: feedSettingsObj(),
@@ -1536,7 +1604,8 @@ function cosine(a: number[], b: number[]) {
 }
 
 async function embed(text: string): Promise<number[] | null> {
-  if (!openaiEmbeddingClient) return null;
+  const client = activeEmbeddingClient();
+  if (!client) return null;
 
   const key = normalizeText(text);
   if (!key) return null;
@@ -1544,8 +1613,8 @@ async function embed(text: string): Promise<number[] | null> {
   const cached = titleVecCache.get(key);
   if (cached) return cached;
 
-  const res = await openaiEmbeddingClient.embeddings.create({
-    model: EMBED_MODEL,
+  const res = await client.embeddings.create({
+    model: aiProvider === 'local' ? LOCAL_EMBED_MODEL : EMBED_MODEL,
     input: text,
     encoding_format: 'float'
   });
@@ -1564,7 +1633,7 @@ async function embed(text: string): Promise<number[] | null> {
 
 async function initKeywordEmbeddings() {
   keywordVecs = [];
-  if (!openaiEmbeddingClient || !aiEnabled || keywords.length === 0) return;
+  if (!activeEmbeddingClient() || !aiEnabled || keywords.length === 0) return;
 
   for (const kw of keywords) {
     const v = await embed(kw);
@@ -1588,7 +1657,7 @@ async function hybridMatch(
 ): Promise<{ isMatch: boolean; score: number; vec: number[] | null }> {
   const hit = substringHit(title);
 
-  if (!openaiEmbeddingClient || !aiEnabled || keywordVecs.length === 0) {
+  if (!activeEmbeddingClient() || !aiEnabled || keywordVecs.length === 0) {
     return { isMatch: hit, score: hit ? 1 : 0, vec: null };
   }
 
@@ -3500,6 +3569,7 @@ function broadcastConfig() {
     availableModels: modelOptionsByProvider,
     aiFeatures,
     localRegion,
+    localLlmBaseUrl,
     trackedTopics,
 
     matchThreshold: MATCH_THRESHOLD,
@@ -4414,6 +4484,10 @@ async function applyLoadedState(st: PersistedState | null) {
   if (Array.isArray(st.trackedTopics)) {
     trackedTopics = normalizeTrimmedList(st.trackedTopics, 80);
   }
+  if (typeof st.localLlmBaseUrl === 'string') {
+    localLlmBaseUrl = st.localLlmBaseUrl.trim().slice(0, 500) || localLlmBaseUrl;
+    refreshAiClients();
+  }
 
   if (Array.isArray(st.feeds) && st.feeds.length) {
     feedsList = mergeLoadedFeedsWithDefaultMigrations(st.version, st.feeds);
@@ -4547,6 +4621,7 @@ wss.on('connection', (ws: WebSocket) => {
     availableModels: modelOptionsByProvider,
     aiFeatures,
     localRegion,
+    localLlmBaseUrl,
     trackedTopics,
 
     matchThreshold: MATCH_THRESHOLD,
@@ -4665,13 +4740,15 @@ wss.on('connection', (ws: WebSocket) => {
     if (msg.type === 'set_ai_provider') {
       const provider = msg.provider;
       const nextKey = typeof msg.apiKey === 'string' ? msg.apiKey.trim() : '';
-      if (typeof msg.apiKey === 'string' && !nextKey) {
+      if (provider !== 'local' && typeof msg.apiKey === 'string' && !nextKey) {
         ws.send(JSON.stringify({ type: 'error', message: 'API key is required for provider switch.' }));
         return;
       }
 
       aiProvider = provider;
-      if (nextKey) {
+      if (provider === 'local') {
+        refreshAiClients();
+      } else if (nextKey) {
         setAiProviderKey(provider, nextKey);
       } else {
         refreshAiClients();
@@ -4800,14 +4877,25 @@ wss.on('connection', (ws: WebSocket) => {
     }
 
     if (msg.type === 'set_ai_features') {
+      let shouldRebuildEmbeddings = false;
       if (msg.features) {
         aiFeatures = normalizeAiFeatureSettings(msg.features, aiFeatures);
       }
       if (typeof msg.localRegion === 'string') {
         localRegion = msg.localRegion.trim().slice(0, 120);
       }
+      if (typeof msg.localBaseUrl === 'string') {
+        localLlmBaseUrl = msg.localBaseUrl.trim().slice(0, 500) || localLlmBaseUrl;
+        refreshAiClients();
+        shouldRebuildEmbeddings = true;
+      }
       if (Array.isArray(msg.trackedTopics)) {
         trackedTopics = normalizeTrimmedList(msg.trackedTopics, 80);
+      }
+      if (shouldRebuildEmbeddings) {
+        titleVecCache.clear();
+        keywordVecs = [];
+        await initKeywordEmbeddings();
       }
       reprocessCachedItems(true);
       broadcastConfig();

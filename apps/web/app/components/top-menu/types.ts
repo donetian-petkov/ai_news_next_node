@@ -19,8 +19,8 @@ export type TopMenuActionsResult = {
   cycleTheme: () => void;
   cycleVibe: () => void;
   applyAllBudget: (budget: 'low' | 'standard' | 'high') => void;
-  changeAiProvider: (provider: 'openai' | 'claude' | 'openrouter') => void;
-  setProviderApiKey: (provider: 'openai' | 'claude' | 'openrouter', apiKey: string) => void;
+  changeAiProvider: (provider: 'openai' | 'claude' | 'openrouter' | 'local') => void;
+  setProviderApiKey: (provider: 'openai' | 'claude' | 'openrouter' | 'local', apiKey: string) => void;
   requestNotificationPermission: (enabled: boolean) => Promise<void>;
   resetAllNewest: () => void;
   deleteOldAllColumns: () => void;
@@ -73,6 +73,7 @@ export type TopMenuControlsModel = {
     showEmergingColumn: TopMenuUiState['showEmergingColumn'];
     insightFeatures: TopMenuUiState['insightFeatures'];
     localImpactRegion: TopMenuUiState['localImpactRegion'];
+    localLlmBaseUrl: TopMenuUiState['localLlmBaseUrl'];
     trackedTopics: TopMenuUiState['trackedTopics'];
     summaryModel: TopMenuUiState['summaryModel'];
     researchModel: TopMenuUiState['researchModel'];
@@ -145,6 +146,7 @@ export type TopMenuControlsActions = {
   onToggleSpecialColumn: (column: 'filtered' | 'emerging', enabled: boolean) => void;
   onSetInsightFeature: (key: keyof TopMenuUiState['insightFeatures'], enabled: boolean) => void;
   onSetLocalImpactRegion: (region: string) => void;
+  onSetLocalLlmBaseUrl: (baseUrl: string) => void;
   onSetTrackedTopics: (topics: string[]) => void;
   onSummaryModelChange: (model: string) => void;
   onResearchModelChange: (model: string) => void;

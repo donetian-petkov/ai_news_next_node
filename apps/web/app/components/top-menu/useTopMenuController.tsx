@@ -236,6 +236,7 @@ export function useTopMenuController() {
       showEmergingColumn: ui.showEmergingColumn,
       insightFeatures: ui.insightFeatures,
       localImpactRegion: ui.localImpactRegion,
+      localLlmBaseUrl: ui.localLlmBaseUrl,
       trackedTopics: ui.trackedTopics,
       summaryModel: ui.summaryModel,
       researchModel: ui.researchModel,
@@ -274,7 +275,7 @@ export function useTopMenuController() {
       language: ui.language,
       colorMode: ui.colorMode
     }
-  }), [briefing, deleteAgeAll, feeds, ui.aiAvailable, ui.aiEnabled, ui.aiProvider, ui.allBudget, ui.askModel, ui.availableModels, ui.buttonMode, ui.colorMode, ui.controlsCollapsed, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.dateFormat, ui.effectIntensity, ui.font, ui.fontSize, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.menuHintMode, ui.moodFilter, ui.notifyEnabled, ui.notifyMode, ui.performanceMode, ui.researchLang, ui.researchModel, ui.scheme, ui.showNewsCovers, ui.soundEnabled, ui.soundTheme, ui.storiesPerColumn, ui.summaryLang, ui.summaryModel, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, ui.vibe]);
+  }), [briefing, deleteAgeAll, feeds, ui.aiAvailable, ui.aiEnabled, ui.aiProvider, ui.allBudget, ui.askModel, ui.availableModels, ui.buttonMode, ui.colorMode, ui.controlsCollapsed, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.dateFormat, ui.effectIntensity, ui.font, ui.fontSize, ui.insightFeatures, ui.keywords, ui.language, ui.localImpactRegion, ui.localLlmBaseUrl, ui.menuHintMode, ui.moodFilter, ui.notifyEnabled, ui.notifyMode, ui.performanceMode, ui.researchLang, ui.researchModel, ui.scheme, ui.showNewsCovers, ui.soundEnabled, ui.soundTheme, ui.storiesPerColumn, ui.summaryLang, ui.summaryModel, ui.timezone, ui.titleDisplayLanguage, ui.trackedTopics, ui.typeFilter, ui.vibe]);
 
   const { contextValue } = useTopMenuViewModel({
     labels,

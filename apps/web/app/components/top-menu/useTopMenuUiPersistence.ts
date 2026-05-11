@@ -54,6 +54,7 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     summaryModel: ui.summaryModel,
     researchModel: ui.researchModel,
     askModel: ui.askModel,
+    localLlmBaseUrl: ui.localLlmBaseUrl,
     allBudget: ui.allBudget,
     keywords: ui.keywords,
     dailyBriefingDelivery: ui.dailyBriefingDelivery,
@@ -108,6 +109,7 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
     ui.summaryModel,
     ui.researchModel,
     ui.askModel,
+    ui.localLlmBaseUrl,
     ui.allBudget,
     ui.keywords,
     ui.titleDisplayLanguage,
@@ -141,7 +143,7 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
         if (parsed.researchLang === 'bg' || parsed.researchLang === 'en') {
           sent.push(sendWsMessage({ type: 'set_research_lang', lang: parsed.researchLang }));
         }
-        if (parsed.aiProvider === 'openai' || parsed.aiProvider === 'claude' || parsed.aiProvider === 'openrouter') {
+        if (parsed.aiProvider === 'openai' || parsed.aiProvider === 'claude' || parsed.aiProvider === 'openrouter' || parsed.aiProvider === 'local') {
           sent.push(sendWsMessage({ type: 'set_ai_provider', provider: parsed.aiProvider }));
         }
         if (parsed.summaryModel || parsed.researchModel || parsed.askModel) {
@@ -163,7 +165,8 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
             type: 'set_ai_features',
             ...(parsed.insightFeatures ? { features: parsed.insightFeatures } : {}),
             ...(typeof parsed.localImpactRegion === 'string' ? { localRegion: parsed.localImpactRegion } : {}),
-            ...(Array.isArray(parsed.trackedTopics) ? { trackedTopics: parsed.trackedTopics } : {})
+            ...(Array.isArray(parsed.trackedTopics) ? { trackedTopics: parsed.trackedTopics } : {}),
+            ...(typeof parsed.localLlmBaseUrl === 'string' ? { localBaseUrl: parsed.localLlmBaseUrl } : {})
           }));
         }
         if (sent.length && sent.some(Boolean)) return;

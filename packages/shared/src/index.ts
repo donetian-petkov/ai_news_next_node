@@ -5,7 +5,7 @@ export const researchLangSchema = z.union([z.literal('bg'), z.literal('en')]);
 export const feedKindSchema = z.union([z.literal('rss'), z.literal('reddit'), z.literal('youtube')]);
 export const budgetModeSchema = z.union([z.literal('low'), z.literal('standard'), z.literal('high')]);
 export const sortModeSchema = z.union([z.literal('newest'), z.literal('oldest'), z.literal('matched')]);
-export const aiProviderSchema = z.union([z.literal('openai'), z.literal('claude'), z.literal('openrouter')]);
+export const aiProviderSchema = z.union([z.literal('openai'), z.literal('claude'), z.literal('openrouter'), z.literal('local')]);
 export const aiModelIdSchema = z.string().trim().min(1);
 export const briefingDeliverySchema = z.union([z.literal('site'), z.literal('email')]);
 export const briefingFormatSchema = z.union([z.literal('executive'), z.literal('bullets'), z.literal('narrative')]);
@@ -56,7 +56,8 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
     type: z.literal('set_ai_features'),
     features: aiFeatureSettingsSchema.optional(),
     localRegion: z.string().trim().min(1).max(120).optional(),
-    trackedTopics: z.array(z.string().trim().min(1).max(120)).max(80).optional()
+    trackedTopics: z.array(z.string().trim().min(1).max(120)).max(80).optional(),
+    localBaseUrl: z.string().trim().min(1).max(500).optional()
   }),
   z.object({ type: z.literal('add_feed'), url: z.string(), label: z.string().optional(), kind: feedKindSchema.optional(), intervalSec: z.number().optional() }),
   z.object({ type: z.literal('remove_feed'), feedUrl: z.string() }),

@@ -32,7 +32,7 @@ const isTimezone = (value: string): value is UiState['timezone'] =>
   || value === 'America/Los_Angeles'
   || value === 'Asia/Tokyo';
 
-type AiProvider = 'openai' | 'claude' | 'openrouter';
+type AiProvider = 'openai' | 'claude' | 'openrouter' | 'local';
 type AiModelKind = 'summary' | 'research' | 'ask';
 type AiProviderModelOptions = Record<AiModelKind, string[]>;
 type AiModelsByProvider = Record<AiProvider, AiProviderModelOptions>;
@@ -77,6 +77,11 @@ const DEFAULT_AI_MODELS: AiModelsByProvider = {
     summary: ['openai/gpt-4.1-mini', 'openai/gpt-4.1', 'anthropic/claude-3.5-haiku'],
     research: ['openai/gpt-4.1', 'openai/gpt-4.1-mini', 'anthropic/claude-3.7-sonnet'],
     ask: ['openai/gpt-4.1-mini', 'openai/gpt-4.1-nano', 'anthropic/claude-3.5-haiku']
+  },
+  local: {
+    summary: ['llama3.1'],
+    research: ['llama3.1'],
+    ask: ['llama3.1']
   }
 };
 
@@ -184,6 +189,7 @@ type UiState = {
   summaryModel: string;
   researchModel: string;
   askModel: string;
+  localLlmBaseUrl: string;
   availableModels: AiModelsByProvider;
   allBudget: 'mixed' | 'low' | 'standard' | 'high';
   dailyBriefingDelivery: BriefingDelivery;
@@ -243,6 +249,7 @@ const initialState: UiState = {
   summaryModel: DEFAULT_AI_MODELS.openai.summary[0],
   researchModel: DEFAULT_AI_MODELS.openai.research[0],
   askModel: DEFAULT_AI_MODELS.openai.ask[0],
+  localLlmBaseUrl: 'http://localhost:11434/v1',
   availableModels: DEFAULT_AI_MODELS,
   allBudget: 'standard',
   dailyBriefingDelivery: 'site',
@@ -321,11 +328,11 @@ const uiSlice = createSlice({
         state.notifyMode = next.notifyMode;
       }
     },
-    setAiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'aiAvailable' | 'aiEnabled' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'availableModels' | 'allBudget' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls'>>>) {
+    setAiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'aiAvailable' | 'aiEnabled' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'localLlmBaseUrl' | 'availableModels' | 'allBudget' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls'>>>) {
       const next = action.payload;
       if (typeof next.aiAvailable === 'boolean') state.aiAvailable = next.aiAvailable;
       if (typeof next.aiEnabled === 'boolean') state.aiEnabled = next.aiEnabled;
-      if (next.aiProvider === 'openai' || next.aiProvider === 'claude' || next.aiProvider === 'openrouter') state.aiProvider = next.aiProvider;
+      if (next.aiProvider === 'openai' || next.aiProvider === 'claude' || next.aiProvider === 'openrouter' || next.aiProvider === 'local') state.aiProvider = next.aiProvider;
       if (next.summaryLang === 'bg' || next.summaryLang === 'en' || next.summaryLang === 'bilingual') state.summaryLang = next.summaryLang;
       if (next.researchLang === 'bg' || next.researchLang === 'en') state.researchLang = next.researchLang;
       if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
@@ -343,6 +350,9 @@ const uiSlice = createSlice({
       if (typeof next.summaryModel === 'string' && next.summaryModel.trim()) state.summaryModel = next.summaryModel.trim();
       if (typeof next.researchModel === 'string' && next.researchModel.trim()) state.researchModel = next.researchModel.trim();
       if (typeof next.askModel === 'string' && next.askModel.trim()) state.askModel = next.askModel.trim();
+      if (typeof next.localLlmBaseUrl === 'string') {
+        state.localLlmBaseUrl = next.localLlmBaseUrl.trim().slice(0, 500);
+      }
       if (next.availableModels && typeof next.availableModels === 'object') {
         const openaiSummary = dedupeNonEmptyStrings(next.availableModels.openai?.summary);
         const openaiResearch = dedupeNonEmptyStrings(next.availableModels.openai?.research);
@@ -353,6 +363,9 @@ const uiSlice = createSlice({
         const openrouterSummary = dedupeNonEmptyStrings(next.availableModels.openrouter?.summary);
         const openrouterResearch = dedupeNonEmptyStrings(next.availableModels.openrouter?.research);
         const openrouterAsk = dedupeNonEmptyStrings(next.availableModels.openrouter?.ask);
+        const localSummary = dedupeNonEmptyStrings((next.availableModels as AiModelsByProvider).local?.summary);
+        const localResearch = dedupeNonEmptyStrings((next.availableModels as AiModelsByProvider).local?.research);
+        const localAsk = dedupeNonEmptyStrings((next.availableModels as AiModelsByProvider).local?.ask);
         state.availableModels = {
           openai: {
             summary: openaiSummary.length ? openaiSummary : state.availableModels.openai.summary,
@@ -368,6 +381,11 @@ const uiSlice = createSlice({
             summary: openrouterSummary.length ? openrouterSummary : state.availableModels.openrouter.summary,
             research: openrouterResearch.length ? openrouterResearch : state.availableModels.openrouter.research,
             ask: openrouterAsk.length ? openrouterAsk : state.availableModels.openrouter.ask
+          },
+          local: {
+            summary: localSummary.length ? localSummary : state.availableModels.local.summary,
+            research: localResearch.length ? localResearch : state.availableModels.local.research,
+            ask: localAsk.length ? localAsk : state.availableModels.local.ask
           }
         };
       }
@@ -478,7 +496,7 @@ const uiSlice = createSlice({
         state.soundEnabled = false;
       }
     },
-    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'storiesPerColumn' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'showNewsCovers' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
+    hydrateUiSettings(state, action: PayloadAction<Partial<Pick<UiState, 'language' | 'colorMode' | 'menuCollapsed' | 'controlsCollapsed' | 'searchVisible' | 'addStreamVisible' | 'allColumnControlsHidden' | 'showFilteredColumn' | 'showEmergingColumn' | 'hideAllResearch' | 'hideAllSummaries' | 'storiesPerColumn' | 'notifyEnabled' | 'notifyMode' | 'moodFilter' | 'typeFilter' | 'aiProvider' | 'summaryLang' | 'researchLang' | 'titleDisplayLanguage' | 'insightFeatures' | 'localImpactRegion' | 'trackedTopics' | 'summaryModel' | 'researchModel' | 'askModel' | 'localLlmBaseUrl' | 'allBudget' | 'keywords' | 'dailyBriefingDelivery' | 'dailyBriefingEmail' | 'dailyBriefingFormat' | 'dailyBriefingAudio' | 'dailyBriefingFeedUrls' | 'font' | 'fontSize' | 'scheme' | 'timezone' | 'dateFormat' | 'showNewsCovers' | 'performanceMode' | 'buttonMode' | 'menuHintMode' | 'effectIntensity' | 'soundEnabled' | 'soundTheme' | 'vibe'>>>) {
       const next = action.payload;
       if (next.language === 'en' || next.language === 'bg') state.language = next.language;
       if (next.colorMode === 'system' || next.colorMode === 'dark' || next.colorMode === 'light') state.colorMode = next.colorMode;
@@ -494,7 +512,7 @@ const uiSlice = createSlice({
       if (next.notifyMode === 'matched' || next.notifyMode === 'matched_pinned' || next.notifyMode === 'pinned' || next.notifyMode === 'all') state.notifyMode = next.notifyMode;
       if (isMoodFilter(next.moodFilter)) state.moodFilter = next.moodFilter;
       if (isTypeFilter(next.typeFilter)) state.typeFilter = next.typeFilter;
-      if (next.aiProvider === 'openai' || next.aiProvider === 'claude' || next.aiProvider === 'openrouter') state.aiProvider = next.aiProvider;
+      if (next.aiProvider === 'openai' || next.aiProvider === 'claude' || next.aiProvider === 'openrouter' || next.aiProvider === 'local') state.aiProvider = next.aiProvider;
       if (next.summaryLang === 'bg' || next.summaryLang === 'en' || next.summaryLang === 'bilingual') state.summaryLang = next.summaryLang;
       if (next.researchLang === 'bg' || next.researchLang === 'en') state.researchLang = next.researchLang;
       if (next.titleDisplayLanguage === 'original' || next.titleDisplayLanguage === 'bg' || next.titleDisplayLanguage === 'en') {
@@ -512,6 +530,9 @@ const uiSlice = createSlice({
       if (typeof next.summaryModel === 'string' && next.summaryModel.trim()) state.summaryModel = next.summaryModel.trim().slice(0, 120);
       if (typeof next.researchModel === 'string' && next.researchModel.trim()) state.researchModel = next.researchModel.trim().slice(0, 120);
       if (typeof next.askModel === 'string' && next.askModel.trim()) state.askModel = next.askModel.trim().slice(0, 120);
+      if (typeof next.localLlmBaseUrl === 'string') {
+        state.localLlmBaseUrl = next.localLlmBaseUrl.trim().slice(0, 500);
+      }
       if (next.allBudget === 'mixed' || next.allBudget === 'low' || next.allBudget === 'standard' || next.allBudget === 'high') {
         state.allBudget = next.allBudget;
       }

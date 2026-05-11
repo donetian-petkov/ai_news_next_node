@@ -4,11 +4,12 @@ import { NewsMoodFilterValue, NewsTypeFilterValue } from '../../store/types';
 import type { Option } from './TopMenuSelectField';
 import type { TopMenuColorMode, TopMenuDateFormat, TopMenuTimezone, TopMenuVibe } from './topMenu.services';
 
-export function buildAiProviderOptions(labels: Record<string, string>): Option<'openai' | 'claude' | 'openrouter'>[] {
+export function buildAiProviderOptions(labels: Record<string, string>): Option<'openai' | 'claude' | 'openrouter' | 'local'>[] {
   return [
     { value: 'openai', label: labels.openai },
     { value: 'claude', label: labels.claude },
-    { value: 'openrouter', label: labels.openrouter }
+    { value: 'openrouter', label: labels.openrouter },
+    { value: 'local', label: labels.local || 'Local' }
   ];
 }
 

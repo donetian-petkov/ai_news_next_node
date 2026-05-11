@@ -14,8 +14,8 @@ type Args = {
   feeds: RootState['feeds']['feeds'];
   triggerSoundCue: (kind: 'toggle' | 'success' | 'error') => void;
   requestNotificationPermission: (enabled: boolean) => Promise<void>;
-  changeAiProvider: (provider: 'openai' | 'claude' | 'openrouter') => void;
-  setProviderApiKey: (provider: 'openai' | 'claude' | 'openrouter', apiKey: string) => void;
+  changeAiProvider: (provider: 'openai' | 'claude' | 'openrouter' | 'local') => void;
+  setProviderApiKey: (provider: 'openai' | 'claude' | 'openrouter' | 'local', apiKey: string) => void;
   applyAllBudget: (budget: 'low' | 'standard' | 'high') => void;
   cycleTheme: () => void;
   resetAllNewest: () => void;
@@ -87,7 +87,8 @@ export function useTopMenuControlPanelHandlers({
         type: 'set_ai_features',
         features,
         localRegion: ui.localImpactRegion,
-        trackedTopics: ui.trackedTopics
+        trackedTopics: ui.trackedTopics,
+        localBaseUrl: ui.localLlmBaseUrl
       });
       if (ok) dispatch(setAiSettings({ insightFeatures: features }));
     },
@@ -98,7 +99,19 @@ export function useTopMenuControlPanelHandlers({
         type: 'set_ai_features',
         features: ui.insightFeatures,
         localRegion: next,
-        trackedTopics: ui.trackedTopics
+        trackedTopics: ui.trackedTopics,
+        localBaseUrl: ui.localLlmBaseUrl
+      });
+    },
+    onSetLocalLlmBaseUrl: (baseUrl: string) => {
+      const next = String(baseUrl || '').trim();
+      dispatch(setAiSettings({ localLlmBaseUrl: next }));
+      sendWsMessage({
+        type: 'set_ai_features',
+        features: ui.insightFeatures,
+        localRegion: ui.localImpactRegion,
+        trackedTopics: ui.trackedTopics,
+        localBaseUrl: next
       });
     },
     onSetTrackedTopics: (topics: string[]) => {
@@ -109,7 +122,8 @@ export function useTopMenuControlPanelHandlers({
         type: 'set_ai_features',
         features: ui.insightFeatures,
         localRegion: ui.localImpactRegion,
-        trackedTopics: cleaned
+        trackedTopics: cleaned,
+        localBaseUrl: ui.localLlmBaseUrl
       });
       if (ok) dispatch(setAiSettings({ trackedTopics: cleaned }));
     },
@@ -170,5 +184,5 @@ export function useTopMenuControlPanelHandlers({
       dispatch(setAppearanceSettings({ soundEnabled: next }));
       if (next) triggerSoundCue('success');
     }
-  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, feeds, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.insightFeatures, ui.localImpactRegion, ui.performanceMode, ui.soundEnabled, ui.trackedTopics]);
+  }), [applyAllBudget, changeAiProvider, cycleTheme, deleteOldAllColumns, dispatch, feeds, onOpenHelp, requestNotificationPermission, resetAllNewest, setProviderApiKey, triggerSoundCue, ui.dailyBriefingAudio, ui.dailyBriefingDelivery, ui.dailyBriefingEmail, ui.dailyBriefingFeedUrls, ui.dailyBriefingFormat, ui.insightFeatures, ui.localImpactRegion, ui.localLlmBaseUrl, ui.performanceMode, ui.soundEnabled, ui.trackedTopics]);
 }

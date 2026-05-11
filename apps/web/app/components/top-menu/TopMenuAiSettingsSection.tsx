@@ -90,6 +90,7 @@ export function TopMenuAiSettingsSection() {
   } = useTopMenuContext();
 
   const providerModels = aiSettings.availableModels[aiSettings.aiProvider];
+  const isLocalProvider = aiSettings.aiProvider === 'local';
   const [providerKeyDraft, setProviderKeyDraft] = useState('');
   const [keywordsDraft, setKeywordsDraft] = useState('');
   const [topicsDraft, setTopicsDraft] = useState('');
@@ -204,9 +205,57 @@ export function TopMenuAiSettingsSection() {
                 <TopMenuSelectField id="summaryLang" label={labels.summaryPrefix} value={aiSettings.summaryLang} disabled={!aiSettings.aiAvailable} onChange={actions.onSummaryLangChange} options={buildSummaryLangOptions()} layout="stacked" wrapperClassName="topMenuField" />
                 <TopMenuSelectField id="researchLang" label={labels.researchPrefix} value={aiSettings.researchLang} disabled={!aiSettings.aiAvailable} onChange={actions.onResearchLangChange} options={buildResearchLangOptions()} layout="stacked" wrapperClassName="topMenuField" />
                 <TopMenuSelectField id="titleDisplayLanguage" label={labels.titleDisplayLanguagePrefix || 'Title language:'} value={aiSettings.titleDisplayLanguage} onChange={actions.onTitleDisplayLanguageChange} options={buildTitleDisplayLanguageOptions(labels)} layout="stacked" wrapperClassName="topMenuField" />
-                <TopMenuSelectField id="summaryModel" label={labels.summaryModelPrefix} value={aiSettings.summaryModel} disabled={!aiSettings.aiAvailable} onChange={actions.onSummaryModelChange} options={buildAiModelOptions(providerModels.summary, aiSettings.summaryModel)} layout="stacked" wrapperClassName="topMenuField" />
-                <TopMenuSelectField id="researchModel" label={labels.researchModelPrefix} value={aiSettings.researchModel} disabled={!aiSettings.aiAvailable} onChange={actions.onResearchModelChange} options={buildAiModelOptions(providerModels.research, aiSettings.researchModel)} layout="stacked" wrapperClassName="topMenuField" />
-                <TopMenuSelectField id="askModel" label={labels.askModelPrefix} value={aiSettings.askModel} disabled={!aiSettings.aiAvailable} onChange={actions.onAskModelChange} options={buildAiModelOptions(providerModels.ask, aiSettings.askModel)} layout="stacked" wrapperClassName="topMenuField" />
+                {isLocalProvider ? (
+                  <>
+                    <TextField
+                      id="localLlmBaseUrl"
+                      size="small"
+                      fullWidth
+                      label={labels.localLlmBaseUrlLabel || 'Local LLM endpoint'}
+                      placeholder={labels.localLlmBaseUrlPlaceholder || 'http://localhost:11434/v1'}
+                      value={aiSettings.localLlmBaseUrl}
+                      onChange={e => actions.onSetLocalLlmBaseUrl(e.target.value)}
+                      helperText={labels.localLlmBaseUrlHint || 'OpenAI-compatible local server URL.'}
+                      className="topMenuField"
+                    />
+                    <TextField
+                      id="summaryModel"
+                      size="small"
+                      fullWidth
+                      label={labels.summaryModelPrefix}
+                      placeholder={labels.localModelPlaceholder || 'Model name'}
+                      value={aiSettings.summaryModel}
+                      onChange={e => actions.onSummaryModelChange(e.target.value)}
+                      className="topMenuField"
+                    />
+                    <TextField
+                      id="researchModel"
+                      size="small"
+                      fullWidth
+                      label={labels.researchModelPrefix}
+                      placeholder={labels.localModelPlaceholder || 'Model name'}
+                      value={aiSettings.researchModel}
+                      onChange={e => actions.onResearchModelChange(e.target.value)}
+                      className="topMenuField"
+                    />
+                    <TextField
+                      id="askModel"
+                      size="small"
+                      fullWidth
+                      label={labels.askModelPrefix}
+                      placeholder={labels.localModelPlaceholder || 'Model name'}
+                      value={aiSettings.askModel}
+                      onChange={e => actions.onAskModelChange(e.target.value)}
+                      className="topMenuField"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <TopMenuSelectField id="summaryModel" label={labels.summaryModelPrefix} value={aiSettings.summaryModel} disabled={!aiSettings.aiAvailable} onChange={actions.onSummaryModelChange} options={buildAiModelOptions(providerModels.summary, aiSettings.summaryModel)} layout="stacked" wrapperClassName="topMenuField" />
+                    <TopMenuSelectField id="researchModel" label={labels.researchModelPrefix} value={aiSettings.researchModel} disabled={!aiSettings.aiAvailable} onChange={actions.onResearchModelChange} options={buildAiModelOptions(providerModels.research, aiSettings.researchModel)} layout="stacked" wrapperClassName="topMenuField" />
+                    <TopMenuSelectField id="askModel" label={labels.askModelPrefix} value={aiSettings.askModel} disabled={!aiSettings.aiAvailable} onChange={actions.onAskModelChange} options={buildAiModelOptions(providerModels.ask, aiSettings.askModel)} layout="stacked" wrapperClassName="topMenuField" />
+                  </>
+                )}
                 {!aiSettings.performanceMode ? (
                   <>
                     <TopMenuSelectField id="moodFilter" label={labels.moodFilter} value={aiSettings.moodFilter} disabled={!aiSettings.aiAvailable} onChange={actions.onMoodFilterChange} options={buildMoodOptions(labels)} layout="stacked" wrapperClassName="topMenuField" />
@@ -279,35 +328,43 @@ export function TopMenuAiSettingsSection() {
             <Box className="topMenuCardBlock topMenuSubsection" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>
               <SubsectionHeader
                 title={labels.providerKeyTitle || 'Provider API key'}
-                hint="Stored locally for the selected provider."
+                hint={isLocalProvider ? 'Local providers do not need an API key.' : 'Stored locally for the selected provider.'}
               />
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.8, gap: 1 }}>
-                <span />
-                <Chip
-                  size="small"
-                  color={hasSavedProviderKey ? 'success' : 'default'}
-                  variant={hasSavedProviderKey ? 'filled' : 'outlined'}
-                  label={hasSavedProviderKey ? (labels.providerKeyStoredYes || 'Saved key available') : (labels.providerKeyStoredNo || 'No saved key')}
-                />
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <TextField size="small" fullWidth type="password" label={labels.providerKeyLabel || 'API key'} placeholder={labels.providerKeyPlaceholder || 'Paste key for selected provider'} value={providerKeyDraft} onChange={e => setProviderKeyDraft(e.target.value)} />
-                <Button
-                  size="small"
-                  variant="contained"
-                  sx={compactActionButtonSx}
-                  onClick={() => {
-                    const next = String(providerKeyDraft || '').trim();
-                    if (!next) return;
-                    actions.onSetProviderApiKey(aiSettings.aiProvider, next);
-                    setHasSavedProviderKey(true);
-                    setProviderKeyDraft('');
-                  }}
-                  disabled={!String(providerKeyDraft || '').trim()}
-                >
-                  {labels.providerKeySave || 'Save key'}
-                </Button>
-              </Stack>
+              {isLocalProvider ? (
+                <Alert severity="info" sx={{ py: 0 }}>
+                  Configure the endpoint and model names above. No provider key is needed for local inference.
+                </Alert>
+              ) : (
+                <>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.8, gap: 1 }}>
+                    <span />
+                    <Chip
+                      size="small"
+                      color={hasSavedProviderKey ? 'success' : 'default'}
+                      variant={hasSavedProviderKey ? 'filled' : 'outlined'}
+                      label={hasSavedProviderKey ? (labels.providerKeyStoredYes || 'Saved key available') : (labels.providerKeyStoredNo || 'No saved key')}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <TextField size="small" fullWidth type="password" label={labels.providerKeyLabel || 'API key'} placeholder={labels.providerKeyPlaceholder || 'Paste key for selected provider'} value={providerKeyDraft} onChange={e => setProviderKeyDraft(e.target.value)} />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      sx={compactActionButtonSx}
+                      onClick={() => {
+                        const next = String(providerKeyDraft || '').trim();
+                        if (!next) return;
+                        actions.onSetProviderApiKey(aiSettings.aiProvider, next);
+                        setHasSavedProviderKey(true);
+                        setProviderKeyDraft('');
+                      }}
+                      disabled={!String(providerKeyDraft || '').trim()}
+                    >
+                      {labels.providerKeySave || 'Save key'}
+                    </Button>
+                  </Stack>
+                </>
+              )}
             </Box>
 
             <Box className="topMenuCardBlock topMenuSubsection" sx={{ width: '100%', border: '1px solid var(--panel-border)', borderRadius: 2, p: 1 }}>

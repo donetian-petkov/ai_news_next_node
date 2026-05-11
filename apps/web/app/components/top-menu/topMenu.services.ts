@@ -105,6 +105,7 @@ export function cutoffFromAge(age: TopMenuDeleteAge, nowMs = Date.now()): number
 }
 
 export function getProviderKeyLabel(provider: TopMenuAiProvider): string {
+  if (provider === 'local') return 'LOCAL_LLM_BASE_URL';
   if (provider === 'claude') return 'ANTHROPIC_API_KEY';
   if (provider === 'openrouter') return 'OPENROUTER_API_KEY';
   return 'OPENAI_API_KEY';
