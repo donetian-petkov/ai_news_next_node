@@ -4317,8 +4317,37 @@ async function processFeed(fi: FeedInfo) {
   try {
     const { xml, notModified } = await fetchFeedXml(fi);
     if (notModified || !xml) return;
+    if (!xml.trim()) {
+      console.warn(`[feed-fetch] empty body for ${fi.url}`);
+      void appendErrorLog({
+        category: 'feed-empty',
+        feedUrl: fi.url,
+        feedLabel: labelForFeed(fi),
+        message: 'Feed returned an empty body',
+        details: {
+          kind: fi.kind,
+          stage: 'processFeed'
+        }
+      });
+      return;
+    }
 
     const feed = await parser.parseString(xml);
+    if (!feed.items.length) {
+      console.warn(`[feed-fetch] zero items parsed for ${fi.url}`);
+      void appendErrorLog({
+        category: 'feed-empty',
+        feedUrl: fi.url,
+        feedLabel: labelForFeed(fi),
+        message: 'Feed parsed successfully but contained no items',
+        details: {
+          kind: fi.kind,
+          stage: 'processFeed',
+          title: feed.title || undefined
+        }
+      });
+      return;
+    }
 
     // improve label from feed title if missing
     if (feed.title && (!fi.label || fi.label === fi.url)) {
