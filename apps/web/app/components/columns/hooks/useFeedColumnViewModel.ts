@@ -9,6 +9,7 @@ type Args = {
   ui: {
     vibe: string;
     scheme: string;
+    colorMode: 'system' | 'light' | 'dark';
     buttonMode: 'icons' | 'text';
     titleDisplayLanguage: 'original' | 'bg' | 'en';
     language: 'en' | 'bg';
@@ -40,7 +41,8 @@ export function useFeedColumnViewModel({ ui, labels, connected, status }: Args) 
   const resolvedVibe: VibeValue = (VIBE_LIST.includes(ui.vibe as VibeValue) ? ui.vibe : 'default') as VibeValue;
   const resolvedScheme: SchemeValue = (SCHEME_LIST.includes(ui.scheme as SchemeValue) ? ui.scheme : 'classic') as SchemeValue;
 
-  const palette = useMemo(() => buildColumnPalette(resolvedVibe, resolvedScheme), [resolvedVibe, resolvedScheme]);
+  const resolvedColorMode = ui.colorMode === 'light' ? 'light' : 'dark';
+  const palette = useMemo(() => buildColumnPalette(resolvedVibe, resolvedScheme, resolvedColorMode), [resolvedColorMode, resolvedVibe, resolvedScheme]);
   const vibeIcons = useMemo(() => getVibeIcons(resolvedVibe), [resolvedVibe]);
 
   const compactBtnSx = useMemo(() => ({

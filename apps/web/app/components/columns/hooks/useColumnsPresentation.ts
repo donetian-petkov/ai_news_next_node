@@ -11,6 +11,7 @@ type Args = {
   ui: {
     vibe: string;
     scheme: string;
+    colorMode: 'system' | 'light' | 'dark';
     buttonMode: 'icons' | 'text';
     titleDisplayLanguage: 'original' | 'bg' | 'en';
     language: 'en' | 'bg';

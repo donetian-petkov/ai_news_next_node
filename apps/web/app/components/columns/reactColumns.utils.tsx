@@ -33,6 +33,7 @@ import { COLUMN_LAYOUT_TOKENS } from './designTokens';
 
 type Rgb = { r: number; g: number; b: number };
 type Hsl = { h: number; s: number; l: number };
+type ThemeMode = 'light' | 'dark';
 
 export const VIBE_LIST: VibeValue[] = ['default', 'anime', 'arcade', 'cinema', 'newspaper', 'cyberwitch', 'fantasy', 'scifi'];
 export const SCHEME_LIST: SchemeValue[] = ['classic', 'vivid', 'sunset', 'neon', 'ocean', 'forest'];
@@ -113,12 +114,14 @@ function hslToRgb(h: number, s: number, l: number): Rgb {
   };
 }
 
-function transformHex(hex: string, tuning: { hueShift: number; satMul: number; lightMul: number }): Rgb {
+function transformHex(hex: string, tuning: { hueShift: number; satMul: number; lightMul: number }, mode: ThemeMode): Rgb {
   const rgb = hexToRgb(hex);
   const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
   const h = ((hsl.h + tuning.hueShift) % 360 + 360) % 360;
-  const s = clamp(hsl.s * tuning.satMul, 0.12, 1);
-  const l = clamp(hsl.l * tuning.lightMul, 0.10, 0.86);
+  const s = clamp(hsl.s * tuning.satMul * (mode === 'light' ? 1.08 : 1), 0.14, 1);
+  const l = mode === 'light'
+    ? clamp((hsl.l * 0.66) + 0.12, 0.18, 0.72)
+    : clamp(hsl.l * tuning.lightMul, 0.10, 0.86);
   return hslToRgb(h, s, l);
 }
 
@@ -126,19 +129,20 @@ function rgba(rgb: Rgb, alpha = 1): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
-export function buildColumnPalette(vibe: VibeValue, scheme: SchemeValue): ColumnPalette {
+export function buildColumnPalette(vibe: VibeValue, scheme: SchemeValue, mode: ThemeMode = 'dark'): ColumnPalette {
   const base = VIBE_BASE_COLORS[vibe] || VIBE_BASE_COLORS.default;
   const tuning = SCHEME_TUNING[scheme] || SCHEME_TUNING.classic;
-  const a = transformHex(base[0], tuning);
-  const b = transformHex(base[1], tuning);
-  const m = transformHex(base[2], tuning);
+  const a = transformHex(base[0], tuning, mode);
+  const b = transformHex(base[1], tuning, mode);
+  const m = transformHex(base[2], tuning, mode);
+  const softAlpha = mode === 'light' ? Math.min(0.42, tuning.softAlpha + 0.08) : tuning.softAlpha;
   return {
     a: rgba(a, 1),
     b: rgba(b, 1),
     m: rgba(m, 1),
-    aSoft: rgba(a, tuning.softAlpha),
-    bSoft: rgba(b, Math.max(0.16, tuning.softAlpha - 0.03)),
-    mSoft: rgba(m, Math.min(0.36, tuning.softAlpha + 0.03))
+    aSoft: rgba(a, softAlpha),
+    bSoft: rgba(b, Math.max(mode === 'light' ? 0.20 : 0.16, softAlpha - 0.03)),
+    mSoft: rgba(m, Math.min(mode === 'light' ? 0.44 : 0.36, softAlpha + 0.03))
   };
 }
 

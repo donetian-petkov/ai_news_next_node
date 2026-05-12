@@ -511,6 +511,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     ui: {
       vibe: (VIBE_LIST.includes(ui.vibe as VibeValue) ? ui.vibe : 'default') as VibeValue,
       scheme: (SCHEME_LIST.includes(ui.scheme as SchemeValue) ? ui.scheme : 'classic') as SchemeValue,
+      colorMode: ui.colorMode,
       buttonMode: ui.buttonMode,
       titleDisplayLanguage: ui.titleDisplayLanguage,
       language: ui.language,
