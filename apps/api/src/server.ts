@@ -3,10 +3,11 @@ import Parser from 'rss-parser';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { PrismaClient, type Prisma } from '@prisma/client';
-import { aiProviderSchema, clientMsgSchema, type ClientMsg } from '@ai-news/shared';
+import { aiFeatureSettingsSchema, aiProviderSchema, clientMsgSchema, type ClientMsg } from '@ai-news/shared';
 import { z } from 'zod';
 
 function bootstrapEnv() {
@@ -372,6 +373,424 @@ const parser: Parser = new Parser({
       ['itunes:image', 'itunesImage', { keepArray: true }],
       ['yt:videoId', 'ytVideoId']
     ]
+  }
+});
+
+app.use(express.json({ limit: '512kb' }));
+app.use((req, res, next) => {
+  const allowOrigin = String(process.env.WEB_ORIGIN || '*').trim() || '*';
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
+
+const AUTH_TOKEN_SECRET = String(process.env.AUTH_TOKEN_SECRET || '').trim();
+const KEY_ENCRYPTION_SECRET = String(process.env.KEY_ENCRYPTION_SECRET || '').trim();
+const AUTH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const REQUIRE_LOGIN_AND_KEY_FOR_NEWS = String(process.env.REQUIRE_LOGIN_AND_KEY_FOR_NEWS || 'true').trim() !== 'false';
+let newsAccessUnlocked = !REQUIRE_LOGIN_AND_KEY_FOR_NEWS;
+
+type AuthTokenPayload = {
+  uid: number;
+  un: string;
+  iat: number;
+  exp: number;
+};
+
+const authCredentialsSchema = z.object({
+  username: z.string().trim().min(3).max(64).regex(/^[a-zA-Z0-9._@+-]+$/),
+  password: z.string().min(6).max(256)
+});
+
+const providerKeyBodySchema = z.object({
+  provider: aiProviderSchema,
+  apiKey: z.string().trim().min(10).max(5000)
+});
+
+const accountSettingsSchema = z.object({
+  persistedAtMs: z.number().finite().nonnegative().optional(),
+  language: z.union([z.literal('en'), z.literal('bg')]).optional(),
+  colorMode: z.union([z.literal('system'), z.literal('dark'), z.literal('light')]).optional(),
+  menuCollapsed: z.boolean().optional(),
+  controlsCollapsed: z.boolean().optional(),
+  searchVisible: z.boolean().optional(),
+  addStreamVisible: z.boolean().optional(),
+  allColumnControlsHidden: z.boolean().optional(),
+  showFilteredColumn: z.boolean().optional(),
+  showEmergingColumn: z.boolean().optional(),
+  hideAllResearch: z.boolean().optional(),
+  hideAllSummaries: z.boolean().optional(),
+  vibe: z.string().trim().min(1).max(64).optional(),
+  summaryLang: z.union([z.literal('bg'), z.literal('en'), z.literal('bilingual')]).optional(),
+  researchLang: z.union([z.literal('bg'), z.literal('en')]).optional(),
+  titleDisplayLanguage: z.union([z.literal('original'), z.literal('bg'), z.literal('en')]).optional(),
+  insightFeatures: aiFeatureSettingsSchema.optional(),
+  localImpactRegion: z.string().trim().max(120).optional(),
+  localLlmBaseUrl: z.string().trim().max(500).optional(),
+  trackedTopics: z.array(z.string().trim().min(1).max(120)).max(80).optional(),
+  font: z.string().trim().min(1).max(32).optional(),
+  fontSize: z.string().trim().min(1).max(32).optional(),
+  scheme: z.string().trim().min(1).max(32).optional(),
+  timezone: z.string().trim().min(1).max(80).optional(),
+  dateFormat: z.string().trim().min(1).max(32).optional(),
+  showNewsCovers: z.boolean().optional(),
+  performanceMode: z.boolean().optional(),
+  buttonMode: z.union([z.literal('icons'), z.literal('text')]).optional(),
+  menuHintMode: z.union([z.literal('text'), z.literal('buttons')]).optional(),
+  effectIntensity: z.union([z.literal('low'), z.literal('medium'), z.literal('high')]).optional(),
+  soundEnabled: z.boolean().optional(),
+  soundTheme: z.string().trim().min(1).max(32).optional(),
+  notifyEnabled: z.boolean().optional(),
+  notifyMode: z.string().trim().min(1).max(32).optional(),
+  moodFilter: z.string().trim().min(1).max(32).optional(),
+  typeFilter: z.string().trim().min(1).max(32).optional(),
+  allBudget: z.union([z.literal('mixed'), z.literal('low'), z.literal('standard'), z.literal('high')]).optional(),
+  aiProvider: aiProviderSchema.optional(),
+  summaryModel: z.string().trim().min(1).max(120).optional(),
+  researchModel: z.string().trim().min(1).max(120).optional(),
+  askModel: z.string().trim().min(1).max(120).optional(),
+  keywords: z.array(z.string().trim().min(1).max(80)).max(120).optional(),
+  dailyBriefingDelivery: z.union([z.literal('site'), z.literal('email')]).optional(),
+  dailyBriefingEmail: z.string().trim().max(200).optional(),
+  dailyBriefingFormat: z.union([z.literal('executive'), z.literal('bullets'), z.literal('narrative')]).optional(),
+  dailyBriefingAudio: z.boolean().optional(),
+  dailyBriefingFeedUrls: z.array(z.string().trim().min(1).max(400)).max(80).optional()
+}).strict();
+
+function hmacSha256(payload: string, secret: string): string {
+  return crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+}
+
+function issueAuthToken(payload: AuthTokenPayload): string {
+  if (!AUTH_TOKEN_SECRET) {
+    throw new Error('AUTH_TOKEN_SECRET is not configured.');
+  }
+  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = hmacSha256(body, AUTH_TOKEN_SECRET);
+  return `${body}.${sig}`;
+}
+
+function verifyAuthToken(tokenRaw: string): AuthTokenPayload | null {
+  const token = String(tokenRaw || '').trim();
+  if (!token || !AUTH_TOKEN_SECRET) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [body, signature] = parts;
+  const expected = hmacSha256(body, AUTH_TOKEN_SECRET);
+  const expectedBuf = Buffer.from(expected);
+  const signatureBuf = Buffer.from(signature);
+  if (expectedBuf.length !== signatureBuf.length) return null;
+  if (!crypto.timingSafeEqual(expectedBuf, signatureBuf)) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as AuthTokenPayload;
+    if (!decoded || typeof decoded.uid !== 'number' || typeof decoded.un !== 'string') return null;
+    if (!Number.isFinite(decoded.exp) || decoded.exp <= Date.now()) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function hashPassword(passwordRaw: string): string {
+  const password = String(passwordRaw || '');
+  const salt = crypto.randomBytes(16);
+  const derived = crypto.scryptSync(password, salt, 64) as Buffer;
+  return `s1:${salt.toString('hex')}:${derived.toString('hex')}`;
+}
+
+function verifyPassword(passwordRaw: string, storedHashRaw: string): boolean {
+  const password = String(passwordRaw || '');
+  const storedHash = String(storedHashRaw || '');
+  const parts = storedHash.split(':');
+  if (parts.length !== 3 || parts[0] !== 's1') return false;
+  try {
+    const salt = Buffer.from(parts[1], 'hex');
+    const expected = Buffer.from(parts[2], 'hex');
+    const derived = crypto.scryptSync(password, salt, expected.length) as Buffer;
+    if (derived.length !== expected.length) return false;
+    return crypto.timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
+}
+
+function getEncryptionKey(): Buffer {
+  const secret = KEY_ENCRYPTION_SECRET || AUTH_TOKEN_SECRET;
+  if (!secret) throw new Error('KEY_ENCRYPTION_SECRET is not configured.');
+  return crypto.createHash('sha256').update(`ai-news-key:${secret}`).digest();
+}
+
+function encryptSecret(raw: string): string {
+  const plain = String(raw || '').trim();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `v1:${iv.toString('base64url')}:${tag.toString('base64url')}:${encrypted.toString('base64url')}`;
+}
+
+function decryptSecret(raw: string): string {
+  const value = String(raw || '').trim();
+  const parts = value.split(':');
+  if (parts.length !== 4 || parts[0] !== 'v1') {
+    throw new Error('Invalid encrypted secret payload.');
+  }
+  const iv = Buffer.from(parts[1], 'base64url');
+  const tag = Buffer.from(parts[2], 'base64url');
+  const encrypted = Buffer.from(parts[3], 'base64url');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', getEncryptionKey(), iv);
+  decipher.setAuthTag(tag);
+  const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return plain.toString('utf8').trim();
+}
+
+function readBearerToken(req: express.Request): string {
+  const header = String(req.headers.authorization || '').trim();
+  const prefix = 'bearer ';
+  if (!header.toLowerCase().startsWith(prefix)) return '';
+  return header.slice(prefix.length).trim();
+}
+
+async function requireAuthUser(req: express.Request, res: express.Response): Promise<{ id: number; username: string } | null> {
+  const token = readBearerToken(req);
+  const payload = verifyAuthToken(token);
+  if (!payload) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: payload.uid },
+    select: { id: true, username: true }
+  });
+  if (!user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+  return user;
+}
+
+function normalizeAccountSettings(raw: unknown): Record<string, unknown> {
+  const parsed = accountSettingsSchema.safeParse(raw);
+  if (!parsed.success) return {};
+  return parsed.data as Record<string, unknown>;
+}
+
+function isNewsAccessLocked(): boolean {
+  return REQUIRE_LOGIN_AND_KEY_FOR_NEWS && !newsAccessUnlocked;
+}
+
+function isMissingUserSettingsTableError(error: unknown): boolean {
+  const code = String((error as { code?: unknown } | null)?.code || '').trim();
+  const message = String((error as { message?: unknown } | null)?.message || '');
+  if (code === 'P2021') return true;
+  if (/UserSettings/i.test(message) && /does not exist|no such table/i.test(message)) return true;
+  return false;
+}
+
+async function ensureUserSettingsTable(): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "UserSettings" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "userId" INTEGER NOT NULL,
+      "settingsJson" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "UserSettings_userId_fkey"
+        FOREIGN KEY ("userId") REFERENCES "User" ("id")
+        ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `);
+  await prisma.$executeRawUnsafe(
+    'CREATE UNIQUE INDEX IF NOT EXISTS "UserSettings_userId_key" ON "UserSettings"("userId")'
+  );
+}
+
+async function withUserSettingsTableRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (!isMissingUserSettingsTableError(error)) throw error;
+    await ensureUserSettingsTable();
+    return fn();
+  }
+}
+
+app.post('/api/auth/register', async (req, res) => {
+  const parsed = authCredentialsSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid username or password.' });
+    return;
+  }
+  const username = parsed.data.username.trim().toLowerCase();
+  const password = parsed.data.password;
+  try {
+    const exists = await prisma.user.findUnique({ where: { username } });
+    if (exists) {
+      res.status(409).json({ error: 'Username already exists.' });
+      return;
+    }
+    const created = await prisma.user.create({
+      data: {
+        username,
+        passwordHash: hashPassword(password)
+      },
+      select: { id: true, username: true }
+    });
+    const token = issueAuthToken({
+      uid: created.id,
+      un: created.username,
+      iat: Date.now(),
+      exp: Date.now() + AUTH_TOKEN_TTL_MS
+    });
+    res.json({ token, user: created });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to register user.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const parsed = authCredentialsSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid username or password.' });
+    return;
+  }
+  const username = parsed.data.username.trim().toLowerCase();
+  const password = parsed.data.password;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, username: true, passwordHash: true }
+    });
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      res.status(401).json({ error: 'Invalid username or password.' });
+      return;
+    }
+    const token = issueAuthToken({
+      uid: user.id,
+      un: user.username,
+      iat: Date.now(),
+      exp: Date.now() + AUTH_TOKEN_TTL_MS
+    });
+    res.json({ token, user: { id: user.id, username: user.username } });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to sign in.' });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const user = await requireAuthUser(req, res);
+    if (!user) return;
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to load user.' });
+  }
+});
+
+app.post('/api/auth/provider-key', async (req, res) => {
+  try {
+    const user = await requireAuthUser(req, res);
+    if (!user) return;
+    const parsed = providerKeyBodySchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid provider or API key.' });
+      return;
+    }
+    const { provider, apiKey } = parsed.data;
+    const encryptedKey = encryptSecret(apiKey);
+    await prisma.userProviderKey.upsert({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider
+        }
+      },
+      create: {
+        userId: user.id,
+        provider,
+        encryptedKey
+      },
+      update: {
+        encryptedKey
+      }
+    });
+    res.json({ saved: true });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to save provider key.' });
+  }
+});
+
+app.get('/api/auth/provider-key/:provider', async (req, res) => {
+  try {
+    const user = await requireAuthUser(req, res);
+    if (!user) return;
+    const providerParsed = aiProviderSchema.safeParse(String(req.params.provider || '').trim());
+    if (!providerParsed.success) {
+      res.status(400).json({ error: 'Invalid provider.' });
+      return;
+    }
+    const row = await prisma.userProviderKey.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: providerParsed.data
+        }
+      },
+      select: { id: true }
+    });
+    res.json({ hasKey: !!row });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to load provider key status.' });
+  }
+});
+
+app.get('/api/account/settings', async (req, res) => {
+  try {
+    const user = await requireAuthUser(req, res);
+    if (!user) return;
+    const row = await withUserSettingsTableRetry(() => prisma.userSettings.findUnique({
+      where: { userId: user.id },
+      select: { settingsJson: true }
+    }));
+    if (!row || !row.settingsJson) {
+      res.json({ settings: {} });
+      return;
+    }
+    let parsed: unknown = {};
+    try {
+      parsed = JSON.parse(row.settingsJson);
+    } catch {
+      parsed = {};
+    }
+    res.json({ settings: normalizeAccountSettings(parsed) });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to load account settings.' });
+  }
+});
+
+app.put('/api/account/settings', async (req, res) => {
+  try {
+    const user = await requireAuthUser(req, res);
+    if (!user) return;
+    const normalized = normalizeAccountSettings((req.body as { settings?: unknown } | undefined)?.settings || {});
+    await withUserSettingsTableRetry(() => prisma.userSettings.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        settingsJson: JSON.stringify(normalized)
+      },
+      update: {
+        settingsJson: JSON.stringify(normalized)
+      }
+    }));
+    res.json({ saved: true, settings: normalized });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message || 'Failed to save account settings.' });
   }
 });
 
