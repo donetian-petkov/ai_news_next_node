@@ -25,21 +25,26 @@ function bootstrapEnv() {
     }
   }
 
-  if (!process.env.DATABASE_URL) {
-    const prismaDirCandidates = [
-      path.resolve(process.cwd(), 'prisma'),
-      path.resolve(process.cwd(), 'apps', 'api', 'prisma'),
-      path.resolve(__dirname, '..', 'prisma'),
-      path.resolve(__dirname, '..', '..', 'apps', 'api', 'prisma')
-    ];
-    const prismaDir = prismaDirCandidates.find(dir => fs.existsSync(path.join(dir, 'schema.prisma')))
-      || prismaDirCandidates[0];
-    try {
-      fs.mkdirSync(prismaDir, { recursive: true });
-    } catch {}
-    const sqlitePath = path.join(prismaDir, 'dev.db');
-    process.env.DATABASE_URL = `file:${sqlitePath}`;
-  }
+  const prismaDirCandidates = [
+    path.resolve(process.cwd(), 'prisma'),
+    path.resolve(process.cwd(), 'apps', 'api', 'prisma'),
+    path.resolve(__dirname, '..', 'prisma'),
+    path.resolve(__dirname, '..', '..', 'apps', 'api', 'prisma')
+  ];
+  const prismaDir = prismaDirCandidates.find(dir => fs.existsSync(path.join(dir, 'schema.prisma')))
+    || prismaDirCandidates[0];
+  try {
+    fs.mkdirSync(prismaDir, { recursive: true });
+  } catch {}
+
+  const normalizeSqliteDevDbUrl = (url?: string | null) => {
+    const raw = String(url || '').trim();
+    if (!raw) return `file:${path.join(prismaDir, 'dev.db')}`;
+    if (/^file:(?:\.\/)?dev\.db$/i.test(raw)) return `file:${path.join(prismaDir, 'dev.db')}`;
+    return raw;
+  };
+
+  process.env.DATABASE_URL = normalizeSqliteDevDbUrl(process.env.DATABASE_URL);
 }
 
 bootstrapEnv();
