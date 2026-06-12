@@ -27,6 +27,10 @@ type FeedPageState = {
   nextCursor?: FeedPageCursor;
   loading: boolean;
   loaded: boolean;
+  disabledUntilMs?: number;
+  lastError?: string;
+  lastErrorAtMs?: number;
+  failCount?: number;
 };
 
 type NewsState = {
@@ -201,7 +205,11 @@ const newsSlice = createSlice({
         state.pageInfoByFeed[feedUrl] = {
           hasMore: state.pageInfoByFeed[feedUrl]?.hasMore ?? true,
           loading: false,
-          loaded: false
+          loaded: false,
+          disabledUntilMs: state.pageInfoByFeed[feedUrl]?.disabledUntilMs,
+          lastError: state.pageInfoByFeed[feedUrl]?.lastError,
+          lastErrorAtMs: state.pageInfoByFeed[feedUrl]?.lastErrorAtMs,
+          failCount: state.pageInfoByFeed[feedUrl]?.failCount
         };
       });
     },
@@ -213,7 +221,31 @@ const newsSlice = createSlice({
         hasMore: prev?.hasMore ?? true,
         nextCursor: prev?.nextCursor,
         loading: true,
-        loaded: prev?.loaded ?? false
+        loaded: prev?.loaded ?? false,
+        disabledUntilMs: prev?.disabledUntilMs,
+        lastError: prev?.lastError,
+        lastErrorAtMs: prev?.lastErrorAtMs,
+        failCount: prev?.failCount
+      };
+    },
+    setFeedPageError(state, action: PayloadAction<{
+      feedUrl: string;
+      error: string;
+      disabledUntilMs?: number;
+      failCount?: number;
+    }>) {
+      const feedUrl = String(action.payload.feedUrl || '').trim();
+      if (!feedUrl) return;
+      const prev = state.pageInfoByFeed[feedUrl];
+      state.pageInfoByFeed[feedUrl] = {
+        hasMore: prev?.hasMore ?? true,
+        nextCursor: prev?.nextCursor,
+        loading: false,
+        loaded: prev?.loaded ?? false,
+        disabledUntilMs: Number.isFinite(action.payload.disabledUntilMs ?? NaN) ? action.payload.disabledUntilMs : prev?.disabledUntilMs,
+        lastError: String(action.payload.error || '').trim() || prev?.lastError,
+        lastErrorAtMs: Date.now(),
+        failCount: Number.isFinite(action.payload.failCount ?? NaN) ? action.payload.failCount : prev?.failCount
       };
     },
     receiveFeedPage(state, action: PayloadAction<{
@@ -240,7 +272,11 @@ const newsSlice = createSlice({
         hasMore: !!hasMore,
         nextCursor,
         loading: false,
-        loaded: true
+        loaded: true,
+        disabledUntilMs: undefined,
+        lastError: undefined,
+        lastErrorAtMs: undefined,
+        failCount: undefined
       };
     },
     upsertNewsItem(state, action: PayloadAction<NewsItem>) {
@@ -360,6 +396,7 @@ export const {
   removeOldItemsInFeed,
   resetAllToNewestLimit,
   setFeedPageLoading,
+  setFeedPageError,
   receiveFeedPage,
   upsertNewsItem,
   upsertNewsBatch,

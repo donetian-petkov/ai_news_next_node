@@ -155,6 +155,10 @@ export type FeedPageInfo = {
   };
   loading: boolean;
   loaded: boolean;
+  disabledUntilMs?: number;
+  lastError?: string;
+  lastErrorAtMs?: number;
+  failCount?: number;
 };
 
 export type FeedColumnViewModel = {

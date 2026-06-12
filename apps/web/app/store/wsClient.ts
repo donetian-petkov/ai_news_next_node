@@ -35,7 +35,7 @@ import {
 } from './valueEnums';
 import { setStatus } from './slices/connectionSlice';
 import { setFeeds } from './slices/feedsSlice';
-import { receiveAskReply, receiveFeedPage, resetNewsState, setHiddenIds, upsertNewsBatch } from './slices/newsSlice';
+import { receiveAskReply, receiveFeedPage, resetNewsState, setFeedPageError, setHiddenIds, upsertNewsBatch } from './slices/newsSlice';
 import { setUsage } from './slices/aiUsageSlice';
 import { enqueueToast, setAiSettings, setKeywords } from './slices/uiSlice';
 import { failBriefing, receiveBriefing } from './slices/briefingSlice';
@@ -493,6 +493,19 @@ function parseFeedPageMessage(raw: Record<string, unknown>) {
   };
 }
 
+function parseFeedErrorMessage(raw: Record<string, unknown>) {
+  if (raw.type !== WsMessageType.FeedError) return null;
+  const feedUrl = isString(raw.feedUrl) ? raw.feedUrl.trim() : '';
+  if (!feedUrl) return null;
+  return {
+    feedUrl,
+    feedLabel: isString(raw.feedLabel) ? raw.feedLabel.trim() : '',
+    error: isString(raw.error) ? raw.error.trim() : '',
+    disabledUntilMs: isNumber(raw.disabledUntilMs) ? raw.disabledUntilMs : undefined,
+    failCount: isNumber(raw.failCount) ? raw.failCount : undefined
+  };
+}
+
 function resolveWsUrl(explicitUrl: string): string {
   if (explicitUrl && explicitUrl.trim()) return explicitUrl.trim();
   if (typeof window !== 'undefined') {
@@ -726,12 +739,17 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
     }
 
     if (msg.type === WsMessageType.FeedError) {
-      const label = isString(msg.feedLabel) && msg.feedLabel.trim()
-        ? msg.feedLabel.trim()
-        : (isString(msg.feedUrl) ? msg.feedUrl : 'feed');
-      const reason = isString(msg.error) && msg.error.trim()
-        ? msg.error.trim()
-        : 'poll failed';
+      const error = parseFeedErrorMessage(msg);
+      const label = error?.feedLabel || (isString(msg.feedUrl) ? msg.feedUrl : 'feed');
+      const reason = error?.error || 'poll failed';
+      if (error?.feedUrl) {
+        dispatch(setFeedPageError({
+          feedUrl: error.feedUrl,
+          error: reason,
+          disabledUntilMs: error.disabledUntilMs,
+          failCount: error.failCount
+        }));
+      }
       dispatch(enqueueToast({
         kind: 'error',
         message: `${label}: ${reason}`

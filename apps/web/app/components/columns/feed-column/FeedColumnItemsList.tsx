@@ -51,6 +51,16 @@ function hasAutoActionRequest(request: AutoActionRequest): boolean {
   return !!(request.summary || request.research || request.titleTranslate || request.mood || request.newsType);
 }
 
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
 function AutoActionSentinel({
   enabled,
   immediate,
@@ -130,6 +140,7 @@ export function FeedColumnItemsList() {
     bodyModes,
     hydratedColumns
   } = state;
+  const feedPageInfo = pageInfoByFeed[feed.url];
   const isHydrated = !!hydratedColumns[feed.url];
 
   const {
@@ -171,6 +182,36 @@ export function FeedColumnItemsList() {
   const bypassViewportAuto = autoActionBypassFeedUrls.includes(feed.url);
   const moodFilterActive = !performanceMode && view.moodFilter !== NewsMoodFilterValue.All;
   const typeFilterActive = !performanceMode && view.typeFilter !== NewsTypeFilterValue.All;
+  const emptyStateMessage = useMemo(() => {
+    const now = Date.now();
+    const cooldownMs = feedPageInfo?.disabledUntilMs ? Math.max(0, feedPageInfo.disabledUntilMs - now) : 0;
+    const lastError = String(feedPageInfo?.lastError || '').trim().toLowerCase();
+
+    if (cooldownMs > 0) {
+      const time = formatCountdown(cooldownMs);
+      if (lastError.includes('429')) {
+        return (labels.feedRateLimited || 'Rate limited, retrying in {{time}}').replace('{{time}}', time);
+      }
+      return (labels.feedCoolingDown || 'Cooling down, retrying in {{time}}').replace('{{time}}', time);
+    }
+
+    if (lastError.includes('parse') || lastError.includes('entity name')) {
+      return labels.feedParseError || 'Feed temporarily unavailable.';
+    }
+    if (lastError.includes('empty body') || lastError.includes('contained no items')) {
+      return labels.feedEmpty || 'No news yet from this source.';
+    }
+
+    if (feedPageInfo?.loading && !feedPageInfo?.loaded) {
+      return isMatchColumn ? (labels.waitingMatches || 'No matched news yet...') : (labels.loadingFeed || labels.waiting || 'Waiting for news...');
+    }
+
+    if (feedPageInfo?.loaded) {
+      return labels.feedEmpty || 'No news yet from this source.';
+    }
+
+    return isMatchColumn ? (labels.waitingMatches || 'No matched news yet...') : (labels.waiting || 'Waiting for news...');
+  }, [feedPageInfo?.disabledUntilMs, feedPageInfo?.lastError, feedPageInfo?.loaded, feedPageInfo?.loading, isMatchColumn, labels]);
 
   useEffect(() => {
     const pending = pendingScrollRef.current;
@@ -329,7 +370,7 @@ export function FeedColumnItemsList() {
     <Stack ref={columnRootRef} spacing={1.2}>
       {itemsVisible.length === 0 ? (
         <Alert severity="info" variant="outlined">
-          {items.length === 0 ? (isMatchColumn ? labels.waitingMatches : labels.waiting) : labels.noMatches}
+          {items.length === 0 ? emptyStateMessage : (labels.noMatches || 'No search matches in this stream.')}
         </Alert>
       ) : shownItems.map(it => {
         const askState: FeedAskState = askByItem[askKey(it)] || getDefaultAskState();
