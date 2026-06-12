@@ -4600,6 +4600,50 @@ function shouldUseRedditHeaders(kind: FeedKind) {
   return kind === 'reddit';
 }
 
+const REDDIT_MIN_INTERVAL_SEC = 180;
+const REDDIT_429_BASE_COOLDOWN_MS = 15 * 60 * 1000;
+const REDDIT_429_MAX_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+let redditFetchChain: Promise<void> = Promise.resolve();
+
+function isRedditFeed(fi: FeedInfo): boolean {
+  return shouldUseRedditHeaders(fi.kind);
+}
+
+function parseRetryAfterMs(raw: string | null): number | null {
+  const value = String(raw || '').trim();
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.floor(seconds * 1000);
+  const when = Date.parse(value);
+  if (!Number.isFinite(when)) return null;
+  return Math.max(0, when - Date.now());
+}
+
+function redditCooldownMs(failCount: number, retryAfterMs?: number): number {
+  const retryAfter = Number.isFinite(retryAfterMs as number) && (retryAfterMs as number) > 0
+    ? (retryAfterMs as number)
+    : 0;
+  if (retryAfter > 0) {
+    return Math.min(REDDIT_429_MAX_COOLDOWN_MS, Math.max(REDDIT_429_BASE_COOLDOWN_MS, retryAfter));
+  }
+  const scale = Math.min(6, Math.max(1, failCount));
+  return Math.min(REDDIT_429_MAX_COOLDOWN_MS, REDDIT_429_BASE_COOLDOWN_MS * scale);
+}
+
+async function runRedditFetchExclusive<T>(task: () => Promise<T>): Promise<T> {
+  const prev = redditFetchChain;
+  let release!: () => void;
+  redditFetchChain = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  await prev.catch(() => {});
+  try {
+    return await task();
+  } finally {
+    release();
+  }
+}
+
 function shouldUseIgnHeaders(url: string) {
   try {
     const parsed = new URL(url);
@@ -4630,8 +4674,9 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
     'Accept': 'application/rss+xml, application/xml, text/xml, */*'
   };
 
-  if (shouldUseRedditHeaders(fi.kind)) {
-    headers['User-Agent'] = 'live-news-ai/1.0 (reddit rss)';
+  if (isRedditFeed(fi)) {
+    headers['User-Agent'] = 'live-news-ai/1.0 (+https://github.com/donetian-petkov/ai_news; reddit rss)';
+    headers['Accept'] = 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1';
   }
 
   if (shouldUseIgnHeaders(fi.url)) {
@@ -4643,9 +4688,9 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
 
   const timeoutMs = 9000;
 
-  const maxAttempts = 3;
+  const maxAttempts = isRedditFeed(fi) ? 2 : 3;
   let attempt = 0;
-  let backoff = 800;
+  let backoff = isRedditFeed(fi) ? 15_000 : 800;
 
   while (attempt < maxAttempts) {
     attempt++;
@@ -4656,6 +4701,37 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
         rt.failCount = 0;
         rt.lastFetchMs = now;
         return { xml: null, notModified: true };
+      }
+
+      if (res.status === 429) {
+        rt.failCount += 1;
+        const retryAfterMs = parseRetryAfterMs(res.headers.get('retry-after'));
+        const cooldownMs = redditCooldownMs(rt.failCount, retryAfterMs || undefined);
+        rt.disabledUntilMs = now + cooldownMs;
+        rt.lastFetchMs = now;
+        const message = 'HTTP 429';
+        console.warn(
+          `[feed-fetch] rate limited for ${fi.url}: ${message} ` +
+          `(failCount=${rt.failCount}, cooldown=${Math.round(cooldownMs / 1000)}s${retryAfterMs ? `, retryAfter=${Math.round(retryAfterMs / 1000)}s` : ''})`
+        );
+        void appendErrorLog({
+          category: 'feed-fetch',
+          feedUrl: fi.url,
+          feedLabel: labelForFeed(fi),
+          attempt,
+          maxAttempts,
+          failCount: rt.failCount,
+          disabledUntilMs: rt.disabledUntilMs,
+          message,
+          details: {
+            kind: fi.kind,
+            retrying: false,
+            userAgent: headers['User-Agent'],
+            retryAfterMs,
+            cooldownMs
+          }
+        });
+        throw new Error(message);
       }
 
       if (!res.ok) {
@@ -4673,6 +4749,9 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
 
       return { xml, notModified: false };
     } catch (e) {
+      if (e instanceof Error && e.message === 'HTTP 429') {
+        throw e;
+      }
       rt.failCount += 1;
       const message = e instanceof Error ? e.message : String(e);
       const waitMs = rt.failCount >= 6 ? 10 * 60 * 1000 : rt.failCount >= 3 ? 2 * 60 * 1000 : 0;
@@ -4711,6 +4790,10 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
         throw e;
       }
 
+      if (isRedditFeed(fi)) {
+        break;
+      }
+
       await sleep(jitter(backoff));
       backoff = Math.min(6000, backoff * 2);
     }
@@ -4728,7 +4811,8 @@ async function processFeed(fi: FeedInfo) {
   const rt = feedRuntime.get(fi.url)!;
 
   // compute interval (per-feed override)
-  const intervalSec = Math.max(20, Math.min(3600, Number(s.intervalSec || fi.intervalSec || defaultIntervalForKind(fi.kind))));
+  const baseIntervalSec = Math.max(20, Math.min(3600, Number(s.intervalSec || fi.intervalSec || defaultIntervalForKind(fi.kind))));
+  const intervalSec = isRedditFeed(fi) ? Math.max(REDDIT_MIN_INTERVAL_SEC, baseIntervalSec) : baseIntervalSec;
   const now = Date.now();
 
   if (rt.nextPollAtMs && now < rt.nextPollAtMs) return;
@@ -4740,7 +4824,9 @@ async function processFeed(fi: FeedInfo) {
   rt.nextPollAtMs = now + intervalSec * 1000;
 
   try {
-    const { xml, notModified } = await fetchFeedXml(fi);
+    const { xml, notModified } = isRedditFeed(fi)
+      ? await runRedditFetchExclusive(() => fetchFeedXml(fi))
+      : await fetchFeedXml(fi);
     if (notModified || !xml) return;
     if (!xml.trim()) {
       console.warn(`[feed-fetch] empty body for ${fi.url}`);
