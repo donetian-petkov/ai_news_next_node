@@ -4610,6 +4610,12 @@ function shouldUseIgnHeaders(url: string) {
   }
 }
 
+function sanitizeFeedXml(xml: string): string {
+  return String(xml || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/&(?!#\d+;|#x[a-fA-F0-9]+;|[a-zA-Z][a-zA-Z0-9]+;)/g, '&amp;');
+}
+
 async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModified: boolean }> {
   ensureFeedRuntime(fi.url);
   const rt = feedRuntime.get(fi.url)!;
@@ -4751,7 +4757,15 @@ async function processFeed(fi: FeedInfo) {
       return;
     }
 
-    const feed = await parser.parseString(xml);
+    let feed;
+    try {
+      feed = await parser.parseString(xml);
+    } catch (parseError) {
+      const repairedXml = sanitizeFeedXml(xml);
+      if (repairedXml === xml) throw parseError;
+      console.warn(`[feed-parse] repairing malformed xml for ${fi.url}: ${(parseError as Error).message}`);
+      feed = await parser.parseString(repairedXml);
+    }
     if (!feed.items.length) {
       console.warn(`[feed-fetch] zero items parsed for ${fi.url}`);
       void appendErrorLog({
