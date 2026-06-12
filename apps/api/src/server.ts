@@ -4601,8 +4601,8 @@ function shouldUseRedditHeaders(kind: FeedKind) {
 }
 
 const REDDIT_MIN_INTERVAL_SEC = 180;
-const REDDIT_429_BASE_COOLDOWN_MS = 15 * 60 * 1000;
-const REDDIT_429_MAX_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const RATE_LIMIT_BASE_COOLDOWN_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 let redditFetchChain: Promise<void> = Promise.resolve();
 
 function isRedditFeed(fi: FeedInfo): boolean {
@@ -4619,15 +4619,15 @@ function parseRetryAfterMs(raw: string | null): number | null {
   return Math.max(0, when - Date.now());
 }
 
-function redditCooldownMs(failCount: number, retryAfterMs?: number): number {
+function rateLimitCooldownMs(failCount: number, retryAfterMs?: number): number {
   const retryAfter = Number.isFinite(retryAfterMs as number) && (retryAfterMs as number) > 0
     ? (retryAfterMs as number)
     : 0;
   if (retryAfter > 0) {
-    return Math.min(REDDIT_429_MAX_COOLDOWN_MS, Math.max(REDDIT_429_BASE_COOLDOWN_MS, retryAfter));
+    return Math.min(RATE_LIMIT_MAX_COOLDOWN_MS, Math.max(RATE_LIMIT_BASE_COOLDOWN_MS, retryAfter));
   }
   const scale = Math.min(6, Math.max(1, failCount));
-  return Math.min(REDDIT_429_MAX_COOLDOWN_MS, REDDIT_429_BASE_COOLDOWN_MS * scale);
+  return Math.min(RATE_LIMIT_MAX_COOLDOWN_MS, RATE_LIMIT_BASE_COOLDOWN_MS * scale);
 }
 
 async function runRedditFetchExclusive<T>(task: () => Promise<T>): Promise<T> {
@@ -4706,7 +4706,7 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
       if (res.status === 429) {
         rt.failCount += 1;
         const retryAfterMs = parseRetryAfterMs(res.headers.get('retry-after'));
-        const cooldownMs = redditCooldownMs(rt.failCount, retryAfterMs || undefined);
+        const cooldownMs = rateLimitCooldownMs(rt.failCount, retryAfterMs || undefined);
         rt.disabledUntilMs = now + cooldownMs;
         rt.lastFetchMs = now;
         const message = 'HTTP 429';
@@ -4750,7 +4750,7 @@ async function fetchFeedXml(fi: FeedInfo): Promise<{ xml: string | null; notModi
       return { xml, notModified: false };
     } catch (e) {
       if (e instanceof Error && e.message === 'HTTP 429') {
-        throw e;
+        break;
       }
       rt.failCount += 1;
       const message = e instanceof Error ? e.message : String(e);
@@ -4957,6 +4957,9 @@ async function processFeed(fi: FeedInfo) {
 
     markDirty();
   } catch (err) {
+    if (err instanceof Error && err.message === 'HTTP 429') {
+      return;
+    }
     console.error(`✗ ${fi.url}`, (err as Error).message);
     void appendErrorLog({
       category: 'feed-process',
