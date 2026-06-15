@@ -2082,6 +2082,17 @@ function scheduleDiscordPost(item: NewsInternal) {
   const feedConfig = feedSettings.get(feed.url);
   const webhookUrl = normalizeDiscordWebhookUrl(feedConfig?.discordWebhookUrl);
   if (!webhookUrl) return;
+  const effectiveFeedConfig = feedConfig || defaultSettingsForFeed(feed);
+
+  if (effectiveFeedConfig.summaryEnabled !== false && !String(item.summary || '').trim() && activeModel('summary') !== 'none' && !hasSummaryJobQueuedOrRunning(item.id, item.feedUrl)) {
+    enqueueJob({ kind: 'summary', id: item.id, feedUrl: item.feedUrl, manual: true });
+  }
+  if (effectiveFeedConfig.researchEnabled !== false && !String(item.research || '').trim() && activeModel('research') !== 'none' && !hasResearchJobQueuedOrRunning(item.id, item.feedUrl)) {
+    enqueueJob({ kind: 'research', id: item.id, feedUrl: item.feedUrl, manual: true });
+  }
+  if (effectiveFeedConfig.translationEnabled !== false && needsTitleTranslation(item.title, item.titleBg, item.titleEn) && activeModel('summary') !== 'none' && !hasTitleTranslateJobQueuedOrRunning(item.id, item.feedUrl)) {
+    enqueueJob({ kind: 'title_translate', id: item.id, feedUrl: item.feedUrl, manual: true });
+  }
 
   const key = discordPostKey(item);
   if (!discordPostAttemptStartedAtMs.has(key)) {
