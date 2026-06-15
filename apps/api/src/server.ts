@@ -1996,7 +1996,7 @@ function buildDiscordEmbed(item: NewsInternal, feed: FeedInfo, feedConfig: FeedS
   };
 
   if (item.coverUrl) {
-    embed.thumbnail = { url: item.coverUrl };
+    embed.image = { url: item.coverUrl };
   }
 
   return embed;
