@@ -52,6 +52,8 @@ export function FeedColumnCoreActions() {
         startIcon={<RestartAltIcon />}
         onClick={() => onResetNewsToTen(feed.url)}
         sx={actionBtnSx}
+        fullWidth
+        style={{ gridColumn: '1 / -1' }}
       >
         {t('columns.resetToFirstCount', { count: resetVisibleCount })}
       </Button>
