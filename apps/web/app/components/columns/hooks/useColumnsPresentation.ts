@@ -61,6 +61,7 @@ type Args = {
   toggleFeedSummary: FeedColumnHandlers['onToggleFeedSummary'];
   toggleFeedTranslation: FeedColumnHandlers['onToggleFeedTranslation'];
   toggleFeedResearch: FeedColumnHandlers['onToggleFeedResearch'];
+  setFeedDiscordWebhook: FeedColumnHandlers['onSetFeedDiscordWebhook'];
   setFeedBudget: FeedColumnHandlers['onSetFeedBudget'];
   setFeedInterval: FeedColumnHandlers['onSetFeedInterval'];
   setFeedSortMode: FeedColumnHandlers['onSetFeedSortMode'];
@@ -109,6 +110,7 @@ export function useColumnsPresentation({
   toggleFeedSummary,
   toggleFeedTranslation,
   toggleFeedResearch,
+  setFeedDiscordWebhook,
   setFeedBudget,
   setFeedInterval,
   setFeedSortMode,
@@ -158,6 +160,7 @@ export function useColumnsPresentation({
     toggleFeedSummary,
     toggleFeedTranslation,
     toggleFeedResearch,
+    setFeedDiscordWebhook,
     setFeedBudget,
     setFeedInterval,
     setFeedSortMode,

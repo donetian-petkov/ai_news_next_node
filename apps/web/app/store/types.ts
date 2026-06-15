@@ -188,6 +188,7 @@ export type FeedInfo = {
   label: string;
   kind: FeedKind;
   intervalSec: number;
+  discordWebhookUrl?: string;
   summaryEnabled: boolean;
   translationEnabled: boolean;
   researchEnabled: boolean;

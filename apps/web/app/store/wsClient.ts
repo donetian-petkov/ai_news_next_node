@@ -72,6 +72,7 @@ type FeedSettingsWire = {
   summaryEnabled?: unknown;
   translationEnabled?: unknown;
   researchEnabled?: unknown;
+  discordWebhookUrl?: unknown;
   budget?: unknown;
   sortMode?: unknown;
   filters?: unknown;
@@ -371,6 +372,9 @@ function parseFeedInfos(v: unknown, feedSettingsRaw: unknown): FeedInfo[] {
       label: isString(m.label) && m.label.trim() ? m.label : url,
       kind: isFeedKind(m.kind) && m.kind !== FeedKindValue.Rss ? m.kind : FeedKindValue.Rss,
       intervalSec: isNumber(m.intervalSec) ? m.intervalSec : 120,
+      discordWebhookUrl: isString(rawSettings.discordWebhookUrl) && rawSettings.discordWebhookUrl.trim()
+        ? rawSettings.discordWebhookUrl.trim()
+        : undefined,
       summaryEnabled: isBoolean(rawSettings.summaryEnabled) ? rawSettings.summaryEnabled : false,
       translationEnabled: isBoolean(rawSettings.translationEnabled) ? rawSettings.translationEnabled : true,
       researchEnabled: isBoolean(rawSettings.researchEnabled) ? rawSettings.researchEnabled : false,
@@ -402,6 +406,9 @@ function parseFeedInfos(v: unknown, feedSettingsRaw: unknown): FeedInfo[] {
       label: 'Filtered',
       kind: FeedKindValue.Rss,
       intervalSec: 0,
+      discordWebhookUrl: isString(filteredSettings.discordWebhookUrl) && filteredSettings.discordWebhookUrl.trim()
+        ? filteredSettings.discordWebhookUrl.trim()
+        : undefined,
       summaryEnabled: isBoolean(filteredSettings.summaryEnabled) ? filteredSettings.summaryEnabled : false,
       translationEnabled: isBoolean(filteredSettings.translationEnabled) ? filteredSettings.translationEnabled : true,
       researchEnabled: isBoolean(filteredSettings.researchEnabled) ? filteredSettings.researchEnabled : false,

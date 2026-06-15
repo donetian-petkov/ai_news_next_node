@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import type { AppDispatch } from '../../../store/store';
-import { removeFeedLocally, setFeedBudgetSetting, setFeedColumnSettings, setFeedIntervalSetting, setFeedResearchSetting, setFeedSummarySetting, setFeedTranslationSetting } from '../../../store/slices/feedsSlice';
+import { removeFeedLocally, setFeedBudgetSetting, setFeedColumnSettings, setFeedDiscordWebhookSetting, setFeedIntervalSetting, setFeedResearchSetting, setFeedSummarySetting, setFeedTranslationSetting } from '../../../store/slices/feedsSlice';
 import { removeOldItemsInFeed } from '../../../store/slices/newsSlice';
 import { setKeywords as setUiKeywords } from '../../../store/slices/uiSlice';
 import { sendWsMessage } from '../../../store/wsClient';
@@ -47,6 +47,13 @@ export function useFeedColumnActions({
     const nextEnabled = !feed.researchEnabled;
     const ok = sendWsMessage({ type: 'set_feed_research', feedUrl: feed.url, enabled: nextEnabled });
     if (ok) dispatch(setFeedResearchSetting({ feedUrl: feed.url, enabled: nextEnabled }));
+  }, [connected, dispatch]);
+
+  const setFeedDiscordWebhook = useCallback((feed: FeedInfo, webhookUrl: string) => {
+    if (!connected) return;
+    const next = String(webhookUrl || '').trim();
+    const ok = sendWsMessage({ type: 'set_feed_discord_webhook', feedUrl: feed.url, webhookUrl: next });
+    if (ok) dispatch(setFeedDiscordWebhookSetting({ feedUrl: feed.url, webhookUrl: next }));
   }, [connected, dispatch]);
 
   const setFeedBudget = useCallback((feed: FeedInfo, budget: BudgetMode) => {
@@ -112,6 +119,7 @@ export function useFeedColumnActions({
     toggleFeedSummary,
     toggleFeedTranslation,
     toggleFeedResearch,
+    setFeedDiscordWebhook,
     setFeedBudget,
     setFeedInterval,
     setFeedSortMode,

@@ -40,6 +40,7 @@ describe('shared clientMsgSchema', () => {
     expect(clientMsgSchema.safeParse({ type: 'set_research_lang', lang: 'bg' }).success).toBe(true);
     expect(clientMsgSchema.safeParse({ type: 'set_research_lang', lang: 'de' }).success).toBe(false);
     expect(clientMsgSchema.safeParse({ type: 'set_feed_translation', feedUrl: 'https://feed.example/rss', enabled: false }).success).toBe(true);
+    expect(clientMsgSchema.safeParse({ type: 'set_feed_discord_webhook', feedUrl: 'https://feed.example/rss', webhookUrl: 'https://discord.com/api/webhooks/1/abc' }).success).toBe(true);
     expect(clientMsgSchema.safeParse({ type: 'set_keywords', keywords: 'war, energy, budget' }).success).toBe(true);
     expect(clientMsgSchema.safeParse({ type: 'set_keywords', keywords: ['war', 'energy'] }).success).toBe(true);
   });

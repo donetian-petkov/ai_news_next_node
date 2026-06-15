@@ -93,6 +93,12 @@ const feedsSlice = createSlice({
       if (idx < 0) return;
       state.feeds[idx].researchEnabled = action.payload.enabled;
     },
+    setFeedDiscordWebhookSetting(state, action: PayloadAction<{ feedUrl: string; webhookUrl?: string }>) {
+      const idx = state.feeds.findIndex(f => f.url === action.payload.feedUrl);
+      if (idx < 0) return;
+      const next = String(action.payload.webhookUrl || '').trim();
+      state.feeds[idx].discordWebhookUrl = next || undefined;
+    },
     setFeedBudgetSetting(state, action: PayloadAction<{ feedUrl: string; budget: BudgetMode }>) {
       const idx = state.feeds.findIndex(f => f.url === action.payload.feedUrl);
       if (idx < 0) return;
@@ -185,6 +191,7 @@ export const {
   setFeedSummarySetting,
   setFeedTranslationSetting,
   setFeedResearchSetting,
+  setFeedDiscordWebhookSetting,
   setFeedBudgetSetting,
   setFeedIntervalSetting,
   setFeedColumnSettings,

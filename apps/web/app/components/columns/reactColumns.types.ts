@@ -221,6 +221,7 @@ export type FeedColumnHandlers = {
   onToggleFeedSummary: (feed: FeedInfo) => void;
   onToggleFeedTranslation: (feed: FeedInfo) => void;
   onToggleFeedResearch: (feed: FeedInfo) => void;
+  onSetFeedDiscordWebhook: (feed: FeedInfo, webhookUrl: string) => void;
   onSetFeedBudget: (feed: FeedInfo, budget: BudgetMode) => void;
   onSetFeedInterval: (feed: FeedInfo, intervalSec: number) => void;
   onSetFeedSortMode: (feed: FeedInfo, sortMode: SortMode) => void;

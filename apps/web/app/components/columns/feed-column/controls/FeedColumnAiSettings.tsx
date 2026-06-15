@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Box, Button, Chip, FormControl, MenuItem, Select, Stack, TextField } from '@mui/material';
 import type { BudgetMode } from '../../../../store/types';
 import { useFeedColumnsContext } from '../../context/useFeedColumnsContext';
@@ -10,8 +10,13 @@ export function FeedColumnAiSettings() {
   const { feed, isMatchColumn } = useFeedColumnContext();
   const { view, handlers } = useFeedColumnsContext();
   const { aiAvailable, connected, compactBtnSx, compactFormSx, labels, keywords } = view;
-  const { onToggleFeedSummary, onToggleFeedTranslation, onToggleFeedResearch, onSetFeedBudget, onSetKeywords } = handlers;
+  const { onToggleFeedSummary, onToggleFeedTranslation, onToggleFeedResearch, onSetFeedDiscordWebhook, onSetFeedBudget, onSetKeywords } = handlers;
   const [keywordsDraft, setKeywordsDraft] = useState('');
+  const [discordWebhookDraft, setDiscordWebhookDraft] = useState(feed.discordWebhookUrl || '');
+
+  useEffect(() => {
+    setDiscordWebhookDraft(feed.discordWebhookUrl || '');
+  }, [feed.discordWebhookUrl, feed.url]);
 
   const addKeywords = () => {
     const additions = String(keywordsDraft || '')
@@ -34,6 +39,10 @@ export function FeedColumnAiSettings() {
   const removeKeyword = (keyword: string) => {
     const target = keyword.toLocaleLowerCase();
     onSetKeywords(keywords.filter(v => v.toLocaleLowerCase() !== target));
+  };
+
+  const saveDiscordWebhook = () => {
+    onSetFeedDiscordWebhook(feed, discordWebhookDraft);
   };
 
   if (!aiAvailable) {
@@ -87,6 +96,23 @@ export function FeedColumnAiSettings() {
           <MenuItem value="high">{labels.budgetHigh}</MenuItem>
         </Select>
       </FormControl>
+      <TextField
+        size="small"
+        fullWidth
+        label={labels.discordWebhookLabel || 'Discord webhook'}
+        placeholder={labels.discordWebhookPlaceholder || 'https://discord.com/api/webhooks/...'}
+        value={discordWebhookDraft}
+        onChange={e => setDiscordWebhookDraft(e.target.value)}
+        onBlur={saveDiscordWebhook}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            saveDiscordWebhook();
+          }
+        }}
+        disabled={!connected}
+        sx={compactFormSx}
+      />
       {isMatchColumn ? (
         <Box sx={{ gridColumn: '1 / -1', border: '1px solid var(--ctl-border)', borderRadius: 2, p: 1 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>

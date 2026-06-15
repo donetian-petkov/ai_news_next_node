@@ -20,6 +20,7 @@ type Args = {
   toggleFeedSummary: FeedColumnHandlers['onToggleFeedSummary'];
   toggleFeedTranslation: FeedColumnHandlers['onToggleFeedTranslation'];
   toggleFeedResearch: FeedColumnHandlers['onToggleFeedResearch'];
+  setFeedDiscordWebhook: FeedColumnHandlers['onSetFeedDiscordWebhook'];
   setFeedBudget: FeedColumnHandlers['onSetFeedBudget'];
   setFeedInterval: FeedColumnHandlers['onSetFeedInterval'];
   setFeedSortMode: FeedColumnHandlers['onSetFeedSortMode'];
@@ -50,6 +51,7 @@ export function useFeedColumnHandlers({
   toggleFeedSummary,
   toggleFeedTranslation,
   toggleFeedResearch,
+  setFeedDiscordWebhook,
   setFeedBudget,
   setFeedInterval,
   setFeedSortMode,
@@ -77,6 +79,7 @@ export function useFeedColumnHandlers({
     onToggleFeedSummary: toggleFeedSummary,
     onToggleFeedTranslation: toggleFeedTranslation,
     onToggleFeedResearch: toggleFeedResearch,
+    onSetFeedDiscordWebhook: setFeedDiscordWebhook,
     onSetFeedBudget: setFeedBudget,
     onSetFeedInterval: setFeedInterval,
     onSetFeedSortMode: setFeedSortMode,
@@ -108,5 +111,5 @@ export function useFeedColumnHandlers({
     onToggleAsk: (id, feedUrl) => dispatch(toggleAskOpen({ id, feedUrl })),
     onSetAskDraft: (id, feedUrl, draft) => dispatch(setAskDraft({ id, feedUrl, draft })),
     onAskSubmit: requestAsk
-  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, moveFeedToTop, removeFeed, removeOldInFeed, requestAsk, requestAutoActions, requestResearch, requestSummary, requestTitleTranslation, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, storiesPerColumn, toggleFeedResearch, toggleFeedSummary, toggleFeedTranslation]);
+  }), [copyLink, copyNewsPayload, dispatch, getBodyMode, getDefaultBodyMode, hideItem, moveFeedToTop, removeFeed, removeOldInFeed, requestAsk, requestAutoActions, requestResearch, requestSummary, requestTitleTranslation, setAdvancedControlsByUrl, setBodyMode, setFeedBudget, setFeedDiscordWebhook, setFeedFilterPreset, setFeedInterval, setFeedSortMode, setKeywords, setVisibleByFeed, shareNews, storiesPerColumn, toggleFeedResearch, toggleFeedSummary, toggleFeedTranslation]);
 }

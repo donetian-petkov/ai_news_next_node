@@ -237,6 +237,7 @@ type FeedSettings = {
   summaryEnabled: boolean;
   translationEnabled: boolean;
   researchEnabled: boolean;
+  discordWebhookUrl?: string;
 
   // auto-research guardrails
   budget: BudgetMode;
@@ -1890,10 +1891,61 @@ function labelForFeed(info: FeedInfo): string {
   return info.label || info.url;
 }
 
+function normalizeDiscordWebhookUrl(raw: unknown): string | undefined {
+  const value = String(raw || '').trim();
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+    const allowedHost =
+      host === 'discord.com'
+      || host.endsWith('.discord.com')
+      || host === 'discordapp.com'
+      || host.endsWith('.discordapp.com');
+    if (!allowedHost) return undefined;
+    if (!parsed.pathname.includes('/api/webhooks/')) return undefined;
+    return value.slice(0, 500);
+  } catch {
+    return undefined;
+  }
+}
+
 function feedSettingsObj(): Record<string, FeedSettings> {
   const obj: Record<string, FeedSettings> = {};
   for (const [k, v] of feedSettings.entries()) obj[k] = v;
   return obj;
+}
+
+async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo) {
+  const webhookUrl = normalizeDiscordWebhookUrl(feedSettings.get(feed.url)?.discordWebhookUrl);
+  if (!webhookUrl) return;
+
+  const title = String(item.title || '').trim() || '(untitled)';
+  const source = String(item.source || feed.label || feed.url).trim();
+  const summary = String(item.summary || '').trim();
+  const content = [
+    `**${source}**`,
+    `**${title}**`,
+    summary ? summary.slice(0, 1500) : '',
+    item.link ? item.link : ''
+  ].filter(Boolean).join('\n').slice(0, 1900);
+
+  try {
+    const res = await fetchWithTimeout(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: feed.label || source,
+        content,
+        allowed_mentions: { parse: [] }
+      })
+    }, 7000);
+    if (!res.ok) {
+      console.warn(`[discord] webhook failed for ${feed.url}: HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`[discord] webhook failed for ${feed.url}: ${(err as Error).message}`);
+  }
 }
 
 function feedRuntimeObj(): Record<string, FeedRuntime> {
@@ -1912,6 +1964,7 @@ function defaultSettingsForFeed(fi: FeedInfo): FeedSettings {
     summaryEnabled,
     translationEnabled: true,
     researchEnabled,
+    discordWebhookUrl: undefined,
     budget: 'standard',
     sortMode: 'newest',
     filters: { onlyMatches: false, onlyResearched: false, onlySummaries: false },
@@ -1928,6 +1981,7 @@ function normalizeFeedSettings(raw: Partial<FeedSettings> | undefined, fi: FeedI
     summaryEnabled: typeof raw?.summaryEnabled === 'boolean' ? raw.summaryEnabled : base.summaryEnabled,
     translationEnabled: raw?.translationEnabled !== false,
     researchEnabled: typeof raw?.researchEnabled === 'boolean' ? raw.researchEnabled : base.researchEnabled,
+    discordWebhookUrl: normalizeDiscordWebhookUrl(raw?.discordWebhookUrl),
     budget: raw?.budget === 'low' || raw?.budget === 'standard' || raw?.budget === 'high'
       ? raw.budget
       : base.budget,
@@ -4958,6 +5012,7 @@ async function processFeed(fi: FeedInfo) {
       await upsertPersistedNewsItem(pkt);
 
       broadcastNewsUpdate(pkt);
+      void postNewsToDiscord(pkt, fi);
     }
 
     markDirty();
@@ -5550,6 +5605,29 @@ wss.on('connection', (ws: WebSocket) => {
           : 'Research disabled for this column. Existing research is preserved.'
       }));
 
+      markDirty();
+      return;
+    }
+
+    if (msg.type === 'set_feed_discord_webhook') {
+      const feedUrl = String(msg.feedUrl || '').trim();
+      if (!feedUrl) return;
+
+      if (!feedSettings.has(feedUrl)) {
+        feedSettings.set(feedUrl, defaultSettingsForFeed({ url: feedUrl, label: feedUrl, kind: 'rss', intervalSec: 120 }));
+      }
+
+      const webhookUrl = normalizeDiscordWebhookUrl(msg.webhookUrl);
+      if (String(msg.webhookUrl || '').trim() && !webhookUrl) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Discord webhook URL must be a valid Discord webhook link.'
+        }));
+        return;
+      }
+
+      feedSettings.get(feedUrl)!.discordWebhookUrl = webhookUrl;
+      broadcastConfig();
       markDirty();
       return;
     }
