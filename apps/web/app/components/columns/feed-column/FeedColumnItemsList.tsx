@@ -472,7 +472,7 @@ export function FeedColumnItemsList() {
           </AutoActionSentinel>
         );
       })}
-      {itemsVisible.length > 0 ? (
+      {canShowMore || canReset ? (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
           <Button
             size="small"
