@@ -203,10 +203,14 @@ export function FeedColumnItemsList() {
     }
 
     if (!feedPageInfo?.loaded) {
-      return isMatchColumn ? (labels.waitingMatches || 'No matched news yet...') : (labels.loadingFeed || labels.waiting || 'Waiting for news...');
+      return isMatchColumn
+        ? (labels.loadingMatches || 'Loading matched news...')
+        : (labels.loadingFeed || labels.waiting || 'Waiting for news...');
     }
 
-    return labels.feedEmpty || 'No news yet from this source.';
+    return isMatchColumn
+      ? (labels.waitingMatches || 'No matched news yet...')
+      : (labels.feedEmpty || 'No news yet from this source.');
   }, [feedPageInfo?.disabledUntilMs, feedPageInfo?.lastError, feedPageInfo?.loaded, feedPageInfo?.loading, isMatchColumn, labels]);
 
   useEffect(() => {

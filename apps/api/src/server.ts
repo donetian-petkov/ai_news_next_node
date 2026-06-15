@@ -6104,6 +6104,10 @@ wss.on('connection', (ws: WebSocket) => {
   // load embeddings once
   if (aiEnabled) await initKeywordEmbeddings();
 
+  // Push the hydrated state to already-connected clients so they do not wait
+  // for the browser replay to restore keywords and filtered-column state.
+  broadcastConfig();
+
   // start scheduler
   startScheduler();
 
