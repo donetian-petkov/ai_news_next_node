@@ -61,6 +61,7 @@ const prisma = new PrismaClient({
 
 type SummaryLang = 'bg' | 'en' | 'bilingual';
 type ResearchLang = 'bg' | 'en';
+type TitleDisplayLanguage = 'original' | 'bg' | 'en';
 type AIProvider = z.infer<typeof aiProviderSchema>;
 
 enum MoodValue {
@@ -318,6 +319,7 @@ type Config = {
 
   summaryLang: SummaryLang;
   researchLang: ResearchLang;
+  titleDisplayLanguage: TitleDisplayLanguage;
   summaryModel: string;
   researchModel: string;
   askModel: string;
@@ -1311,6 +1313,8 @@ if (!['bg', 'en', 'bilingual'].includes(summaryLang)) summaryLang = 'bilingual';
 let researchLang: ResearchLang = (process.env.RESEARCH_LANG as ResearchLang) || 'bg';
 if (!['bg', 'en'].includes(researchLang)) researchLang = 'bg';
 
+let titleDisplayLanguage: TitleDisplayLanguage = 'original';
+
 const AI_USAGE_LOG_LIMIT = 80;
 const aiUsageRuntimeStartedAt = Date.now();
 let aiUsageInputTokens = 0;
@@ -1431,6 +1435,7 @@ type PersistedState = {
   localRegion?: string;
   localLlmBaseUrl?: string;
   trackedTopics?: string[];
+  titleDisplayLanguage?: TitleDisplayLanguage;
   feeds: FeedInfo[];
   feedSettings: Record<string, FeedSettings>;
   hiddenIds: string[];
@@ -1846,6 +1851,7 @@ function saveStateNow() {
     localRegion,
     localLlmBaseUrl,
     trackedTopics,
+    titleDisplayLanguage,
     feeds: feedsList,
     feedSettings: feedSettingsObj(),
     hiddenIds: Array.from(hiddenIds),
@@ -1914,22 +1920,6 @@ function compactDiscordText(value: string, max = 700): string {
   return compactSentence(String(value || '').replace(/\s+/g, ' ').trim(), max);
 }
 
-function collectDiscordTranslationLines(item: NewsInternal, title: string): string[] {
-  if (!item.titleBg && !item.titleEn) return [];
-  const lines: string[] = [];
-  const seen = new Set<string>();
-  const original = compactDiscordText(title, 260).toLocaleLowerCase();
-  for (const [label, value] of [['BG', item.titleBg], ['EN', item.titleEn]] as const) {
-    const text = compactDiscordText(value || '', 260);
-    if (!text) continue;
-    const key = text.toLocaleLowerCase();
-    if (key === original || seen.has(key)) continue;
-    seen.add(key);
-    lines.push(`${label}: ${text}`);
-  }
-  return lines;
-}
-
 function collectDiscordAiNotes(item: NewsInternal): string[] {
   const notes: string[] = [];
   const push = (label: string, value: string | undefined, max = 180) => {
@@ -1950,6 +1940,71 @@ function collectDiscordAiNotes(item: NewsInternal): string[] {
   return notes.slice(0, 6);
 }
 
+function normalizeDiscordTitleLanguage(value: unknown): TitleDisplayLanguage {
+  return value === 'bg' || value === 'en' || value === 'original' ? value : 'original';
+}
+
+function chooseDiscordTitle(item: NewsInternal, preferred: TitleDisplayLanguage, translationEnabled: boolean): string {
+  const original = compactDiscordText(item.title || '', 260) || '(untitled)';
+  const bg = compactDiscordText(item.titleBg || '', 260);
+  const en = compactDiscordText(item.titleEn || '', 260);
+
+  if (!translationEnabled) return original;
+  if (preferred === 'bg') return bg || en || original;
+  if (preferred === 'en') return en || bg || original;
+  return original;
+}
+
+function buildDiscordEmbed(item: NewsInternal, feed: FeedInfo, feedConfig: FeedSettings) {
+  const source = String(item.source || feed.label || feed.url).trim() || 'Unknown source';
+  const translationEnabled = feedConfig.translationEnabled !== false;
+  const preferredTitle = chooseDiscordTitle(item, normalizeDiscordTitleLanguage(titleDisplayLanguage), translationEnabled);
+  const summaryEnabled = feedConfig.summaryEnabled !== false;
+  const researchEnabled = feedConfig.researchEnabled !== false;
+  const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
+
+  const summaryText = compactDiscordText(item.summary || '', 1800);
+  const researchText = compactDiscordText(item.research || '', 1800);
+  if (summaryEnabled && summaryText) {
+    fields.push({ name: 'Summary', value: summaryText });
+  }
+  if (researchEnabled && researchText) {
+    fields.push({ name: 'Research', value: researchText });
+  }
+
+  const aiNotes = collectDiscordAiNotes(item);
+  if (aiNotes.length) {
+    fields.push({ name: 'AI notes', value: aiNotes.join('\n').slice(0, 1024) });
+  }
+
+  const descriptionSource = summaryEnabled && summaryText
+    ? summaryText
+    : (researchEnabled && researchText ? researchText : compactDiscordText(item.title || '', 900));
+
+  const description = [
+    descriptionSource,
+  ].filter(Boolean).join('\n\n').slice(0, 4000);
+
+  const embed: Record<string, unknown> = {
+    title: preferredTitle,
+    url: item.link || undefined,
+    description: description || undefined,
+    color: 0x4f6fff,
+    author: { name: source },
+    footer: {
+      text: feed.label || source
+    },
+    timestamp: Number.isFinite(item.publishedMs) ? new Date(item.publishedMs).toISOString() : undefined,
+    fields
+  };
+
+  if (item.coverUrl) {
+    embed.thumbnail = { url: item.coverUrl };
+  }
+
+  return embed;
+}
+
 function feedSettingsObj(): Record<string, FeedSettings> {
   const obj: Record<string, FeedSettings> = {};
   for (const [k, v] of feedSettings.entries()) obj[k] = v;
@@ -1961,37 +2016,8 @@ async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo) {
   const webhookUrl = normalizeDiscordWebhookUrl(feedConfig?.discordWebhookUrl);
   if (!webhookUrl) return;
 
-  const title = String(item.title || '').trim() || '(untitled)';
   const source = String(item.source || feed.label || feed.url).trim();
-  const summaryEnabled = feedConfig?.summaryEnabled !== false;
-  const translationEnabled = feedConfig?.translationEnabled !== false;
-  const researchEnabled = feedConfig?.researchEnabled !== false;
-  const sections: string[] = [
-    `**${source}**`,
-    `**${title}**`
-  ];
-
-  if (translationEnabled) {
-    const translationLines = collectDiscordTranslationLines(item, title);
-    if (translationLines.length) sections.push('', '**Translation**', ...translationLines);
-  }
-
-  if (summaryEnabled && item.summary) {
-    sections.push('', '**Summary**', compactDiscordText(item.summary, 900));
-  }
-
-  if (researchEnabled && item.research) {
-    sections.push('', '**Research**', compactDiscordText(item.research, 900));
-  }
-
-  const aiNotes = collectDiscordAiNotes(item);
-  if (aiNotes.length) {
-    sections.push('', '**AI notes**', ...aiNotes);
-  }
-
-  if (item.link) sections.push('', item.link);
-
-  const content = sections.filter(Boolean).join('\n').slice(0, 1900);
+  const embed = buildDiscordEmbed(item, feed, feedConfig || defaultSettingsForFeed(feed));
 
   try {
     const res = await fetchWithTimeout(webhookUrl, {
@@ -1999,7 +2025,8 @@ async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: feed.label || source,
-        content,
+        content: '',
+        embeds: [embed],
         allowed_mentions: { parse: [] }
       })
     }, 7000);
@@ -4104,6 +4131,7 @@ function broadcastConfig() {
 
     summaryLang,
     researchLang,
+    titleDisplayLanguage,
     summaryModel: activeSelection.summary,
     researchModel: activeSelection.research,
     askModel: activeSelection.ask,
@@ -5162,6 +5190,9 @@ async function applyLoadedState(st: PersistedState | null) {
     localLlmBaseUrl = st.localLlmBaseUrl.trim().slice(0, 500) || localLlmBaseUrl;
     refreshAiClients();
   }
+  if (st.titleDisplayLanguage === 'original' || st.titleDisplayLanguage === 'bg' || st.titleDisplayLanguage === 'en') {
+    titleDisplayLanguage = st.titleDisplayLanguage;
+  }
 
   if (Array.isArray(st.feeds) && st.feeds.length) {
     feedsList = mergeLoadedFeedsWithDefaultMigrations(st.version, st.feeds);
@@ -5289,6 +5320,7 @@ wss.on('connection', (ws: WebSocket) => {
 
     summaryLang,
     researchLang,
+    titleDisplayLanguage,
     summaryModel: activeSelection.summary,
     researchModel: activeSelection.research,
     askModel: activeSelection.ask,
@@ -5524,6 +5556,16 @@ wss.on('connection', (ws: WebSocket) => {
       if (lang === 'bg' || lang === 'en') {
         researchLang = lang;
         reprocessCachedItems(true);
+        broadcastConfig();
+        markDirty();
+      }
+      return;
+    }
+
+    if (msg.type === 'set_title_display_language') {
+      const next = msg.titleDisplayLanguage;
+      if (next === 'original' || next === 'bg' || next === 'en') {
+        titleDisplayLanguage = next;
         broadcastConfig();
         markDirty();
       }

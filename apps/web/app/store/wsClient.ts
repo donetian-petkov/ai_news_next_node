@@ -641,6 +641,9 @@ function openWsConnection(dispatch: AppDispatch, nextUrl: string, isReconnect: b
         researchLang: isResearchLang(msg.researchLang)
           ? msg.researchLang
           : ResearchLangValue.Bg,
+        titleDisplayLanguage: msg.titleDisplayLanguage === 'bg' || msg.titleDisplayLanguage === 'en' || msg.titleDisplayLanguage === 'original'
+          ? msg.titleDisplayLanguage
+          : undefined,
         summaryModel: isString(msg.summaryModel) ? msg.summaryModel : undefined,
         researchModel: isString(msg.researchModel) ? msg.researchModel : undefined,
         askModel: isString(msg.askModel) ? msg.askModel : undefined,

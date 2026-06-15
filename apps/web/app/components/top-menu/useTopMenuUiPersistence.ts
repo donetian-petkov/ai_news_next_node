@@ -143,6 +143,9 @@ export function useTopMenuUiPersistence({ dispatch, ui, resolvedColorMode }: Use
         if (parsed.researchLang === 'bg' || parsed.researchLang === 'en') {
           sent.push(sendWsMessage({ type: 'set_research_lang', lang: parsed.researchLang }));
         }
+        if (parsed.titleDisplayLanguage === 'original' || parsed.titleDisplayLanguage === 'bg' || parsed.titleDisplayLanguage === 'en') {
+          sent.push(sendWsMessage({ type: 'set_title_display_language', titleDisplayLanguage: parsed.titleDisplayLanguage }));
+        }
         if (parsed.aiProvider === 'openai' || parsed.aiProvider === 'claude' || parsed.aiProvider === 'openrouter' || parsed.aiProvider === 'local') {
           sent.push(sendWsMessage({ type: 'set_ai_provider', provider: parsed.aiProvider }));
         }

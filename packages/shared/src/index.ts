@@ -45,6 +45,7 @@ export const clientMsgSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('set_summary_lang'), lang: summaryLangSchema }),
   z.object({ type: z.literal('set_research_lang'), lang: researchLangSchema }),
+  z.object({ type: z.literal('set_title_display_language'), titleDisplayLanguage: z.union([z.literal('original'), z.literal('bg'), z.literal('en')]) }),
   z.object({
     type: z.literal('set_keywords'),
     keywords: z.union([

@@ -73,7 +73,8 @@ export function useTopMenuControlPanelHandlers({
       if (ok) dispatch(setAiSettings({ researchLang: lang }));
     },
     onTitleDisplayLanguageChange: (lang: RootState['ui']['titleDisplayLanguage']) => {
-      dispatch(setTitleDisplayLanguage(lang));
+      const ok = sendWsMessage({ type: 'set_title_display_language', titleDisplayLanguage: lang });
+      if (ok) dispatch(setTitleDisplayLanguage(lang));
     },
     onToggleSpecialColumn: (column: 'filtered' | 'emerging', enabled: boolean) => {
       dispatch(setTopUiState({
