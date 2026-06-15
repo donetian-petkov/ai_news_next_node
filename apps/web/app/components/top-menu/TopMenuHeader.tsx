@@ -7,8 +7,10 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import OpenWithIcon from '@mui/icons-material/OpenWith';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SearchIcon from '@mui/icons-material/Search';
 import SummarizeIcon from '@mui/icons-material/Summarize';
+import { getDefaultVisibleCount } from '../columns/storyVisibility';
 import { DateTimePill } from './DateTimePill';
 import { StatusPills } from './StatusPills';
 import { QuickVibeSelect } from './QuickVibeSelect';
@@ -27,6 +29,7 @@ export function TopMenuHeader() {
     hideAllResearchLabel,
     hideAllSummariesLabel,
     notifications,
+    controls: { model: { quickRow }, actions },
     onScrollToColumns,
     onOpenHelp,
     onToggleMenu,
@@ -37,8 +40,10 @@ export function TopMenuHeader() {
     onToggleHideAllSummaries
   } = useTopMenuContext();
   const notificationCount = notifications.items.length;
+  const resetShownCount = getDefaultVisibleCount(quickRow.storiesPerColumn);
   const notificationsLabelBase = labels.notificationsInbox || labels.notificationsSummary || 'Notifications';
   const notificationsLabel = notificationCount ? `${notificationsLabelBase} (${notificationCount})` : notificationsLabelBase;
+  const resetShownLabel = labels.resetNewsShownAllCount ? labels.resetNewsShownAllCount.replace('{{count}}', String(resetShownCount)) : `Reset to the first ${resetShownCount} news`;
 
   return (
     <div className="headerRow">
@@ -116,6 +121,15 @@ export function TopMenuHeader() {
               >
                 <MenuIcon fontSize="small" />
               </IconButton>
+              <IconButton
+                id="resetNewsShownAllHeaderBtn"
+                className="mobileMenuToggleBtn"
+                size="small"
+                aria-label={resetShownLabel}
+                onClick={actions.onResetNewsShownAll}
+              >
+                <RestartAltIcon fontSize="small" />
+              </IconButton>
             </Stack>
           </Stack>
         </Stack>
@@ -130,6 +144,7 @@ export function TopMenuHeader() {
             <TopMenuActionButton id="quickSearchBtn" label={searchLabel} icon={<SearchIcon fontSize="small" />} onClick={onToggleSearch} />
             <TopMenuActionButton id="quickAddStreamBtn" label={addStreamLabel} icon={<AddIcon fontSize="small" />} onClick={onToggleAddStream} />
             <TopMenuActionButton id="allColControlsToggle" label={allColumnLabel} icon={<GridViewIcon fontSize="small" />} onClick={onToggleAllColumnControls} />
+            <TopMenuActionButton id="resetNewsShownAllHeaderBtn" label={resetShownLabel} icon={<RestartAltIcon fontSize="small" />} onClick={actions.onResetNewsShownAll} />
             <TopMenuActionButton id="hideAllResearchBtn" label={hideAllResearchLabel} icon={<AutoAwesomeIcon fontSize="small" />} onClick={onToggleHideAllResearch} />
             <TopMenuActionButton id="hideAllSummariesBtn" label={hideAllSummariesLabel} icon={<SummarizeIcon fontSize="small" />} onClick={onToggleHideAllSummaries} />
             <TopMenuActionButton id="menuToggle" label={menuLabel} icon={<MenuIcon fontSize="small" />} onClick={onToggleMenu} />
