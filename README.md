@@ -10,6 +10,13 @@
 
 A real-time, multi-column news intelligence dashboard with AI summaries, AI research, Ask-Agent Q&A, advanced feed controls, and theme/vibe customization.
 
+## Recent Additions
+
+- Per-feed Discord webhook delivery. Add one webhook per feed to send newly ingested stories into a Discord channel.
+- Discord posts now follow the feed’s AI toggles. If summary, translation, or research is enabled for that feed, those sections are included in the Discord message.
+- Local LLM provider support. You can point the app at an OpenAI-compatible local server and use it without a provider API key.
+- Feed error logs are persisted so repeated fetch failures can be inspected later.
+
 ## Product Snapshot
 
 | Area | What you get |
@@ -34,7 +41,8 @@ A real-time, multi-column news intelligence dashboard with AI summaries, AI rese
   - reset back to 10 (column and global)
 
 ### AI Behaviors
-- AI provider switching from UI (`OpenAI`, `Claude`, `OpenRouter`) with runtime key prompt.
+- AI provider switching from UI (`OpenAI`, `Claude`, `OpenRouter`, `Local`) with runtime key prompt for cloud providers.
+- Cloud providers use the signed-in account's saved key; local provider uses an OpenAI-compatible endpoint and does not need a key.
 - Summary and Research language controls.
 - Per-column AI budget (`low`, `standard`, `high`) + global apply-all budget.
 - Ask Agent per news item with remaining-question limits and contextual replies.
@@ -71,6 +79,7 @@ A real-time, multi-column news intelligence dashboard with AI summaries, AI rese
   - only pinned columns
   - all columns
 - Stackable dismissible toasts for connection/feed problems.
+- Per-feed Discord webhook field in the feed controls.
 - EN/BG interface.
 - Responsive mobile drawer for top controls.
 
@@ -202,6 +211,11 @@ Endpoints:
 - Web: `http://localhost:3000`
 - API health: `http://localhost:4000/health`
 - WebSocket: `ws://localhost:4000`
+
+### Notes
+- Sign in is required for cloud providers and saved provider keys.
+- Local provider mode does not need a provider key.
+- Per-feed Discord webhooks can be added from the feed controls.
 
 ## Run With Docker (Everything Included)
 
