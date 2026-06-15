@@ -1910,6 +1910,46 @@ function normalizeDiscordWebhookUrl(raw: unknown): string | undefined {
   }
 }
 
+function compactDiscordText(value: string, max = 700): string {
+  return compactSentence(String(value || '').replace(/\s+/g, ' ').trim(), max);
+}
+
+function collectDiscordTranslationLines(item: NewsInternal, title: string): string[] {
+  if (!item.titleBg && !item.titleEn) return [];
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  const original = compactDiscordText(title, 260).toLocaleLowerCase();
+  for (const [label, value] of [['BG', item.titleBg], ['EN', item.titleEn]] as const) {
+    const text = compactDiscordText(value || '', 260);
+    if (!text) continue;
+    const key = text.toLocaleLowerCase();
+    if (key === original || seen.has(key)) continue;
+    seen.add(key);
+    lines.push(`${label}: ${text}`);
+  }
+  return lines;
+}
+
+function collectDiscordAiNotes(item: NewsInternal): string[] {
+  const notes: string[] = [];
+  const push = (label: string, value: string | undefined, max = 180) => {
+    const text = compactDiscordText(value || '', max);
+    if (text) notes.push(`${label}: ${text}`);
+  };
+
+  push('Mood', item.mood);
+  push('Type', item.newsType);
+  push('Impact', item.insights?.impact?.summary, 180);
+  push('Bias', item.insights?.bias?.summary, 180);
+  push('Sensationalism', item.insights?.sensationalism?.summary, 180);
+  push('Historical', item.insights?.historical?.explanation, 180);
+  push('Future', item.insights?.future?.outlook, 180);
+  push('Local impact', item.insights?.localImpact?.summary, 180);
+  push('Emerging signal', item.emergingSignal?.reason, 180);
+
+  return notes.slice(0, 6);
+}
+
 function feedSettingsObj(): Record<string, FeedSettings> {
   const obj: Record<string, FeedSettings> = {};
   for (const [k, v] of feedSettings.entries()) obj[k] = v;
@@ -1917,18 +1957,41 @@ function feedSettingsObj(): Record<string, FeedSettings> {
 }
 
 async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo) {
-  const webhookUrl = normalizeDiscordWebhookUrl(feedSettings.get(feed.url)?.discordWebhookUrl);
+  const feedConfig = feedSettings.get(feed.url);
+  const webhookUrl = normalizeDiscordWebhookUrl(feedConfig?.discordWebhookUrl);
   if (!webhookUrl) return;
 
   const title = String(item.title || '').trim() || '(untitled)';
   const source = String(item.source || feed.label || feed.url).trim();
-  const summary = String(item.summary || '').trim();
-  const content = [
+  const summaryEnabled = feedConfig?.summaryEnabled !== false;
+  const translationEnabled = feedConfig?.translationEnabled !== false;
+  const researchEnabled = feedConfig?.researchEnabled !== false;
+  const sections: string[] = [
     `**${source}**`,
-    `**${title}**`,
-    summary ? summary.slice(0, 1500) : '',
-    item.link ? item.link : ''
-  ].filter(Boolean).join('\n').slice(0, 1900);
+    `**${title}**`
+  ];
+
+  if (translationEnabled) {
+    const translationLines = collectDiscordTranslationLines(item, title);
+    if (translationLines.length) sections.push('', '**Translation**', ...translationLines);
+  }
+
+  if (summaryEnabled && item.summary) {
+    sections.push('', '**Summary**', compactDiscordText(item.summary, 900));
+  }
+
+  if (researchEnabled && item.research) {
+    sections.push('', '**Research**', compactDiscordText(item.research, 900));
+  }
+
+  const aiNotes = collectDiscordAiNotes(item);
+  if (aiNotes.length) {
+    sections.push('', '**AI notes**', ...aiNotes);
+  }
+
+  if (item.link) sections.push('', item.link);
+
+  const content = sections.filter(Boolean).join('\n').slice(0, 1900);
 
   try {
     const res = await fetchWithTimeout(webhookUrl, {

@@ -45,6 +45,10 @@ export function FeedColumnAiSettings() {
     onSetFeedDiscordWebhook(feed, discordWebhookDraft);
   };
 
+  const savedWebhookHint = feed.discordWebhookUrl
+    ? `${labels.discordWebhookSaved || 'Saved for this feed'}: ${maskDiscordWebhookUrl(feed.discordWebhookUrl)}`
+    : labels.discordWebhookPlaceholder || 'https://discord.com/api/webhooks/...';
+
   if (!aiAvailable) {
     return (
       <Alert severity="info" variant="outlined" sx={{ gridColumn: '1 / -1' }}>
@@ -111,6 +115,7 @@ export function FeedColumnAiSettings() {
           }
         }}
         disabled={!connected}
+        helperText={savedWebhookHint}
         sx={compactFormSx}
       />
       {isMatchColumn ? (
@@ -151,4 +156,15 @@ export function FeedColumnAiSettings() {
       ) : null}
     </>
   );
+}
+
+function maskDiscordWebhookUrl(value: string): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.hostname}/api/webhooks/••••/••••`;
+  } catch {
+    return 'discord.com/api/webhooks/••••/••••';
+  }
 }
