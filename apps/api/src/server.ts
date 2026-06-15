@@ -2011,10 +2011,10 @@ function feedSettingsObj(): Record<string, FeedSettings> {
   return obj;
 }
 
-async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo) {
+async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo): Promise<boolean> {
   const feedConfig = feedSettings.get(feed.url);
   const webhookUrl = normalizeDiscordWebhookUrl(feedConfig?.discordWebhookUrl);
-  if (!webhookUrl) return;
+  if (!webhookUrl) return false;
 
   const source = String(item.source || feed.label || feed.url).trim();
   const embed = buildDiscordEmbed(item, feed, feedConfig || defaultSettingsForFeed(feed));
@@ -2032,10 +2032,89 @@ async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo) {
     }, 7000);
     if (!res.ok) {
       console.warn(`[discord] webhook failed for ${feed.url}: HTTP ${res.status}`);
+      return false;
     }
   } catch (err) {
     console.warn(`[discord] webhook failed for ${feed.url}: ${(err as Error).message}`);
+    return false;
   }
+
+  return true;
+}
+
+function discordPostKey(item: NewsInternal): string {
+  return `${item.feedUrl}::${item.id}`;
+}
+
+function clearDiscordPostTimer(key: string) {
+  const timer = discordPostTimerByKey.get(key);
+  if (timer) clearTimeout(timer);
+  discordPostTimerByKey.delete(key);
+  discordPostAttemptStartedAtMs.delete(key);
+}
+
+function isDiscordPostReady(item: NewsInternal, feedConfig: FeedSettings): boolean {
+  const summaryEnabled = feedConfig.summaryEnabled !== false;
+  const researchEnabled = feedConfig.researchEnabled !== false;
+  const translationEnabled = feedConfig.translationEnabled !== false;
+  const summaryReady = !summaryEnabled
+    || !!String(item.summary || '').trim()
+    || activeModel('summary') === 'none';
+  const researchReady = !researchEnabled
+    || !!String(item.research || '').trim()
+    || activeModel('research') === 'none';
+  const translationReady = !translationEnabled
+    || !needsTitleTranslation(item.title, item.titleBg, item.titleEn)
+    || !!String(item.titleBg || '').trim()
+    || !!String(item.titleEn || '').trim()
+    || activeModel('summary') === 'none';
+
+  return summaryReady && researchReady && translationReady;
+}
+
+function scheduleDiscordPost(item: NewsInternal) {
+  const feed = feedsList.find(f => f.url === item.feedUrl) || {
+    url: item.feedUrl,
+    label: item.source || item.feedUrl,
+    kind: 'rss',
+    intervalSec: 0
+  };
+  const feedConfig = feedSettings.get(feed.url);
+  const webhookUrl = normalizeDiscordWebhookUrl(feedConfig?.discordWebhookUrl);
+  if (!webhookUrl) return;
+
+  const key = discordPostKey(item);
+  if (!discordPostAttemptStartedAtMs.has(key)) {
+    discordPostAttemptStartedAtMs.set(key, Date.now());
+  }
+  if (discordPostTimerByKey.has(key)) return;
+
+  const run = async () => {
+    discordPostTimerByKey.delete(key);
+    const current = recent.find(x => x.id === item.id && x.feedUrl === item.feedUrl) || item;
+    const currentFeedConfig = feedSettings.get(feed.url) || defaultSettingsForFeed(feed);
+    const startedAt = discordPostAttemptStartedAtMs.get(key) || Date.now();
+    const elapsed = Date.now() - startedAt;
+    const ready = isDiscordPostReady(current, currentFeedConfig);
+
+    if (!ready && elapsed < DISCORD_POST_MAX_WAIT_MS) {
+      const timer = setTimeout(run, DISCORD_POST_RETRY_DELAY_MS);
+      discordPostTimerByKey.set(key, timer);
+      return;
+    }
+
+    const ok = await postNewsToDiscord(current, feed);
+    clearDiscordPostTimer(key);
+
+    if (!ok && elapsed < DISCORD_POST_MAX_WAIT_MS) {
+      discordPostAttemptStartedAtMs.set(key, Date.now() - elapsed);
+      const timer = setTimeout(run, DISCORD_POST_RETRY_DELAY_MS);
+      discordPostTimerByKey.set(key, timer);
+    }
+  };
+
+  const timer = setTimeout(run, 1000);
+  discordPostTimerByKey.set(key, timer);
 }
 
 function feedRuntimeObj(): Record<string, FeedRuntime> {
@@ -4303,6 +4382,10 @@ const AI_CLASSIFY_TIMEOUT_MS = Math.max(6_000, Number.parseInt(process.env.AI_CL
 const AI_ERROR_TOAST_COOLDOWN_MS = Math.max(5_000, Number.parseInt(process.env.AI_ERROR_TOAST_COOLDOWN_MS ?? '20_000', 10) || 20_000);
 let lastSummaryRecoveryAtMs = 0;
 const summaryRetryCooldownUntilMs = new Map<string, number>();
+const discordPostAttemptStartedAtMs = new Map<string, number>();
+const discordPostTimerByKey = new Map<string, ReturnType<typeof setTimeout>>();
+const DISCORD_POST_RETRY_DELAY_MS = 7_500;
+const DISCORD_POST_MAX_WAIT_MS = 2 * 60_000;
 
 function jobKey(j: AiJob) {
   return `${j.kind}:${j.feedUrl || ''}::${j.id}`;
@@ -4553,6 +4636,7 @@ async function runOneJob(job: AiJob) {
         refreshDerivedDataForItem(it);
         await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
+        scheduleDiscordPost(it);
         didBroadcastUpdate = true;
         summaryRetryCooldownUntilMs.delete(summaryItemKey(it.id, it.feedUrl));
         markDirty();
@@ -4577,6 +4661,7 @@ async function runOneJob(job: AiJob) {
         refreshDerivedDataForItem(it);
         await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
+        scheduleDiscordPost(it);
         didBroadcastUpdate = true;
         markDirty();
       }
@@ -4603,6 +4688,7 @@ async function runOneJob(job: AiJob) {
         refreshDerivedDataForItem(it);
         await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
+        scheduleDiscordPost(it);
         didBroadcastUpdate = true;
         markDirty();
       }
@@ -4629,6 +4715,7 @@ async function runOneJob(job: AiJob) {
         refreshDerivedDataForItem(it);
         await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
+        scheduleDiscordPost(it);
         didBroadcastUpdate = true;
         markDirty();
       }
@@ -4676,6 +4763,7 @@ async function runOneJob(job: AiJob) {
         refreshDerivedDataForItem(it);
         await upsertPersistedNewsItem(it);
         broadcastNewsUpdate(it);
+        scheduleDiscordPost(it);
         didBroadcastUpdate = true;
         markDirty();
       }
@@ -5103,7 +5191,7 @@ async function processFeed(fi: FeedInfo) {
       await upsertPersistedNewsItem(pkt);
 
       broadcastNewsUpdate(pkt);
-      void postNewsToDiscord(pkt, fi);
+      scheduleDiscordPost(pkt);
     }
 
     markDirty();
