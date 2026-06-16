@@ -141,13 +141,28 @@
   flex-wrap: nowrap !important;
 }
 
+.headerStatusGroup {
+  flex: 0 0 auto;
+}
+
+.headerStatusGroup .statusPill {
+  flex: 0 0 auto;
+}
+
 .headerRightDesktop > .topQuickLabel {
   flex: 0 0 auto;
-  width: clamp(180px, 14vw, 240px);
+  width: clamp(238px, 18vw, 300px);
+}
+
+.headerRightDesktop > .topQuickLabel > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .headerRightDesktop .topMenuSelectTrigger {
+  flex: 1 1 0;
   min-width: 0;
+  width: auto;
 }
 
 .headerRightDesktop .topMenuSelectTriggerContent {
@@ -732,7 +747,15 @@
 }
 
 .statusPill {
+  max-width: 100%;
   border-color: var(--panel-border) !important;
+}
+
+.statusPill .MuiChip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusPillDateTime {
