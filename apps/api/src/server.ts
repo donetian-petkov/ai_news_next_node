@@ -2140,10 +2140,14 @@ function scheduleDiscordPostForTarget(item: NewsInternal, targetFeedUrl: string)
 }
 
 function scheduleDiscordPost(item: NewsInternal) {
-  scheduleDiscordPostForTarget(item, item.feedUrl);
   if (item.isMatch && item.filteredOk !== false) {
-    scheduleDiscordPostForTarget(item, FILTERED_FEED_URL);
+    const filteredWebhookUrl = normalizeDiscordWebhookUrl(feedSettings.get(FILTERED_FEED_URL)?.discordWebhookUrl);
+    if (filteredWebhookUrl) {
+      scheduleDiscordPostForTarget(item, FILTERED_FEED_URL);
+      return;
+    }
   }
+  scheduleDiscordPostForTarget(item, item.feedUrl);
 }
 
 function feedRuntimeObj(): Record<string, FeedRuntime> {
