@@ -2039,8 +2039,8 @@ async function postNewsToDiscord(item: NewsInternal, feed: FeedInfo): Promise<bo
   return true;
 }
 
-function discordPostKey(item: NewsInternal): string {
-  return `${item.feedUrl}::${item.id}`;
+function discordPostKey(item: NewsInternal, targetFeedUrl: string): string {
+  return `${targetFeedUrl}::${item.feedUrl}::${item.id}`;
 }
 
 function clearDiscordPostTimer(key: string) {
@@ -2069,13 +2069,27 @@ function isDiscordPostReady(item: NewsInternal, feedConfig: FeedSettings): boole
   return summaryReady && researchReady && translationReady;
 }
 
-function scheduleDiscordPost(item: NewsInternal) {
-  const feed = feedsList.find(f => f.url === item.feedUrl) || {
-    url: item.feedUrl,
-    label: item.source || item.feedUrl,
+function discordFeedTargetForItem(item: NewsInternal, targetFeedUrl: string): FeedInfo {
+  if (targetFeedUrl === FILTERED_FEED_URL) {
+    const filteredSettings = feedSettings.get(FILTERED_FEED_URL);
+    return {
+      url: FILTERED_FEED_URL,
+      label: filteredSettings?.label || 'Filtered',
+      kind: filteredSettings?.kind || 'rss',
+      intervalSec: filteredSettings?.intervalSec || 0
+    };
+  }
+
+  return feedsList.find(f => f.url === targetFeedUrl) || {
+    url: targetFeedUrl,
+    label: item.source || targetFeedUrl,
     kind: 'rss',
     intervalSec: 0
   };
+}
+
+function scheduleDiscordPostForTarget(item: NewsInternal, targetFeedUrl: string) {
+  const feed = discordFeedTargetForItem(item, targetFeedUrl);
   const feedConfig = feedSettings.get(feed.url);
   const webhookUrl = normalizeDiscordWebhookUrl(feedConfig?.discordWebhookUrl);
   if (!webhookUrl) return;
@@ -2091,7 +2105,7 @@ function scheduleDiscordPost(item: NewsInternal) {
     enqueueJob({ kind: 'title_translate', id: item.id, feedUrl: item.feedUrl, manual: true });
   }
 
-  const key = discordPostKey(item);
+  const key = discordPostKey(item, feed.url);
   if (!discordPostAttemptStartedAtMs.has(key)) {
     discordPostAttemptStartedAtMs.set(key, Date.now());
   }
@@ -2123,6 +2137,13 @@ function scheduleDiscordPost(item: NewsInternal) {
 
   const timer = setTimeout(run, 1000);
   discordPostTimerByKey.set(key, timer);
+}
+
+function scheduleDiscordPost(item: NewsInternal) {
+  scheduleDiscordPostForTarget(item, item.feedUrl);
+  if (item.isMatch && item.filteredOk !== false) {
+    scheduleDiscordPostForTarget(item, FILTERED_FEED_URL);
+  }
 }
 
 function feedRuntimeObj(): Record<string, FeedRuntime> {
