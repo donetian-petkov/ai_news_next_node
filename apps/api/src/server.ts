@@ -5537,8 +5537,19 @@ wss.on('connection', (ws: WebSocket) => {
         : undefined;
       const replace = !!(raw as { replace?: unknown }).replace;
       if (!feedUrl) return;
-      const page = await readFeedPageFromDb(feedUrl, limit, validCursor);
-      sendFeedPage(ws, feedUrl, page.items, page.hasMore, page.nextCursor, replace);
+      try {
+        const page = await readFeedPageFromDb(feedUrl, limit, validCursor);
+        sendFeedPage(ws, feedUrl, page.items, page.hasMore, page.nextCursor, replace);
+      } catch (error) {
+        const message = (error as Error)?.message || 'Failed to load feed page.';
+        console.warn(`[feed-page] failed for ${feedUrl}: ${message}`);
+        ws.send(JSON.stringify({
+          type: 'feed_error',
+          feedUrl,
+          feedLabel: feedSettings.get(feedUrl)?.label || feedUrl,
+          error: message
+        }));
+      }
       return;
     }
 

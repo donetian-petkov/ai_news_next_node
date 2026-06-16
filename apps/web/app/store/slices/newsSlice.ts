@@ -26,6 +26,7 @@ type FeedPageState = {
   hasMore: boolean;
   nextCursor?: FeedPageCursor;
   loading: boolean;
+  loadingStartedAtMs?: number;
   loaded: boolean;
   disabledUntilMs?: number;
   lastError?: string;
@@ -221,6 +222,7 @@ const newsSlice = createSlice({
         hasMore: prev?.hasMore ?? true,
         nextCursor: prev?.nextCursor,
         loading: true,
+        loadingStartedAtMs: Date.now(),
         loaded: prev?.loaded ?? false,
         disabledUntilMs: prev?.disabledUntilMs,
         lastError: prev?.lastError,

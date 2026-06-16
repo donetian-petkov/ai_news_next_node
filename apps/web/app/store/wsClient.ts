@@ -503,11 +503,13 @@ function parseFeedPageMessage(raw: Record<string, unknown>) {
 function parseFeedErrorMessage(raw: Record<string, unknown>) {
   if (raw.type !== WsMessageType.FeedError) return null;
   const feedUrl = isString(raw.feedUrl) ? raw.feedUrl.trim() : '';
-  if (!feedUrl) return null;
+  const feedLabel = isString(raw.feedLabel) ? raw.feedLabel.trim() : '';
+  const error = isString(raw.error) ? raw.error.trim() : '';
+  if (!feedUrl && !feedLabel && !error) return null;
   return {
     feedUrl,
-    feedLabel: isString(raw.feedLabel) ? raw.feedLabel.trim() : '',
-    error: isString(raw.error) ? raw.error.trim() : '',
+    feedLabel,
+    error,
     disabledUntilMs: isNumber(raw.disabledUntilMs) ? raw.disabledUntilMs : undefined,
     failCount: isNumber(raw.failCount) ? raw.failCount : undefined
   };

@@ -35,6 +35,7 @@ const DUPLICATE_MATCH_TIME_WINDOW_MS = 12 * 60 * 60 * 1000;
 const EMERGING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SUMMARY_STALL_THRESHOLD_MS = 90_000;
 const SUMMARY_STATUS_REFRESH_MS = 15_000;
+const FEED_PAGE_REQUEST_TIMEOUT_MS = 15_000;
 
 function normalizePageLimit(value: number): number {
   const parsed = Math.floor(Number(value));
@@ -55,6 +56,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   const pageRequestInFlightRef = useRef<Record<string, true>>({});
   const [advancedControlsByUrl, setAdvancedControlsByUrl] = useState<Record<string, boolean>>({});
   const [summaryStatusTick, setSummaryStatusTick] = useState(0);
+  const [pageRequestRetryTick, setPageRequestRetryTick] = useState(0);
   const labels = useMemo(
     () => t('columns', { returnObjects: true }) as Record<string, string>,
     [t]
@@ -368,12 +370,23 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
   }, [renderedFeeds]);
 
   useEffect(() => {
+    const now = Date.now();
     Object.keys(pageRequestInFlightRef.current).forEach(feedUrl => {
-      if (!pageInfoByFeed[feedUrl]?.loading) {
+      const page = pageInfoByFeed[feedUrl];
+      const requestAgeMs = now - (page?.loadingStartedAtMs || now);
+      if (!page?.loading || requestAgeMs >= FEED_PAGE_REQUEST_TIMEOUT_MS) {
         delete pageRequestInFlightRef.current[feedUrl];
       }
     });
-  }, [pageInfoByFeed]);
+  }, [pageInfoByFeed, pageRequestRetryTick]);
+
+  useEffect(() => {
+    if (!connected) return;
+    const timer = window.setInterval(() => {
+      setPageRequestRetryTick(tick => tick + 1);
+    }, 5_000);
+    return () => window.clearInterval(timer);
+  }, [connected]);
 
   useEffect(() => {
     if (!connected || !feeds.length) return;
@@ -383,8 +396,10 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
       const page = pageInfoByFeed[feed.url];
       const loadedCount = Array.isArray(itemsByFeed[feed.url]) ? itemsByFeed[feed.url].length : 0;
       const visibleTarget = normalizePageLimit(visibleByFeed[feed.url] || ui.storiesPerColumn);
+      const requestAgeMs = Date.now() - (page?.loadingStartedAtMs || Date.now());
+      const requestTimedOut = !!page?.loading && requestAgeMs >= FEED_PAGE_REQUEST_TIMEOUT_MS;
 
-      if (page?.loading || pageRequestInFlightRef.current[feed.url]) return;
+      if ((page?.loading || pageRequestInFlightRef.current[feed.url]) && !requestTimedOut) return;
 
       if (!page?.loaded) {
         if (requestFeedPage(feed.url, visibleTarget, undefined, true)) {
@@ -402,7 +417,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
         dispatch(setFeedPageLoading(feed.url));
       }
     });
-  }, [connected, dispatch, feeds, itemsByFeed, pageInfoByFeed, ui.storiesPerColumn, visibleByFeed]);
+  }, [connected, dispatch, feeds, itemsByFeed, pageInfoByFeed, pageRequestRetryTick, ui.storiesPerColumn, visibleByFeed]);
 
   useEffect(() => {
     if (!connected) return;
@@ -417,7 +432,10 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     feeds.forEach(feed => {
       if (feed.url === FILTERED_FEED_URL || feed.url === EMERGING_FEED_URL) return;
       const page = pageInfoByFeed[feed.url];
-      if (!page?.loaded || page.loading || !page.hasMore || pageRequestInFlightRef.current[feed.url]) return;
+      const requestAgeMs = Date.now() - (page?.loadingStartedAtMs || Date.now());
+      const requestTimedOut = !!page?.loading && requestAgeMs >= FEED_PAGE_REQUEST_TIMEOUT_MS;
+      if (!page?.loaded || !page.hasMore) return;
+      if ((page.loading || pageRequestInFlightRef.current[feed.url]) && !requestTimedOut) return;
       if (requestFeedPage(feed.url, normalizePageLimit(ui.storiesPerColumn), page.nextCursor, false)) {
         pageRequestInFlightRef.current[feed.url] = true;
         dispatch(setFeedPageLoading(feed.url));
@@ -430,6 +448,7 @@ export function useReactColumnsPreviewController({ wsUrl }: Args) {
     feeds,
     filteredColumnItems.length,
     pageInfoByFeed,
+    pageRequestRetryTick,
     ui.insightFeatures.emergingStoryDetector,
     ui.showEmergingColumn,
     ui.showFilteredColumn,
