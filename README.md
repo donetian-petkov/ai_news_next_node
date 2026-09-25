@@ -1,4 +1,4 @@
-# AI News Intelligence Dashboard
+# Real-Time AI News Dashboard
 
 [![CI](https://github.com/donetian-petkov/ai_news_next_node/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/donetian-petkov/ai_news_next_node/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js)
@@ -8,7 +8,7 @@
 ![Redux Toolkit](https://img.shields.io/badge/Redux_Toolkit-Enabled-764ABC?logo=redux&logoColor=white)
 ![MUI](https://img.shields.io/badge/MUI-7-007FFF?logo=mui&logoColor=white)
 
-AI News Intelligence Dashboard is a real-time, multi-column news intelligence dashboard with AI summaries, AI research, Ask-Agent Q&A, advanced feed controls, and theme/vibe customization.
+Real-Time AI News Dashboard is a multi-column AI news dashboard with live feed updates, AI summaries, AI research, Ask-Agent Q&A, advanced feed controls, and theme/vibe customization.
 
 ## Recent Additions
 
